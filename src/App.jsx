@@ -1,35 +1,39 @@
-import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import Header from './components/Header.jsx'
-import Footer from './components/Footer.jsx'
-import RegisterPage from './pages/RegisterPage.jsx'
-import LoginPage from './pages/LoginPage.jsx'
-import HomePage from './pages/HomePage.jsx'
-import JoinGamePage from './pages/JoinGamePage.jsx'
-import DashboardPage from './pages/DashboardPage.jsx'
-import ProfilePage from './pages/ProfilePage.jsx'
+// src/App.jsx
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import HomePage from './pages/HomePage'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import DashboardPage from './pages/DashboardPage'
+import ProfilePage from './pages/ProfilePage'
+import JoinGamePage from './pages/JoinGamePage'
+import MyQuizzesPage from './pages/MyQuizzesPage'
+import CreateQuizPage from './pages/CreateQuizPage'
 
-export default function App() {
+
+function App() {
   return (
-    <BrowserRouter>
-      <main>
-        <Routes>
-          <Route path="/" element={<Navigate to="/home" replace />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/join" element={<JoinGamePage />} />
-          
-          {/* Dashboard routes - TAMBAHAN BARU */}
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/create-quiz" element={<DashboardPage />} />
-          <Route path="/library" element={<DashboardPage />} />
-          <Route path="/history" element={<DashboardPage />} />
-          <Route path="/questions" element={<DashboardPage />} />
-          
-          <Route path="*" element={<Navigate to="/register" replace />} />
-        </Routes>
-      </main>
-    </BrowserRouter>
+    <Router>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        
+        {/* Dashboard Routes */}
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/join" element={<JoinGamePage />} />
+        
+        {/* Quiz Management Routes */}
+        <Route path="/my-quizzes" element={<MyQuizzesPage />} />
+        <Route path="/create-quiz" element={<CreateQuizPage />} />
+        <Route path="/edit-quiz/:id" element={<CreateQuizPage />} />
+        
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   )
 }
+
+export default App

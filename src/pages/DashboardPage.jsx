@@ -3,9 +3,11 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import DashboardLayout from '../components/DashboardLayout'
+import { useNavigate } from 'react-router-dom'
 import DashboardCard from '../components/DashboardCard'
 
 const DashboardPage = () => {
+  const navigate = useNavigate()
   const [activeCategory, setActiveCategory] = useState('Bahasa')
   const [searchQuery, setSearchQuery] = useState('')
   const [pinInput, setPinInput] = useState('')
@@ -134,6 +136,7 @@ const DashboardPage = () => {
               Brain Rush
             </div>
             <motion.div
+              onClick={() => navigate('/profile')}
               whileHover={{ scale: 1.05 }}
               className="bg-white/10 backdrop-blur-md rounded-full px-4 py-2 flex items-center space-x-3 cursor-pointer border border-white/20"
             >
