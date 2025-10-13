@@ -198,7 +198,6 @@ const MyQuizzesPage = () => {
   // Render menu berdasarkan tab aktif
   const renderMenuItems = (quiz) => {
     if (activeTab === 'Draft') {
-      // Menu untuk DRAFT - Quiz yang belum dipublish
       return (
         <>
           <button
@@ -252,7 +251,6 @@ const MyQuizzesPage = () => {
         </>
       )
     } else if (activeTab === 'My Quiz') {
-      // Menu untuk MY QUIZ - Quiz yang sudah dipublish
       return (
         <>
           <button
@@ -330,7 +328,6 @@ const MyQuizzesPage = () => {
         </>
       )
     } else if (activeTab === 'History') {
-      // Menu untuk HISTORY - Quiz yang sudah dimainkan
       return (
         <>
           <button
@@ -483,15 +480,15 @@ const MyQuizzesPage = () => {
                   </div>
                 )}
 
-                {/* Three Dots Menu Button */}
+                {/* Three Dots Menu Button - DIPERKECIL */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
                     toggleMenu(quiz.id)
                   }}
-                  className="absolute top-3 right-3 bg-white/90 hover:bg-white rounded-full p-2 shadow-md z-10 transition"
+                  className="absolute top-3 right-3 bg-white/90 hover:bg-white rounded-full p-1.5 shadow-md z-10 transition"
                 >
-                  <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                   </svg>
                 </button>
@@ -558,7 +555,6 @@ const MyQuizzesPage = () => {
         </main>
       </div>
 
-      {/* Semua modal tetap sama seperti sebelumnya */}
       {/* Modal Live Code */}
       <AnimatePresence>
         {showLiveModal && (

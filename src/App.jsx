@@ -8,7 +8,10 @@ import ProfilePage from './pages/ProfilePage'
 import JoinGamePage from './pages/JoinGamePage'
 import MyQuizzesPage from './pages/MyQuizzesPage'
 import CreateQuizPage from './pages/CreateQuizPage'
-
+import BelajarMandiriPage from './pages/BelajarMandiriPage'
+import HistoryPage from './pages/HistoryPage'
+import HelpPage from './pages/HelpPage'
+import LeaderboardPage from './pages/LeaderboardPage'  // TAMBAHKAN
 
 function App() {
   return (
@@ -28,6 +31,12 @@ function App() {
         <Route path="/my-quizzes" element={<MyQuizzesPage />} />
         <Route path="/create-quiz" element={<CreateQuizPage />} />
         <Route path="/edit-quiz/:id" element={<CreateQuizPage />} />
+        
+        {/* Additional Routes */}
+        <Route path="/schedule" element={<BelajarMandiriPage />} />
+        <Route path="/history" element={<HistoryPage />} />
+        <Route path="/help" element={<HelpPage />} />
+        <Route path="/leaderboard/:quizId" element={<LeaderboardPage />} />  {/* TAMBAHKAN */}
         
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
