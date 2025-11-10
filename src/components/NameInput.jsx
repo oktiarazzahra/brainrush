@@ -41,7 +41,7 @@ const NameInput = ({ value, onChange, placeholder = "Enter your name", maxLength
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.3, type: 'spring' }}
         >
-          <span className="text-white text-xs">✓</span>
+          <span className="text-white text-xs">âœ“</span>
         </motion.div>
       )}
       

@@ -1,27 +1,29 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import Footer from '../components/Footer'
 import { quizService } from '../services/quizService'
 
-const CreateQuizPage = () => {
+const defaultQuestion = () => ({
+  question: '',
+  image: null,
+  options: ['', '', '', ''],
+  correct: [false, false, false, false],
+  duration: 30,
+  type: 'Pilihan Ganda',
+  multi: false,
+  answerText: '',
+  trueFalseAnswer: null
+})
+
+const EditQuizPage = () => {
   const navigate = useNavigate()
+  const { id } = useParams() // ID quiz dari URL /edit-quiz/:id
   const [quizTitle, setQuizTitle] = useState('')
   const [quizCategory, setQuizCategory] = useState('Bahasa')
-  const [questions, setQuestions] = useState([
-    {
-      question: '',
-      image: null,
-      options: ['', '', '', ''],
-      correct: [false, false, false, false],
-      duration: 30,
-      type: 'Pilihan Ganda',
-      multi: false,
-      answerText: '',
-      trueFalseAnswer: null
-    }
-  ])
+  const [questions, setQuestions] = useState([defaultQuestion()])
   const [activeIdx, setActiveIdx] = useState(0)
   const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
   const scrollContainerRef = useRef(null)
   const questionRefs = useRef([])
 
@@ -30,11 +32,61 @@ const CreateQuizPage = () => {
     'Sejarah', 'Geografi', 'Olahraga', 'Umum'
   ]
 
+  // Fetch quiz saat page dibuka
+  useEffect(() => {
+    if (!id) {
+      alert('Quiz ID tidak ditemukan!')
+      navigate('/my-quizzes')
+      return
+    }
+    
+    const fetchQuiz = async () => {
+      try {
+        setLoading(true)
+        const quiz = await quizService.getQuizById(id)
+        
+        setQuizTitle(quiz.title || '')
+        setQuizCategory(quiz.category || 'Bahasa')
+        
+        // Mapping questions dari backend ke state editor
+        if (quiz.questions && quiz.questions.length > 0) {
+          setQuestions(quiz.questions.map(q => ({
+            question: q.question || '',
+            image: q.image || null,
+            options: q.options || ['', '', '', ''],
+            correct: q.correctAnswers
+              ? [0, 1, 2, 3].map(i => q.correctAnswers.includes(i))
+              : [0, 1, 2, 3].map(i => i === (typeof q.correctAnswer === 'number' ? q.correctAnswer : -1)),
+            duration: q.timeLimit || 30,
+            type: q.type === 'text' ? 'Isian' : q.type === 'boolean' ? 'Benar Salah' : 'Pilihan Ganda',
+            multi: Array.isArray(q.correctAnswers),
+            answerText: q.type === 'text' ? (q.correctAnswer || '') : '',
+            trueFalseAnswer: q.type === 'boolean'
+              ? (typeof q.correctAnswer === 'boolean' ? q.correctAnswer : q.correctAnswer === 1)
+              : null
+          })))
+        } else {
+          setQuestions([defaultQuestion()])
+        }
+        
+        setActiveIdx(0)
+      } catch (err) {
+        alert('Gagal memuat quiz: ' + (err.message || 'Unknown error'))
+        navigate('/my-quizzes')
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchQuiz()
+  }, [id, navigate])
+
   useEffect(() => {
     const timer = setTimeout(() => {
       if (questionRefs.current[activeIdx] && scrollContainerRef.current) {
         const container = scrollContainerRef.current
         const element = questionRefs.current[activeIdx]
+        if (!element) return
         const elementTop = element.offsetTop
         const containerTop = container.scrollTop
         const containerHeight = container.clientHeight
@@ -50,21 +102,20 @@ const CreateQuizPage = () => {
     return () => clearTimeout(timer)
   }, [activeIdx, questions.length])
 
-  // ---------- HANDLERS ----------
   const updateQuestion = (field, value, idx=activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
     arr[idx][field] = value
     setQuestions(arr)
   }
-
+  
   const updateOption = (i, value, idx=activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
     arr[idx].options[i] = value
     setQuestions(arr)
   }
-
+  
   const toggleCorrect = (i, idx=activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
@@ -72,32 +123,19 @@ const CreateQuizPage = () => {
     else arr[idx].correct = arr[idx].correct.map((_, idx2) => idx2 === i)
     setQuestions(arr)
   }
-
+  
   const uploadImage = (e, idx=activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
     arr[idx].image = e.target.files[0]
     setQuestions(arr)
   }
-
+  
   const addQuestion = () => {
-    setQuestions([
-      ...questions,
-      {
-        question: '',
-        image: null,
-        options: ['', '', '', ''],
-        correct: [false, false, false, false],
-        duration: 30,
-        type: 'Pilihan Ganda',
-        multi: false,
-        answerText: '',
-        trueFalseAnswer: null
-      }
-    ])
+    setQuestions([...questions, defaultQuestion()])
     setActiveIdx(questions.length)
   }
-
+  
   const deleteQuestion = idx => {
     if (questions.length === 1) {
       alert('Minimal harus ada 1 soal!')
@@ -107,7 +145,7 @@ const CreateQuizPage = () => {
     setQuestions(arr)
     setActiveIdx(Math.max(0, idx - 1))
   }
-
+  
   const setMulti = (value, idx=activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
@@ -115,7 +153,7 @@ const CreateQuizPage = () => {
     if (!value) arr[idx].correct = arr[idx].correct.map((v, idx2) => idx2 === arr[idx].correct.findIndex(v => v))
     setQuestions(arr)
   }
-
+  
   const setTrueFalse = (value, idx=activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
@@ -123,16 +161,18 @@ const CreateQuizPage = () => {
     setQuestions(arr)
   }
 
-  // ---------- SUBMIT ----------
   const handleSubmit = async e => {
     e.preventDefault()
+    
     if (!quizTitle.trim()) {
       alert('Judul kuis harus diisi!')
       return
     }
+    
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i]
       if (!q.question.trim()) return alert(`Soal ${i + 1}: Pertanyaan harus diisi!`)
+      
       if (q.type === 'Pilihan Ganda') {
         const emptyOptions = q.options.filter(opt => !opt.trim())
         if (emptyOptions.length > 0) return alert(`Soal ${i + 1}: Semua pilihan jawaban harus diisi!`)
@@ -144,15 +184,24 @@ const CreateQuizPage = () => {
         if (q.trueFalseAnswer === null) return alert(`Soal ${i + 1}: Pilih jawaban Benar atau Salah!`)
       }
     }
+    
     try {
       setSaving(true)
+      
+      // Format questions sesuai backend
       const formattedQuestions = questions.map(q => {
-        let questionData = { question: q.question, timeLimit: q.duration }
+        let questionData = {
+          question: q.question,
+          timeLimit: q.duration
+        }
+        
         if (q.type === 'Pilihan Ganda') {
           questionData.options = q.options
           questionData.correctAnswer = q.correct.findIndex(c => c)
           if (q.multi) {
-            questionData.correctAnswers = q.correct.map((c, idx) => c ? idx : -1).filter(idx => idx !== -1)
+            questionData.correctAnswers = q.correct
+              .map((c, idx) => c ? idx : -1)
+              .filter(idx => idx !== -1)
           }
         } else if (q.type === 'Isian') {
           questionData.correctAnswer = q.answerText
@@ -162,22 +211,37 @@ const CreateQuizPage = () => {
           questionData.options = ['Salah', 'Benar']
           questionData.type = 'boolean'
         }
+        
         return questionData
       })
+      
       const quizData = {
+        id,
         title: quizTitle,
         description: `Kategori: ${quizCategory}`,
         category: quizCategory,
         questions: formattedQuestions
       }
-      await quizService.createQuiz(quizData)
-      alert('Quiz berhasil disimpan ke Draft! 🎉')
+      
+      await quizService.updateQuiz(quizData)
+      alert('Quiz berhasil diupdate! 🎉')
       navigate('/my-quizzes')
     } catch (err) {
       alert('Gagal menyimpan quiz. Coba lagi.\n' + (err.message || ''))
     } finally {
       setSaving(false)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-400 via-blue-500 to-blue-600">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-white mx-auto mb-4"></div>
+          <p className="text-white text-xl font-bold">Memuat quiz...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -187,15 +251,13 @@ const CreateQuizPage = () => {
         style={{ maxWidth: '1400px', minHeight: 650, maxHeight: '88vh' }}
         onSubmit={handleSubmit}
       >
-        {/* === SIDEBAR === */}
         <div className="bg-blue-900 w-[190px] flex flex-col pt-4 pb-4">
           <button
             type="button"
             className="bg-white font-bold text-sm px-3 py-2 rounded-xl w-[130px] mx-auto mb-5 shadow-lg hover:bg-gray-100 transition"
             onClick={() => navigate('/my-quizzes')}
           >Kembali</button>
-
-          {/* Form judul & kategori */}
+          
           <div className="px-4 w-full mb-4">
             <input
               type="text"
@@ -215,8 +277,7 @@ const CreateQuizPage = () => {
               ))}
             </select>
           </div>
-
-          {/* List soal */}
+          
           <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-3 space-y-2 scroll-smooth">
             {questions.map((_, idx) => (
               <div key={idx} ref={el => questionRefs.current[idx] = el} className="relative group">
@@ -243,11 +304,9 @@ const CreateQuizPage = () => {
             </button>
           </div>
         </div>
-
-        {/* === MAIN SOAL EDITOR === */}
+        
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-6">
-            {/* Soal editor */}
             <div className="grid grid-cols-4 gap-3 mb-5">
               <select
                 className="bg-gray-200 text-gray-800 text-base px-4 py-2.5 rounded-lg font-semibold shadow-md"
@@ -271,7 +330,7 @@ const CreateQuizPage = () => {
               </select>
               <div className="col-span-2"></div>
             </div>
-
+            
             <div className="mb-5">
               <input
                 type="text"
@@ -282,19 +341,23 @@ const CreateQuizPage = () => {
                 required
               />
             </div>
-
+            
             <div className="w-full flex justify-center mb-5">
               <label htmlFor="upload-gambar" className="bg-gray-100 h-[150px] w-full max-w-[450px] flex items-center justify-center font-bold text-base text-gray-600 rounded-xl shadow-md cursor-pointer hover:bg-gray-200 transition">
                 {questions[activeIdx].image ? (
                   <span className="flex flex-col items-center">
-                    <img src={URL.createObjectURL(questions[activeIdx].image)} alt="Gambar Soal" className="h-[120px] mb-2 rounded-lg" />
+                    <img 
+                      src={typeof questions[activeIdx].image === 'string' ? questions[activeIdx].image : URL.createObjectURL(questions[activeIdx].image)} 
+                      alt="Gambar Soal" 
+                      className="h-[120px] mb-2 rounded-lg" 
+                    />
                     <span className="text-sm">Ganti Gambar</span>
                   </span>
                 ) : 'Upload Gambar..'}
                 <input id="upload-gambar" type="file" accept="image/*" className="hidden" onChange={uploadImage} />
               </label>
             </div>
-
+            
             {questions[activeIdx].type === 'Benar Salah' ? (
               <div className="grid grid-cols-2 gap-6 mb-8">
                 <button
@@ -355,14 +418,14 @@ const CreateQuizPage = () => {
                 </div>
               </>
             )}
-
+            
             {activeIdx === questions.length - 1 && (
               <div className="flex justify-end mb-5">
                 <button
                   type="submit"
                   disabled={saving}
                   className={`bg-blue-800 text-white font-bold text-base px-10 py-3 rounded-xl shadow-lg transition ${saving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-900'}`}
-                >{saving ? 'Menyimpan...' : 'Simpan soal'}</button>
+                >{saving ? 'Menyimpan...' : 'Update Quiz'}</button>
               </div>
             )}
           </div>
@@ -373,4 +436,4 @@ const CreateQuizPage = () => {
   )
 }
 
-export default CreateQuizPage
+export default EditQuizPage

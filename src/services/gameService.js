@@ -1,0 +1,54 @@
+import api from './api';
+
+export const gameService = {
+  // Create live game (generate PIN)
+  createGame: async (quizId) => {
+    const response = await api.post('/games', { quizId });
+    return response.data;
+  },
+
+  // Join game with PIN
+  joinGame: async (PIN, playerName, avatar) => {
+    const response = await api.post('/games/join', { PIN, playerName, avatar });
+    return response.data;
+  },
+
+  // Get game details
+  getGame: async (gameId) => {
+    const response = await api.get(`/games/${gameId}`);
+    return response.data;
+  },
+
+  // Start game
+  startGame: async (gameId) => {
+    const response = await api.post(`/games/${gameId}/start`);
+    return response.data;
+  },
+
+  // Submit answer
+  submitAnswer: async (gameId, questionId, answer) => {
+    const response = await api.post(`/games/${gameId}/answer`, {
+      questionId,
+      answer
+    });
+    return response.data;
+  },
+
+  // Next question
+  nextQuestion: async (gameId) => {
+    const response = await api.post(`/games/${gameId}/next`);
+    return response.data;
+  },
+
+  // End game
+  endGame: async (gameId) => {
+    const response = await api.post(`/games/${gameId}/end`);
+    return response.data;
+  },
+
+  // Get leaderboard
+  getLeaderboard: async (gameId) => {
+    const response = await api.get(`/games/${gameId}/leaderboard`);
+    return response.data;
+  }
+};

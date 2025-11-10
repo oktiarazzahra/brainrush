@@ -15,6 +15,7 @@ const HistoryPage = () => {
       date: '2 hari lalu',
       fullDate: '11 Oktober 2025, 14:30',
       players: 45,
+      image: 'https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=400&h=250&fit=crop',
       bgColor: 'from-green-200 to-green-300',
       topScore: 95,
       avgScore: 78,
@@ -28,6 +29,7 @@ const HistoryPage = () => {
       date: '5 hari lalu',
       fullDate: '8 Oktober 2025, 10:15',
       players: 32,
+      image: 'https://images.pexels.com/photos/6238050/pexels-photo-6238050.jpeg?auto=compress&cs=tinysrgb&w=400',
       bgColor: 'from-blue-200 to-blue-300',
       topScore: 100,
       avgScore: 82,
@@ -41,6 +43,7 @@ const HistoryPage = () => {
       date: '1 minggu lalu',
       fullDate: '6 Oktober 2025, 16:45',
       players: 28,
+      image: 'https://images.unsplash.com/photo-1636466497217-26a8cbeaf0aa?w=400&h=250&fit=crop',
       bgColor: 'from-purple-200 to-purple-300',
       topScore: 98,
       avgScore: 75,
@@ -54,34 +57,36 @@ const HistoryPage = () => {
       date: '2 minggu lalu',
       fullDate: '29 September 2025, 09:20',
       players: 50,
+      image: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=400&h=250&fit=crop',
       bgColor: 'from-pink-200 to-pink-300',
       topScore: 97,
       avgScore: 80,
       yourRank: 12,
-      duration: '20 menit',
+      duration: '28 menit',
       category: 'Bahasa'
+    },
+    { 
+      id: 5, 
+      title: 'Biologi Sel', 
+      date: '3 minggu lalu',
+      fullDate: '22 September 2025, 13:00',
+      players: 38,
+      image: 'https://images.unsplash.com/photo-1530973428-5bf2db2e4d71?w=400&h=250&fit=crop',
+      bgColor: 'from-yellow-200 to-orange-300',
+      topScore: 94,
+      avgScore: 77,
+      yourRank: 6,
+      duration: '32 menit',
+      category: 'Sains'
     }
   ]
-
-  const handleShare = (history) => {
-    const shareText = `🎉 Saya ranked #${history.yourRank} di quiz "${history.title}" bersama ${history.players} pemain lainnya!\n\n🏆 Top Score: ${history.topScore}\n📊 Rata-rata: ${history.avgScore}\n\nIkutan juga yuk di Brain Rush!`
-    navigator.clipboard.writeText(shareText)
-    alert('Teks berhasil dicopy! Bagikan ke teman kamu!')
-  }
 
   return (
     <DashboardLayout>
       <div className="flex-1 flex flex-col">
-        <div className="flex items-center justify-between px-8 pt-8">
-          <h1 className="text-3xl font-bold text-yellow-300 drop-shadow-lg">History</h1>
-          <div className="flex items-center gap-3">
-            <span className="bg-blue-700 text-white px-5 py-2 rounded-full font-semibold shadow">
-              {historyData.length} Quiz
-            </span>
-          </div>
-        </div>
+        {/* Header Brain Rush dan Profile dihapus */}
         
-        <main className="flex-1 bg-blue-900 mx-8 rounded-tl-lg p-8 mb-8 overflow-y-auto">
+        <main className="flex-1 bg-gradient-to-br from-blue-100 via-blue-300 to-blue-200 mx-8 rounded-2xl p-8 mb-8 mt-10 overflow-y-auto">
           <div className="mb-6 inline-block bg-sky-400 text-white font-bold px-4 py-1 rounded-full text-sm">
             {historyData.length} Quiz Dimainkan
           </div>
@@ -97,8 +102,8 @@ const HistoryPage = () => {
                 className="bg-white rounded-xl shadow-lg overflow-hidden cursor-pointer"
                 onClick={() => setSelectedHistory(item)}
               >
-                <div className={`h-36 bg-gradient-to-r ${item.bgColor} flex items-center justify-center relative`}>
-                  <p className="text-2xl font-bold text-gray-700 text-center px-4">{item.title}</p>
+                <div className={`h-36 bg-gradient-to-r ${item.bgColor} flex items-center justify-center overflow-hidden relative`}>
+                  <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
                   <div className="absolute top-3 right-3 bg-white/90 rounded-full px-3 py-1">
                     <span className="text-xs font-bold text-gray-700">#{item.yourRank}</span>
                   </div>
@@ -199,31 +204,15 @@ const HistoryPage = () => {
                   <span className="text-gray-600">Waktu Main:</span>
                   <span className="font-semibold text-gray-800">{selectedHistory.fullDate}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Status:</span>
-                  <span className="font-semibold text-green-600">Selesai</span>
-                </div>
               </div>
 
               {/* Action Buttons */}
               <div className="flex gap-3">
-                <button
-                  onClick={() => handleShare(selectedHistory)}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                  </svg>
-                  Share
+                <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition">
+                  Main Lagi
                 </button>
-                <button
-                  onClick={() => {
-                    navigate(`/leaderboard/${selectedHistory.id}`)
-                    setSelectedHistory(null)
-                  }}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition"
-                >
-                  Lihat Leaderboard
+                <button className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 rounded-lg transition">
+                  Bagikan
                 </button>
               </div>
             </motion.div>

@@ -7,7 +7,7 @@ const PinInput = ({ pin, onPinChange, onJoin }) => {
   const [isJoinHovered, setIsJoinHovered] = useState(false)
 
   const handlePinChange = (e) => {
-    // Hanya allow alphanumeric characters
+    // Hanya allow alphanumeric characters & uppercase
     const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')
     if (value.length <= 6) {
       onPinChange(value)
@@ -43,6 +43,9 @@ const PinInput = ({ pin, onPinChange, onJoin }) => {
           }}
           transition={{ duration: 0.2 }}
         />
+
+        {/* HAPUS BADGE HIJAU/ICON CHECK SINI */}
+        {/*
         {pin && (
           <motion.div
             className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center"
@@ -53,6 +56,8 @@ const PinInput = ({ pin, onPinChange, onJoin }) => {
             <span className="text-white text-xs">✓</span>
           </motion.div>
         )}
+        */}
+        
       </motion.div>
       
       {/* JOIN Button */}

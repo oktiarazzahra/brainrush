@@ -4,18 +4,48 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
+import { authService } from '../services/authService'  // ← TAMBAHAN
 
 const RegisterPage = () => {
   const [nama, setNama] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [konfirmasi, setKonfirmasi] = useState('')
+  const [error, setError] = useState('')              // ← TAMBAHAN
+  const [loading, setLoading] = useState(false)       // ← TAMBAHAN
   const navigate = useNavigate()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {                 // ← UBAH jadi async
     e.preventDefault()
-    // TODO: Panggil API register di sini
-    navigate('/dashboard')
+    setError('')                                      // ← TAMBAHAN
+
+    // Validasi password match
+    if (password !== konfirmasi) {                    // ← TAMBAHAN
+      setError('Password dan Konfirmasi Password tidak cocok')
+      return
+    }
+
+    // Validasi password minimal 6 karakter
+    if (password.length < 6) {                        // ← TAMBAHAN
+      setError('Password minimal 6 karakter')
+      return
+    }
+
+    setLoading(true)                                  // ← TAMBAHAN
+
+    try {                                             // ← TAMBAHAN
+      await authService.register({                    // ← TAMBAHAN: API call
+        name: nama,
+        email,
+        password,
+        passwordConfirm: konfirmasi
+      })
+      navigate('/dashboard')                          // Arahkan ke dashboard setelah register
+    } catch (err) {                                   // ← TAMBAHAN
+      setError(err.response?.data?.message || 'Registrasi gagal. Coba lagi.')
+    } finally {                                       // ← TAMBAHAN
+      setLoading(false)                               // ← TAMBAHAN
+    }
   }
 
   return (
@@ -28,6 +58,14 @@ const RegisterPage = () => {
             <h1 className="text-2xl font-bold text-white mb-1">Daftar</h1>
             <p className="text-white/70 text-sm">Buat akun Brain Rush baru</p>
           </div>
+
+          {/* ← TAMBAHAN: Error message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-white text-center text-sm">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="nama" className="block text-white/80 font-medium mb-1 text-sm">
@@ -40,7 +78,8 @@ const RegisterPage = () => {
                 onChange={(e) => setNama(e.target.value)}
                 placeholder="Masukkan nama lengkap"
                 required
-                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+                disabled={loading}  // ← TAMBAHAN
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-50"
               />
             </div>
             <div>
@@ -54,7 +93,8 @@ const RegisterPage = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Masukkan email"
                 required
-                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+                disabled={loading}  // ← TAMBAHAN
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-50"
               />
             </div>
             <div>
@@ -68,7 +108,8 @@ const RegisterPage = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Buat password"
                 required
-                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+                disabled={loading}  // ← TAMBAHAN
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-50"
               />
             </div>
             <div>
@@ -82,15 +123,17 @@ const RegisterPage = () => {
                 onChange={(e) => setKonfirmasi(e.target.value)}
                 placeholder="Ulangi password"
                 required
-                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+                disabled={loading}  // ← TAMBAHAN
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-50"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-300 hover:to-yellow-400 text-yellow-900 font-bold py-2 rounded-lg shadow-lg text-sm transform hover:scale-105 transition-all duration-300"
+              disabled={loading}  // ← TAMBAHAN
+              className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-300 hover:to-yellow-400 text-yellow-900 font-bold py-2 rounded-lg shadow-lg text-sm transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              Daftar
+              {loading ? 'Memuat...' : 'Daftar'}  {/* ← TAMBAHAN */}
             </button>
           </form>
 

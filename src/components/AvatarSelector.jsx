@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 const avatars = [
   { icon: '🍓', color: 'bg-pink-500', label: 'Strawberry Dream' },
   { icon: '🤖', color: 'bg-blue-500', label: 'Cyber Bot' },
-  { icon: '👾', color: 'bg-purple-500', label: 'Galactic Alien' },
+  { icon: '👽', color: 'bg-purple-500', label: 'Galactic Alien' },
   { icon: '🦄', color: 'bg-indigo-400', label: 'Mystic Unicorn' },
   { icon: '🦁', color: 'bg-yellow-600', label: 'Golden Lion' },
   { icon: '🐸', color: 'bg-green-500', label: 'Emerald Frog' },
@@ -38,7 +38,7 @@ const AvatarSelector = ({ selectedAvatar, onAvatarSelect }) => {
         ))}
       </div>
 
-      {/* Improved selected label */}
+      {/* Selected avatar label */}
       <motion.div
         className="mt-4 p-2 bg-white/20 backdrop-blur rounded-xl inline-block"
         key={selectedAvatar}

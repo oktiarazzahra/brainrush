@@ -11,14 +11,15 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
   const [playerName, setPlayerName] = useState('')
 
   // Avatar options dengan emoji dan warna
-  const avatars = [
-    { emoji: '🍓', color: 'bg-pink-500', name: 'Strawberry' },
-    { emoji: '🤖', color: 'bg-blue-500', name: 'Robot' },
-    { emoji: '👾', color: 'bg-purple-500', name: 'Alien' },
-    { emoji: '🤖', color: 'bg-yellow-500', name: 'Bot' },
-    { emoji: '🐺', color: 'bg-gray-700', name: 'Wolf' },
-    { emoji: '🐸', color: 'bg-green-500', name: 'Frog' }
-  ]
+ const avatars = [
+  { emoji: '🍓', color: 'bg-pink-500', name: 'Strawberry' },
+  { emoji: '🤖', color: 'bg-blue-500', name: 'Robot' },
+  { emoji: '👽', color: 'bg-purple-500', name: 'Alien' },
+  { emoji: '🤖', color: 'bg-yellow-500', name: 'Bot' },
+  { emoji: '🐺', color: 'bg-gray-700', name: 'Wolf' },
+  { emoji: '🐸', color: 'bg-green-500', name: 'Frog' }
+]
+
 
   const handleJoinNow = () => {
     if (playerName.trim()) {
