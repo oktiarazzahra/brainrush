@@ -22,11 +22,22 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid
+    // Hanya redirect ke login jika:
+    // 1. Ada token (user sudah login sebelumnya)
+    // 2. Token invalid/expired (401)
+    // 3. BUKAN dari endpoint /auth/login atau /auth/register
+    const isAuthEndpoint = error.config?.url?.includes('/auth/login') || 
+                           error.config?.url?.includes('/auth/register');
+    
+    if (error.response?.status === 401 && !isAuthEndpoint) {
+      // Token expired atau invalid
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      // Hanya redirect jika user sudah pernah login (ada token sebelumnya)
+      if (localStorage.getItem('token') !== null) {
+        window.location.href = '/login';
+      }
     }
+    
     return Promise.reject(error);
   }
 );

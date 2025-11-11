@@ -1,29 +1,46 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import { authService } from '../services/authService'
 
-const LoginPage = () => {
-  const [email, setEmail] = useState('')
+const ResetPasswordPage = () => {
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const { token } = useParams()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     e.stopPropagation()
     setError('')
+    setMessage('')
+
+    if (password !== confirmPassword) {
+      setError('Password dan konfirmasi password tidak cocok')
+      return
+    }
+
+    if (password.length < 6) {
+      setError('Password minimal 6 karakter')
+      return
+    }
+
     setLoading(true)
 
     try {
-      await authService.login(email, password)
-      navigate('/dashboard')
+      const response = await authService.resetPassword(token, password)
+      setMessage(response.message || 'Password berhasil direset!')
+      setTimeout(() => {
+        navigate('/login')
+      }, 2000)
     } catch (err) {
       setError(
-        err.response?.data?.message ||
-        'Login gagal. Periksa email dan password Anda.'
+        err.response?.data?.message || 
+        'Gagal reset password. Link mungkin sudah expired.'
       )
     } finally {
       setLoading(false)
@@ -37,8 +54,8 @@ const LoginPage = () => {
       <div className="flex-1 flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white/10 backdrop-blur-lg rounded-3xl shadow-2xl p-8 border border-white/20">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-2">Masuk</h1>
-            <p className="text-white/70">Masuk ke akun Brain Rush Anda</p>
+            <h1 className="text-4xl font-bold text-white mb-2">Reset Password</h1>
+            <p className="text-white/70">Masukkan password baru Anda</p>
           </div>
 
           {error && (
@@ -47,17 +64,23 @@ const LoginPage = () => {
             </div>
           )}
 
+          {message && (
+            <div className="mb-6 p-4 bg-green-500/20 border border-green-500/50 rounded-xl text-white text-center">
+              {message}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-white font-medium mb-2">
-                Email
+              <label htmlFor="password" className="block text-white font-medium mb-2">
+                Password Baru
               </label>
               <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Masukkan email Anda"
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Masukkan password baru"
                 required
                 disabled={loading}
                 className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-50"
@@ -65,30 +88,19 @@ const LoginPage = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-white font-medium mb-2">
-                Password
+              <label htmlFor="confirmPassword" className="block text-white font-medium mb-2">
+                Konfirmasi Password
               </label>
               <input
                 type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Masukkan password Anda"
+                id="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Konfirmasi password baru"
                 required
                 disabled={loading}
                 className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-50"
               />
-              {/* TAMBAHAN: LINK LUPA PASSWORD */}
-              <div className="text-right mt-2">
-                <button
-                  type="button"
-                  onClick={() => navigate('/forgot-password')}
-                  className="text-yellow-400 hover:text-yellow-300 text-sm underline"
-                  disabled={loading}
-                >
-                  Lupa password?
-                </button>
-              </div>
             </div>
 
             <button
@@ -96,21 +108,9 @@ const LoginPage = () => {
               disabled={loading}
               className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-300 hover:to-yellow-400 text-yellow-900 font-bold py-3 rounded-xl shadow-lg transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              {loading ? 'Memuat...' : 'Masuk'}
+              {loading ? 'Mereset...' : 'Reset Password'}
             </button>
           </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-white/70">
-              Belum punya akun?{' '}
-              <button
-                onClick={() => navigate('/register')}
-                className="text-yellow-400 hover:text-yellow-300 font-medium underline"
-              >
-                Daftar di sini
-              </button>
-            </p>
-          </div>
         </div>
       </div>
 
@@ -119,4 +119,4 @@ const LoginPage = () => {
   )
 }
 
-export default LoginPage
+export default ResetPasswordPage

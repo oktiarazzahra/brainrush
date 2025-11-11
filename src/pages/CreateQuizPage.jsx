@@ -50,11 +50,36 @@ const CreateQuizPage = () => {
     return () => clearTimeout(timer)
   }, [activeIdx, questions.length])
 
-  // ---------- HANDLERS ----------
   const updateQuestion = (field, value, idx=activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
     arr[idx][field] = value
+    setQuestions(arr)
+  }
+
+  const updateQuestionType = (newType, idx=activeIdx) => {
+    if (idx < 0 || idx >= questions.length) return
+    const arr = [...questions]
+    arr[idx].type = newType
+    
+    if (newType === 'Pilihan Ganda') {
+      arr[idx].options = ['', '', '', '']
+      arr[idx].correct = [false, false, false, false]
+      arr[idx].multi = false
+      arr[idx].answerText = ''
+      arr[idx].trueFalseAnswer = null
+    } else if (newType === 'Isian') {
+      arr[idx].options = []
+      arr[idx].correct = []
+      arr[idx].answerText = ''
+      arr[idx].trueFalseAnswer = null
+    } else if (newType === 'Benar Salah') {
+      arr[idx].options = []
+      arr[idx].correct = []
+      arr[idx].answerText = ''
+      arr[idx].trueFalseAnswer = null
+    }
+    
     setQuestions(arr)
   }
 
@@ -123,7 +148,6 @@ const CreateQuizPage = () => {
     setQuestions(arr)
   }
 
-  // ---------- SUBMIT ----------
   const handleSubmit = async e => {
     e.preventDefault()
     if (!quizTitle.trim()) {
@@ -159,7 +183,6 @@ const CreateQuizPage = () => {
           questionData.type = 'text'
         } else if (q.type === 'Benar Salah') {
           questionData.correctAnswer = q.trueFalseAnswer ? 1 : 0
-          questionData.options = ['Salah', 'Benar']
           questionData.type = 'boolean'
         }
         return questionData
@@ -187,7 +210,6 @@ const CreateQuizPage = () => {
         style={{ maxWidth: '1400px', minHeight: 650, maxHeight: '88vh' }}
         onSubmit={handleSubmit}
       >
-        {/* === SIDEBAR === */}
         <div className="bg-blue-900 w-[190px] flex flex-col pt-4 pb-4">
           <button
             type="button"
@@ -195,7 +217,6 @@ const CreateQuizPage = () => {
             onClick={() => navigate('/my-quizzes')}
           >Kembali</button>
 
-          {/* Form judul & kategori */}
           <div className="px-4 w-full mb-4">
             <input
               type="text"
@@ -216,7 +237,6 @@ const CreateQuizPage = () => {
             </select>
           </div>
 
-          {/* List soal */}
           <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-3 space-y-2 scroll-smooth">
             {questions.map((_, idx) => (
               <div key={idx} ref={el => questionRefs.current[idx] = el} className="relative group">
@@ -244,10 +264,8 @@ const CreateQuizPage = () => {
           </div>
         </div>
 
-        {/* === MAIN SOAL EDITOR === */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-6">
-            {/* Soal editor */}
             <div className="grid grid-cols-4 gap-3 mb-5">
               <select
                 className="bg-gray-200 text-gray-800 text-base px-4 py-2.5 rounded-lg font-semibold shadow-md"
@@ -263,7 +281,7 @@ const CreateQuizPage = () => {
               <select
                 className="bg-gray-200 text-gray-800 text-base px-4 py-2.5 rounded-lg font-semibold shadow-md"
                 value={questions[activeIdx].type}
-                onChange={e => updateQuestion('type', e.target.value)}
+                onChange={e => updateQuestionType(e.target.value)}
               >
                 <option>Pilihan Ganda</option>
                 <option>Isian</option>
