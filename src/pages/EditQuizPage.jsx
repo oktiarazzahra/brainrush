@@ -3,33 +3,73 @@ import { useNavigate, useParams } from 'react-router-dom'
 import Footer from '../components/Footer'
 import { quizService } from '../services/quizService'
 
-const defaultQuestion = () => ({
-  question: '',
-  image: null,
-  options: ['', '', '', ''],
-  correct: [false, false, false, false],
-  duration: 30,
-  type: 'Pilihan Ganda',
-  multi: false,
-  answerText: '',
-  trueFalseAnswer: null
-})
+// ← IMAGE COMPRESSION HELPER
+const compressImage = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = (event) => {
+      const img = new Image()
+      img.src = event.target.result
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        let { width, height } = img
+
+        if (width > 1200 || height > 1200) {
+          const ratio = width > height ? 1200 / width : 1200 / height
+          width = Math.round(width * ratio)
+          height = Math.round(height * ratio)
+        }
+
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+
+        const compressed = canvas.toDataURL('image/jpeg', 0.7)
+        resolve(compressed)
+      }
+      img.onerror = () => reject(new Error('Image error'))
+    }
+    reader.onerror = () => reject(new Error('File read error'))
+  })
+}
 
 const EditQuizPage = () => {
   const navigate = useNavigate()
   const { id } = useParams()
   const [quizTitle, setQuizTitle] = useState('')
   const [quizCategory, setQuizCategory] = useState('Bahasa')
-  const [questions, setQuestions] = useState([defaultQuestion()])
+  const [questions, setQuestions] = useState([
+    {
+      question: '',
+      image: null,
+      imagePreview: null,
+      options: ['', '', '', ''],
+      correct: [false, false, false, false],
+      duration: 30,
+      type: 'Pilihan Ganda',
+      multi: false,
+      answerText: '',
+      trueFalseAnswer: null,
+      acceptedAnswers: []
+    }
+  ])
   const [activeIdx, setActiveIdx] = useState(0)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
-  
   const scrollContainerRef = useRef(null)
   const questionRefs = useRef([])
 
   const categories = [
-    'Bahasa', 'Sains', 'Matematika', 'Biologi', 'Sejarah', 'Geografi', 'Olahraga', 'Umum'
+    'Bahasa',
+    'Sains',
+    'Matematika',
+    'Biologi',
+    'Sejarah',
+    'Geografi',
+    'Olahraga',
+    'Umum'
   ]
 
   useEffect(() => {
@@ -43,46 +83,80 @@ const EditQuizPage = () => {
       try {
         setLoading(true)
         const quiz = await quizService.getQuizById(id)
-        
         setQuizTitle(quiz.title || '')
         setQuizCategory(quiz.category || 'Bahasa')
 
         if (quiz.questions && quiz.questions.length > 0) {
-          setQuestions(quiz.questions.map(q => {
-            const questionType = q.type === 'text' ? 'Isian' : q.type === 'boolean' ? 'Benar Salah' : 'Pilihan Ganda'
-            
-            let options = []
-            if (questionType === 'Pilihan Ganda' && Array.isArray(q.options)) {
-              options = q.options
-            }
-            
-            let correct = []
-            if (questionType === 'Pilihan Ganda') {
-              if (Array.isArray(q.correctAnswers)) {
-                correct = [0, 1, 2, 3].map(i => q.correctAnswers.includes(i))
-              } else if (typeof q.correctAnswer === 'number') {
-                correct = [0, 1, 2, 3].map(i => i === q.correctAnswer)
+          setQuestions(
+            quiz.questions.map((q) => {
+              let type = 'Pilihan Ganda'
+              if (q.questionType === 'Benar Salah' || q.questionType === 'true-false') {
+                type = 'Benar Salah'
+              } else if (q.questionType === 'Isian' || q.questionType === 'short-answer') {
+                type = 'Isian'
               }
-            }
-            
-            return {
-              question: q.question || '',
-              image: q.image || null,
-              options: options,
-              correct: correct,
-              duration: q.timeLimit || 30,
-              type: questionType,
-              multi: Array.isArray(q.correctAnswers),
-              answerText: questionType === 'Isian' ? (q.correctAnswer || '') : '',
-              trueFalseAnswer: questionType === 'Benar Salah' 
-                ? (typeof q.correctAnswer === 'boolean' ? q.correctAnswer : q.correctAnswer === 1) 
-                : null
-            }
-          }))
+
+              let options = []
+              let correct = [false, false, false, false]
+              let trueFalseAnswer = null
+              let answerText = ''
+              let acceptedAnswers = []
+              let multi = false
+
+              if (type === 'Pilihan Ganda') {
+                if (Array.isArray(q.options)) {
+                  options = q.options
+                  correct = new Array(4).fill(false).slice(0, q.options.length)
+
+                  if (Array.isArray(q.correctAnswer)) {
+                    q.correctAnswer.forEach((idx) => {
+                      if (correct[idx]) correct[idx] = true
+                    })
+                    multi = true
+                  } else if (typeof q.correctAnswer === 'number') {
+                    correct[q.correctAnswer] = true
+                    multi = false
+                  }
+                }
+              } else if (type === 'Benar Salah') {
+                trueFalseAnswer = q.correctAnswer === 'true'
+              } else if (type === 'Isian') {
+                acceptedAnswers = Array.isArray(q.acceptedAnswers) ? q.acceptedAnswers : []
+              }
+
+              return {
+                question: q.question || q.questionText || '',
+                image: q.image || null,
+                imagePreview: q.imageData || null,  // ← Load from database
+                options: options,
+                correct: correct,
+                duration: q.timeLimit || 30,
+                type: type,
+                multi: multi,
+                answerText: answerText,
+                trueFalseAnswer: trueFalseAnswer,
+                acceptedAnswers: acceptedAnswers
+              }
+            })
+          )
         } else {
-          setQuestions([defaultQuestion()])
+          setQuestions([
+            {
+              question: '',
+              image: null,
+              imagePreview: null,
+              options: ['', '', '', ''],
+              correct: [false, false, false, false],
+              duration: 30,
+              type: 'Pilihan Ganda',
+              multi: false,
+              answerText: '',
+              trueFalseAnswer: null,
+              acceptedAnswers: []
+            }
+          ])
         }
-        
+
         setActiveIdx(0)
       } catch (err) {
         alert('Gagal memuat quiz: ' + (err.message || 'Unknown error'))
@@ -104,78 +178,146 @@ const EditQuizPage = () => {
         const containerTop = container.scrollTop
         const containerHeight = container.clientHeight
         const elementHeight = element.clientHeight
-        if (elementTop < containerTop || elementTop + elementHeight > containerTop + containerHeight) {
+
+        if (
+          elementTop < containerTop ||
+          elementTop + elementHeight > containerTop + containerHeight
+        ) {
           container.scrollTo({
-            top: elementTop - (containerHeight / 2) + (elementHeight / 2),
+            top: elementTop - containerHeight / 2 + elementHeight / 2,
             behavior: 'smooth'
           })
         }
       }
     }, 100)
+
     return () => clearTimeout(timer)
   }, [activeIdx, questions.length])
 
-  const updateQuestion = (field, value, idx=activeIdx) => {
+  const updateQuestion = (field, value, idx = activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
     arr[idx][field] = value
     setQuestions(arr)
   }
 
-  const updateQuestionType = (newType, idx=activeIdx) => {
+  const updateQuestionType = (newType, idx = activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
     arr[idx].type = newType
-    
+
     if (newType === 'Pilihan Ganda') {
       arr[idx].options = ['', '', '', '']
       arr[idx].correct = [false, false, false, false]
       arr[idx].multi = false
       arr[idx].answerText = ''
       arr[idx].trueFalseAnswer = null
+      arr[idx].acceptedAnswers = []
     } else if (newType === 'Isian') {
       arr[idx].options = []
       arr[idx].correct = []
       arr[idx].answerText = ''
       arr[idx].trueFalseAnswer = null
+      arr[idx].acceptedAnswers = ['']
     } else if (newType === 'Benar Salah') {
       arr[idx].options = []
       arr[idx].correct = []
       arr[idx].answerText = ''
       arr[idx].trueFalseAnswer = null
+      arr[idx].acceptedAnswers = []
     }
-    
+
     setQuestions(arr)
   }
 
-  const updateOption = (i, value, idx=activeIdx) => {
+  const updateOption = (i, value, idx = activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
     arr[idx].options[i] = value
     setQuestions(arr)
   }
 
-  const toggleCorrect = (i, idx=activeIdx) => {
+  const addOption = (idx = activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
-    if (arr[idx].multi) arr[idx].correct[i] = !arr[idx].correct[i]
-    else arr[idx].correct = arr[idx].correct.map((_, idx2) => idx2 === i)
+    arr[idx].options.push('')
     setQuestions(arr)
   }
 
-  const uploadImage = (e, idx=activeIdx) => {
+  const removeOption = (i, idx = activeIdx) => {
+    if (idx < 0 || idx >= questions.length) return
+    if (questions[idx].options.length <= 2) {
+      alert('Minimal harus ada 2 pilihan!')
+      return
+    }
+    const arr = [...questions]
+    arr[idx].options.splice(i, 1)
+    arr[idx].correct.splice(i, 1)
+    setQuestions(arr)
+  }
+
+  const toggleCorrect = (i, idx = activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
-    arr[idx].image = e.target.files[0]
+    if (arr[idx].multi) {
+      arr[idx].correct[i] = !arr[idx].correct[i]
+    } else {
+      arr[idx].correct = arr[idx].correct.map((_, idx2) => idx2 === i)
+    }
+    setQuestions(arr)
+  }
+
+  // ← IMAGE UPLOAD WITH COMPRESSION
+  const uploadImage = async (e, idx = activeIdx) => {
+    if (idx < 0 || idx >= questions.length) return
+    const file = e.target.files[0]
+    if (!file) return
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Gambar > 2MB, akan dikompres...')
+    }
+
+    try {
+      const arr = [...questions]
+      arr[idx].image = file
+
+      const compressedBase64 = await compressImage(file)
+      arr[idx].imagePreview = compressedBase64
+      setQuestions([...arr])
+    } catch (error) {
+      alert('Error: ' + error.message)
+    }
+  }
+
+  const removeImage = (idx = activeIdx) => {
+    if (idx < 0 || idx >= questions.length) return
+    const arr = [...questions]
+    arr[idx].image = null
+    arr[idx].imagePreview = null
     setQuestions(arr)
   }
 
   const addQuestion = () => {
-    setQuestions([...questions, defaultQuestion()])
+    setQuestions([
+      ...questions,
+      {
+        question: '',
+        image: null,
+        imagePreview: null,
+        options: ['', '', '', ''],
+        correct: [false, false, false, false],
+        duration: 30,
+        type: 'Pilihan Ganda',
+        multi: false,
+        answerText: '',
+        trueFalseAnswer: null,
+        acceptedAnswers: []
+      }
+    ])
     setActiveIdx(questions.length)
   }
 
-  const deleteQuestion = idx => {
+  const deleteQuestion = (idx) => {
     if (questions.length === 1) {
       alert('Minimal harus ada 1 soal!')
       return
@@ -185,71 +327,141 @@ const EditQuizPage = () => {
     setActiveIdx(Math.max(0, idx - 1))
   }
 
-  const setMulti = (value, idx=activeIdx) => {
+  const setMulti = (value, idx = activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
     arr[idx].multi = value
-    if (!value) arr[idx].correct = arr[idx].correct.map((v, idx2) => idx2 === arr[idx].correct.findIndex(v => v))
+    if (!value) {
+      const correctIdx = arr[idx].correct.findIndex((v) => v)
+      arr[idx].correct = arr[idx].correct.map((_, idx2) => idx2 === correctIdx)
+    }
     setQuestions(arr)
   }
 
-  const setTrueFalse = (value, idx=activeIdx) => {
+  const setTrueFalse = (value, idx = activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
     arr[idx].trueFalseAnswer = value
     setQuestions(arr)
   }
 
-  const handleSubmit = async e => {
+  const addAcceptedAnswer = (idx = activeIdx) => {
+    if (idx < 0 || idx >= questions.length) return
+    const arr = [...questions]
+    arr[idx].acceptedAnswers.push('')
+    setQuestions(arr)
+  }
+
+  const updateAcceptedAnswer = (i, value, idx = activeIdx) => {
+    if (idx < 0 || idx >= questions.length) return
+    const arr = [...questions]
+    arr[idx].acceptedAnswers[i] = value
+    setQuestions(arr)
+  }
+
+  const removeAcceptedAnswer = (i, idx = activeIdx) => {
+    if (idx < 0 || idx >= questions.length) return
+    if (questions[idx].acceptedAnswers.length <= 1) {
+      alert('Minimal harus ada 1 jawaban!')
+      return
+    }
+    const arr = [...questions]
+    arr[idx].acceptedAnswers.splice(i, 1)
+    setQuestions(arr)
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
+
     if (!quizTitle.trim()) {
       alert('Judul kuis harus diisi!')
       return
     }
+
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i]
-      if (!q.question.trim()) return alert(`Soal ${i + 1}: Pertanyaan harus diisi!`)
+
+      if (!q.question.trim()) {
+        alert(`Soal ${i + 1}: Pertanyaan harus diisi!`)
+        return
+      }
+
       if (q.type === 'Pilihan Ganda') {
-        const emptyOptions = q.options.filter(opt => !opt.trim())
-        if (emptyOptions.length > 0) return alert(`Soal ${i + 1}: Semua pilihan jawaban harus diisi!`)
-        const hasCorrect = q.correct.some(c => c)
-        if (!hasCorrect) return alert(`Soal ${i + 1}: Pilih minimal satu jawaban yang benar!`)
+        const emptyOptions = q.options.filter((opt) => !opt.trim())
+        if (emptyOptions.length > 0) {
+          alert(`Soal ${i + 1}: Semua pilihan jawaban harus diisi!`)
+          return
+        }
+
+        const hasCorrect = q.correct.some((c) => c)
+        if (!hasCorrect) {
+          alert(`Soal ${i + 1}: Pilih minimal satu jawaban yang benar!`)
+          return
+        }
       } else if (q.type === 'Isian') {
-        if (!q.answerText.trim()) return alert(`Soal ${i + 1}: Jawaban harus diisi!`)
+        const hasAccepted =
+          q.acceptedAnswers && q.acceptedAnswers.length > 0 && q.acceptedAnswers.some((a) => a.trim())
+        if (!hasAccepted) {
+          alert(`Soal ${i + 1}: Tambahkan minimal satu jawaban!`)
+          return
+        }
       } else if (q.type === 'Benar Salah') {
-        if (q.trueFalseAnswer === null) return alert(`Soal ${i + 1}: Pilih jawaban Benar atau Salah!`)
+        if (q.trueFalseAnswer === null) {
+          alert(`Soal ${i + 1}: Pilih jawaban Benar atau Salah!`)
+          return
+        }
       }
     }
+
     try {
       setSaving(true)
-      const formattedQuestions = questions.map(q => {
-        let questionData = { question: q.question, timeLimit: q.duration }
+
+      // ← FIXED: Declare questionData INSIDE map
+      const formattedQuestions = questions.map((q) => {
+        let questionData = {
+          question: q.question,
+          timeLimit: q.duration,
+          questionType: q.type === 'Pilihan Ganda'
+            ? q.multi
+              ? 'multiple-answer'
+              : 'multiple-choice'
+            : q.type === 'Isian'
+            ? 'short-answer'
+            : 'true-false'
+        }
+
         if (q.type === 'Pilihan Ganda') {
           questionData.options = q.options
-          questionData.correctAnswer = q.correct.findIndex(c => c)
-          if (q.multi) {
-            questionData.correctAnswers = q.correct.map((c, idx) => c ? idx : -1).filter(idx => idx !== -1)
-          }
+          questionData.correctAnswer = q.multi
+            ? q.correct.map((c, idx) => (c ? idx : -1)).filter((idx) => idx !== -1)
+            : q.correct.findIndex((c) => c)
         } else if (q.type === 'Isian') {
-          questionData.correctAnswer = q.answerText
-          questionData.type = 'text'
+          questionData.acceptedAnswers = q.acceptedAnswers.filter((a) => a.trim())
         } else if (q.type === 'Benar Salah') {
-          questionData.correctAnswer = q.trueFalseAnswer ? 1 : 0
-          questionData.type = 'boolean'
+          questionData.correctAnswer = q.trueFalseAnswer ? 'true' : 'false'
         }
+
+        // ← ADD IMAGE DATA
+        if (q.imagePreview) {
+          questionData.imageData = q.imagePreview
+          questionData.imageName = q.image?.name || 'image'
+        }
+
         return questionData
       })
+
       const quizData = {
-        id,
         title: quizTitle,
         description: `Kategori: ${quizCategory}`,
         category: quizCategory,
         questions: formattedQuestions
       }
-      await quizService.updateQuiz(quizData)
+
+      await quizService.updateQuiz(id, quizData)
       alert('Quiz berhasil diupdate! 🎉')
       navigate('/my-quizzes')
     } catch (err) {
+      console.error('Error:', err)
       alert('Gagal menyimpan quiz. Coba lagi.\n' + (err.message || ''))
     } finally {
       setSaving(false)
@@ -258,205 +470,338 @@ const EditQuizPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-sky-400 via-blue-500 to-blue-600 flex items-center justify-center">
-        <p className="text-white text-xl">Memuat quiz...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Memuat quiz...</p>
       </div>
     )
   }
 
-  return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-sky-400 via-blue-500 to-blue-600 p-4">
-      <form
-        className="flex bg-white w-full rounded-xl overflow-hidden shadow-2xl mx-auto"
-        style={{ maxWidth: '1400px', minHeight: 650, maxHeight: '88vh' }}
-        onSubmit={handleSubmit}
-      >
-        <div className="bg-blue-900 w-[190px] flex flex-col pt-4 pb-4">
-          <button
-            type="button"
-            className="bg-white font-bold text-sm px-3 py-2 rounded-xl w-[130px] mx-auto mb-5 shadow-lg hover:bg-gray-100 transition"
-            onClick={() => navigate('/my-quizzes')}
-          >Kembali</button>
+  const q = questions[activeIdx]
 
-          <div className="px-4 w-full mb-4">
-            <input
-              type="text"
-              className="w-full bg-gray-100 text-base font-bold rounded-xl px-3 py-2 mb-2 shadow focus:outline-blue-600"
-              placeholder="Judul Kuis"
-              value={quizTitle}
-              onChange={e => setQuizTitle(e.target.value)}
-              required
-            />
-            <select
-              className="w-full bg-gray-100 text-base rounded-xl px-3 py-2 font-semibold shadow"
-              value={quizCategory}
-              onChange={e => setQuizCategory(e.target.value)}
-            >
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">Edit Kuis</h1>
+          <p className="text-gray-600">Ubah pertanyaan kuis Anda</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-lg p-8 mb-8">
+          {/* Quiz Header */}
+          <div className="mb-8 pb-8 border-b-2 border-gray-200">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Judul Kuis
+                </label>
+                <input
+                  type="text"
+                  value={quizTitle}
+                  onChange={(e) => setQuizTitle(e.target.value)}
+                  placeholder="Masukkan judul kuis..."
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Kategori
+                </label>
+                <select
+                  value={quizCategory}
+                  onChange={(e) => setQuizCategory(e.target.value)}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 transition"
+                >
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
 
-          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-3 space-y-2 scroll-smooth">
-            {questions.map((_, idx) => (
-              <div key={idx} ref={el => questionRefs.current[idx] = el} className="relative group">
-                <button
-                  type="button"
-                  className={`w-full py-2 text-sm rounded-xl font-bold transition ${activeIdx === idx ? 'bg-gray-200 text-blue-900 shadow-lg' : 'bg-gray-300 text-gray-800 hover:bg-gray-200'}`}
-                  onClick={() => setActiveIdx(idx)}
-                >Soal {idx + 1}</button>
+          {/* Main Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Sidebar - Questions List */}
+            <div className="lg:col-span-1">
+              <h2 className="text-lg font-bold text-gray-800 mb-4">Soal ({questions.length})</h2>
+              <div
+                ref={scrollContainerRef}
+                className="space-y-2 max-h-96 overflow-y-auto pr-2"
+              >
+                {questions.map((_, idx) => (
+                  <div
+                    key={idx}
+                    ref={(el) => (questionRefs.current[idx] = el)}
+                    onClick={() => setActiveIdx(idx)}
+                    className={`p-3 rounded-lg cursor-pointer transition ${
+                      activeIdx === idx
+                        ? 'bg-blue-500 text-white shadow-md'
+                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                    }`}
+                  >
+                    <div className="font-semibold text-sm">Soal {idx + 1}</div>
+                    <div className="text-xs opacity-75 mt-1">{_.type}</div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={addQuestion}
+                className="w-full mt-6 py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition"
+              >
+                + Tambah Soal
+              </button>
+            </div>
+
+            {/* Main Editor */}
+            <div className="lg:col-span-3">
+              <div className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
+                {/* Question Type Selector */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Tipe Soal
+                  </label>
+                  <select
+                    value={q.type}
+                    onChange={(e) => updateQuestionType(e.target.value)}
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  >
+                    <option>Pilihan Ganda</option>
+                    <option>Benar Salah</option>
+                    <option>Isian</option>
+                  </select>
+                </div>
+
+                {/* Question Text */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Pertanyaan
+                  </label>
+                  <textarea
+                    value={q.question}
+                    onChange={(e) => updateQuestion('question', e.target.value)}
+                    placeholder="Masukkan pertanyaan..."
+                    rows="3"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition"
+                  />
+                </div>
+
+                {/* Image Upload WITH LARGER PREVIEW */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Upload Gambar (Opsional)
+                  </label>
+                  <div className="space-y-4">
+                    {/* Upload Input */}
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => uploadImage(e)}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Image Preview - LARGER */}
+                    {q.imagePreview && (
+                      <div className="w-full max-w-lg">
+                        <p className="text-xs text-gray-600 mb-2">📸 Preview Gambar:</p>
+                        <div className="w-full h-64 rounded-lg border-2 border-gray-300 overflow-hidden bg-gray-100 flex items-center justify-center shadow-md hover:shadow-lg transition">
+                          <img
+                            src={q.imagePreview}
+                            alt="Preview"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Remove Button */}
+                    {q.image && (
+                      <button
+                        type="button"
+                        onClick={() => removeImage()}
+                        className="text-sm text-red-600 hover:text-red-800 font-semibold flex items-center gap-1"
+                      >
+                        ✕ Hapus Gambar
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Pilihan Ganda */}
+                {q.type === 'Pilihan Ganda' && (
+                  <div className="mb-6 space-y-4">
+                    <div className="flex items-center gap-4 mb-4">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={q.multi}
+                          onChange={(e) => setMulti(e.target.checked)}
+                          className="w-4 h-4 cursor-pointer"
+                        />
+                        <span className="text-sm text-gray-700">Multiple Answer (Multiple Jawaban)</span>
+                      </label>
+                    </div>
+
+                    <div className="space-y-3">
+                      {q.options.map((opt, i) => (
+                        <div key={i} className="flex items-center gap-3 bg-white p-3 rounded-lg">
+                          <input
+                            type={q.multi ? 'checkbox' : 'radio'}
+                            name="answer"
+                            checked={q.multi ? q.correct[i] : q.correct[i]}
+                            onChange={() => toggleCorrect(i)}
+                            className="w-4 h-4 cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={opt}
+                            onChange={(e) => updateOption(i, e.target.value)}
+                            placeholder={`Pilihan ${i + 1}`}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                          />
+                          {q.options.length > 2 && (
+                            <button
+                              type="button"
+                              onClick={() => removeOption(i)}
+                              className="px-3 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                            >
+                              Hapus
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={addOption}
+                      className="text-blue-600 hover:text-blue-800 font-semibold text-sm"
+                    >
+                      + Tambah Pilihan
+                    </button>
+                  </div>
+                )}
+
+                {/* Benar Salah */}
+                {q.type === 'Benar Salah' && (
+                  <div className="mb-6 space-y-3">
+                    <div>
+                      <label className="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-gray-300 cursor-pointer hover:border-blue-500">
+                        <input
+                          type="radio"
+                          name="trueFalse"
+                          checked={q.trueFalseAnswer === true}
+                          onChange={() => setTrueFalse(true)}
+                          className="w-4 h-4"
+                        />
+                        <span className="font-semibold text-gray-700">Benar</span>
+                      </label>
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-gray-300 cursor-pointer hover:border-blue-500">
+                        <input
+                          type="radio"
+                          name="trueFalse"
+                          checked={q.trueFalseAnswer === false}
+                          onChange={() => setTrueFalse(false)}
+                          className="w-4 h-4"
+                        />
+                        <span className="font-semibold text-gray-700">Salah</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {/* Isian */}
+                {q.type === 'Isian' && (
+                  <div className="mb-6 space-y-3">
+                    <p className="text-sm text-gray-600 mb-3">
+                      Masukkan semua variasi jawaban yang benar (bisa ada lebih dari satu)
+                    </p>
+                    {q.acceptedAnswers.map((ans, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <input
+                          type="text"
+                          value={ans}
+                          onChange={(e) => updateAcceptedAnswer(i, e.target.value)}
+                          placeholder={`Jawaban ${i + 1}`}
+                          className="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                        />
+                        {q.acceptedAnswers.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeAcceptedAnswer(i)}
+                            className="px-3 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                          >
+                            Hapus
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addAcceptedAnswer}
+                      className="text-blue-600 hover:text-blue-800 font-semibold text-sm"
+                    >
+                      + Tambah Jawaban
+                    </button>
+                  </div>
+                )}
+
+                {/* Duration */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Waktu (detik)
+                  </label>
+                  <input
+                    type="number"
+                    value={q.duration}
+                    onChange={(e) => updateQuestion('duration', parseInt(e.target.value))}
+                    min="5"
+                    max="300"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Delete Button */}
                 {questions.length > 1 && (
                   <button
                     type="button"
-                    onClick={e => { e.stopPropagation(); deleteQuestion(idx); }}
-                    className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg text-xs"
-                    title="Hapus soal">×</button>
+                    onClick={() => deleteQuestion(activeIdx)}
+                    className="w-full px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition"
+                  >
+                    Hapus Soal Ini
+                  </button>
                 )}
               </div>
-            ))}
+            </div>
+          </div>
+
+          {/* Form Actions */}
+          <div className="flex gap-4 justify-center mt-8 pt-8 border-t-2 border-gray-200">
             <button
               type="button"
-              className="w-full py-2 rounded-xl font-bold text-gray-800 bg-gray-300 hover:bg-gray-200 flex items-center justify-center gap-1 transition text-sm"
-              onClick={addQuestion}
+              onClick={() => navigate('/my-quizzes')}
+              className="px-8 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition"
             >
-              <span className="text-xl">+</span>
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition"
+            >
+              {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
             </button>
           </div>
-        </div>
+        </form>
+      </div>
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-6 py-6">
-            <div className="grid grid-cols-4 gap-3 mb-5">
-              <select
-                className="bg-gray-200 text-gray-800 text-base px-4 py-2.5 rounded-lg font-semibold shadow-md"
-                value={questions[activeIdx].duration}
-                onChange={e => updateQuestion('duration', parseInt(e.target.value))}
-              >
-                <option value={30}>Durasi</option>
-                <option value={10}>10 detik</option>
-                <option value={20}>20 detik</option>
-                <option value={30}>30 detik</option>
-                <option value={60}>60 detik</option>
-              </select>
-              <select
-                className="bg-gray-200 text-gray-800 text-base px-4 py-2.5 rounded-lg font-semibold shadow-md"
-                value={questions[activeIdx].type}
-                onChange={e => updateQuestionType(e.target.value)}
-              >
-                <option>Pilihan Ganda</option>
-                <option>Isian</option>
-                <option>Benar Salah</option>
-              </select>
-              <div className="col-span-2"></div>
-            </div>
-
-            <div className="mb-5">
-              <input
-                type="text"
-                className="w-full bg-gray-200 text-lg font-semibold px-5 py-3 rounded-lg shadow-md text-center"
-                placeholder="Tulis Pertanyaan Anda Disini.."
-                value={questions[activeIdx].question}
-                onChange={e => updateQuestion('question', e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="w-full flex justify-center mb-5">
-              <label htmlFor="upload-gambar" className="bg-gray-100 h-[150px] w-full max-w-[450px] flex items-center justify-center font-bold text-base text-gray-600 rounded-xl shadow-md cursor-pointer hover:bg-gray-200 transition">
-                {questions[activeIdx].image ? (
-                  <span className="flex flex-col items-center">
-                    <img 
-                      src={typeof questions[activeIdx].image === 'string' 
-                        ? `http://localhost:5000${questions[activeIdx].image}` 
-                        : URL.createObjectURL(questions[activeIdx].image)
-                      } 
-                      alt="Gambar Soal" 
-                      className="h-[120px] mb-2 rounded-lg" 
-                    />
-                    <span className="text-sm">Ganti Gambar</span>
-                  </span>
-                ) : 'Upload Gambar..'}
-                <input id="upload-gambar" type="file" accept="image/*" className="hidden" onChange={uploadImage} />
-              </label>
-            </div>
-
-            {questions[activeIdx].type === 'Benar Salah' ? (
-              <div className="grid grid-cols-2 gap-6 mb-8">
-                <button
-                  type="button"
-                  className={`bg-red-500 hover:bg-red-600 p-12 rounded-2xl font-bold text-2xl flex items-center justify-center shadow-xl transition ${questions[activeIdx].trueFalseAnswer === false ? 'ring-4 ring-blue-600' : ''}`}
-                  onClick={() => setTrueFalse(false)}
-                >Salah</button>
-                <button
-                  type="button"
-                  className={`bg-green-500 hover:bg-green-600 p-12 rounded-2xl font-bold text-2xl flex items-center justify-center shadow-xl transition ${questions[activeIdx].trueFalseAnswer === true ? 'ring-4 ring-blue-600' : ''}`}
-                  onClick={() => setTrueFalse(true)}
-                >Benar</button>
-              </div>
-            ) : questions[activeIdx].type === 'Isian' ? (
-              <div className="mb-8">
-                <input
-                  type="text"
-                  className="w-full bg-sky-300 text-lg font-bold px-5 py-5 rounded-xl shadow-lg border-2 border-sky-400 text-center"
-                  placeholder="Tulis jawaban yang benar disini.."
-                  value={questions[activeIdx].answerText}
-                  onChange={e => updateQuestion('answerText', e.target.value)}
-                  required
-                />
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-8">
-                  {questions[activeIdx].options.map((opt, i) => {
-                    const warna = ['bg-pink-200', 'bg-green-200', 'bg-yellow-100', 'bg-blue-200'][i]
-                    return (
-                      <div key={i} className={`${warna} p-6 rounded-xl font-bold text-lg flex items-center relative shadow-md`}>
-                        <input
-                          type="text"
-                          className="bg-transparent w-full outline-none font-bold text-base"
-                          placeholder="Tulis Jawaban"
-                          value={questions[activeIdx].options[i]}
-                          onChange={e => updateOption(i, e.target.value)}
-                          required
-                        />
-                        <input
-                          type="checkbox"
-                          checked={!!questions[activeIdx].correct[i]}
-                          className={`absolute top-4 right-4 w-8 h-8 border-2 border-gray-600 focus:ring-2 focus:ring-blue-500 bg-white appearance-none checked:bg-blue-600 checked:border-blue-600 transition duration-150 cursor-pointer ${questions[activeIdx].multi ? 'rounded-md' : 'rounded-full'}`}
-                          onChange={() => toggleCorrect(i)}
-                        />
-                      </div>
-                    )
-                  })}
-                </div>
-                <div className="mb-6 flex gap-6 justify-center">
-                  <button
-                    type="button"
-                    className={`px-6 py-2.5 text-base font-bold rounded-lg shadow-md border-2 border-gray-300 transition ${!questions[activeIdx].multi ? 'bg-blue-800 text-white' : 'bg-white hover:bg-gray-100'}`}
-                    onClick={() => setMulti(false)}
-                  >Satu jawaban benar</button>
-                  <button
-                    type="button"
-                    className={`px-6 py-2.5 text-base font-bold rounded-lg shadow-md border-2 border-gray-300 transition ${questions[activeIdx].multi ? 'bg-blue-800 text-white' : 'bg-white hover:bg-gray-100'}`}
-                    onClick={() => setMulti(true)}
-                  >Beberapa jawaban benar</button>
-                </div>
-              </>
-            )}
-
-            {activeIdx === questions.length - 1 && (
-              <div className="flex justify-end mb-5">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className={`bg-blue-800 text-white font-bold text-base px-10 py-3 rounded-xl shadow-lg transition ${saving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-900'}`}
-                >{saving ? 'Menyimpan...' : 'Update Quiz'}</button>
-              </div>
-            )}
-          </div>
-        </div>
-      </form>
       <Footer />
     </div>
   )
