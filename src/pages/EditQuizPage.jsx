@@ -1,9 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Footer from '../components/Footer'
 import { quizService } from '../services/quizService'
 
-// ← IMAGE COMPRESSION HELPER
 const compressImage = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -35,42 +34,17 @@ const compressImage = (file) => {
   })
 }
 
+const COLORS = ['bg-pink-200', 'bg-green-200', 'bg-yellow-100', 'bg-blue-200']
+
 const EditQuizPage = () => {
   const navigate = useNavigate()
   const { id } = useParams()
   const [quizTitle, setQuizTitle] = useState('')
   const [quizCategory, setQuizCategory] = useState('Bahasa')
-  const [questions, setQuestions] = useState([
-    {
-      question: '',
-      image: null,
-      imagePreview: null,
-      options: ['', '', '', ''],
-      correct: [false, false, false, false],
-      duration: 30,
-      type: 'Pilihan Ganda',
-      multi: false,
-      answerText: '',
-      trueFalseAnswer: null,
-      acceptedAnswers: []
-    }
-  ])
+  const [questions, setQuestions] = useState([])
   const [activeIdx, setActiveIdx] = useState(0)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
-  const scrollContainerRef = useRef(null)
-  const questionRefs = useRef([])
-
-  const categories = [
-    'Bahasa',
-    'Sains',
-    'Matematika',
-    'Biologi',
-    'Sejarah',
-    'Geografi',
-    'Olahraga',
-    'Umum'
-  ]
 
   useEffect(() => {
     if (!id) {
@@ -89,72 +63,85 @@ const EditQuizPage = () => {
         if (quiz.questions && quiz.questions.length > 0) {
           setQuestions(
             quiz.questions.map((q) => {
+              // FIX: DETEKSI TYPE LEBIH AKURAT
               let type = 'Pilihan Ganda'
-              if (q.questionType === 'Benar Salah' || q.questionType === 'true-false') {
+              
+              // Check questionType terlebih dahulu (dari API baru)
+              if (q.questionType === 'true-false' || q.questionType === 'Benar Salah') {
                 type = 'Benar Salah'
-              } else if (q.questionType === 'Isian' || q.questionType === 'short-answer') {
+              } else if (q.questionType === 'short-answer' || q.questionType === 'Isian') {
+                type = 'Isian'
+              } else if (q.questionType === 'multiple-choice' || q.questionType === 'multiple-answer') {
+                type = 'Pilihan Ganda'
+              }
+              // Fallback ke type field jika ada
+              else if (q.type === 'true-false') {
+                type = 'Benar Salah'
+              } else if (q.type === 'short-answer') {
                 type = 'Isian'
               }
 
               let options = []
               let correct = [false, false, false, false]
               let trueFalseAnswer = null
-              let answerText = ''
               let acceptedAnswers = []
               let multi = false
+              let useTime = q.timeLimit !== null && q.timeLimit !== undefined
 
+              // SET DATA BERDASARKAN TYPE
               if (type === 'Pilihan Ganda') {
-                if (Array.isArray(q.options)) {
+                if (Array.isArray(q.options) && q.options.length > 0) {
                   options = q.options
-                  correct = new Array(4).fill(false).slice(0, q.options.length)
+                  correct = new Array(q.options.length).fill(false)
 
                   if (Array.isArray(q.correctAnswer)) {
                     q.correctAnswer.forEach((idx) => {
-                      if (correct[idx]) correct[idx] = true
+                      if (idx >= 0 && idx < correct.length) {
+                        correct[idx] = true
+                      }
                     })
                     multi = true
                   } else if (typeof q.correctAnswer === 'number') {
-                    correct[q.correctAnswer] = true
+                    if (q.correctAnswer >= 0 && q.correctAnswer < correct.length) {
+                      correct[q.correctAnswer] = true
+                    }
                     multi = false
                   }
+                } else {
+                  // Default jika ga ada options
+                  options = ['', '', '', '']
+                  correct = [false, false, false, false]
                 }
               } else if (type === 'Benar Salah') {
-                trueFalseAnswer = q.correctAnswer === 'true'
+                // BENAR SALAH - jangan set options!
+                options = []
+                correct = []
+                trueFalseAnswer = q.correctAnswer === 'true' || q.correctAnswer === true || q.correct === true
+                acceptedAnswers = []
               } else if (type === 'Isian') {
-                acceptedAnswers = Array.isArray(q.acceptedAnswers) ? q.acceptedAnswers : []
+                options = []
+                correct = []
+                trueFalseAnswer = null
+                acceptedAnswers = Array.isArray(q.acceptedAnswers) && q.acceptedAnswers.length > 0
+                  ? q.acceptedAnswers
+                  : ['']
               }
 
               return {
-                question: q.question || q.questionText || '',
+                question: q.question || q.prompt || '',
                 image: q.image || null,
-                imagePreview: q.imageData || null,  // ← Load from database
+                imagePreview: q.imageData || null,
                 options: options,
                 correct: correct,
                 duration: q.timeLimit || 30,
+                useTime: useTime,
                 type: type,
                 multi: multi,
-                answerText: answerText,
                 trueFalseAnswer: trueFalseAnswer,
                 acceptedAnswers: acceptedAnswers
               }
             })
           )
-        } else {
-          setQuestions([
-            {
-              question: '',
-              image: null,
-              imagePreview: null,
-              options: ['', '', '', ''],
-              correct: [false, false, false, false],
-              duration: 30,
-              type: 'Pilihan Ganda',
-              multi: false,
-              answerText: '',
-              trueFalseAnswer: null,
-              acceptedAnswers: []
-            }
-          ])
         }
 
         setActiveIdx(0)
@@ -169,31 +156,6 @@ const EditQuizPage = () => {
     fetchQuiz()
   }, [id, navigate])
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (questionRefs.current[activeIdx] && scrollContainerRef.current) {
-        const container = scrollContainerRef.current
-        const element = questionRefs.current[activeIdx]
-        const elementTop = element.offsetTop
-        const containerTop = container.scrollTop
-        const containerHeight = container.clientHeight
-        const elementHeight = element.clientHeight
-
-        if (
-          elementTop < containerTop ||
-          elementTop + elementHeight > containerTop + containerHeight
-        ) {
-          container.scrollTo({
-            top: elementTop - containerHeight / 2 + elementHeight / 2,
-            behavior: 'smooth'
-          })
-        }
-      }
-    }, 100)
-
-    return () => clearTimeout(timer)
-  }, [activeIdx, questions.length])
-
   const updateQuestion = (field, value, idx = activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
@@ -204,29 +166,32 @@ const EditQuizPage = () => {
   const updateQuestionType = (newType, idx = activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
-    arr[idx].type = newType
 
     if (newType === 'Pilihan Ganda') {
-      arr[idx].options = ['', '', '', '']
-      arr[idx].correct = [false, false, false, false]
+      if (!arr[idx].options || arr[idx].options.length === 0) {
+        arr[idx].options = ['', '', '', '']
+        arr[idx].correct = [false, false, false, false]
+      }
       arr[idx].multi = false
-      arr[idx].answerText = ''
       arr[idx].trueFalseAnswer = null
       arr[idx].acceptedAnswers = []
     } else if (newType === 'Isian') {
+      if (!arr[idx].acceptedAnswers || arr[idx].acceptedAnswers.length === 0) {
+        arr[idx].acceptedAnswers = ['']
+      }
       arr[idx].options = []
       arr[idx].correct = []
-      arr[idx].answerText = ''
       arr[idx].trueFalseAnswer = null
-      arr[idx].acceptedAnswers = ['']
     } else if (newType === 'Benar Salah') {
+      if (arr[idx].trueFalseAnswer === null) {
+        arr[idx].trueFalseAnswer = false
+      }
       arr[idx].options = []
       arr[idx].correct = []
-      arr[idx].answerText = ''
-      arr[idx].trueFalseAnswer = null
       arr[idx].acceptedAnswers = []
     }
 
+    arr[idx].type = newType
     setQuestions(arr)
   }
 
@@ -267,20 +232,14 @@ const EditQuizPage = () => {
     setQuestions(arr)
   }
 
-  // ← IMAGE UPLOAD WITH COMPRESSION
   const uploadImage = async (e, idx = activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const file = e.target.files[0]
     if (!file) return
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Gambar > 2MB, akan dikompres...')
-    }
-
     try {
       const arr = [...questions]
       arr[idx].image = file
-
       const compressedBase64 = await compressImage(file)
       arr[idx].imagePreview = compressedBase64
       setQuestions([...arr])
@@ -307,9 +266,9 @@ const EditQuizPage = () => {
         options: ['', '', '', ''],
         correct: [false, false, false, false],
         duration: 30,
+        useTime: true,
         type: 'Pilihan Ganda',
         multi: false,
-        answerText: '',
         trueFalseAnswer: null,
         acceptedAnswers: []
       }
@@ -341,7 +300,7 @@ const EditQuizPage = () => {
   const setTrueFalse = (value, idx = activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
-    arr[idx].trueFalseAnswer = value
+    arr[idx].trueFalseAnswer = value === true ? true : false
     setQuestions(arr)
   }
 
@@ -380,7 +339,6 @@ const EditQuizPage = () => {
 
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i]
-
       if (!q.question.trim()) {
         alert(`Soal ${i + 1}: Pertanyaan harus diisi!`)
         return
@@ -392,15 +350,13 @@ const EditQuizPage = () => {
           alert(`Soal ${i + 1}: Semua pilihan jawaban harus diisi!`)
           return
         }
-
         const hasCorrect = q.correct.some((c) => c)
         if (!hasCorrect) {
           alert(`Soal ${i + 1}: Pilih minimal satu jawaban yang benar!`)
           return
         }
       } else if (q.type === 'Isian') {
-        const hasAccepted =
-          q.acceptedAnswers && q.acceptedAnswers.length > 0 && q.acceptedAnswers.some((a) => a.trim())
+        const hasAccepted = q.acceptedAnswers && q.acceptedAnswers.length > 0 && q.acceptedAnswers.some((a) => a.trim())
         if (!hasAccepted) {
           alert(`Soal ${i + 1}: Tambahkan minimal satu jawaban!`)
           return
@@ -416,18 +372,13 @@ const EditQuizPage = () => {
     try {
       setSaving(true)
 
-      // ← FIXED: Declare questionData INSIDE map
       const formattedQuestions = questions.map((q) => {
         let questionData = {
           question: q.question,
-          timeLimit: q.duration,
+          timeLimit: q.useTime ? q.duration : null,
           questionType: q.type === 'Pilihan Ganda'
-            ? q.multi
-              ? 'multiple-answer'
-              : 'multiple-choice'
-            : q.type === 'Isian'
-            ? 'short-answer'
-            : 'true-false'
+            ? q.multi ? 'multiple-answer' : 'multiple-choice'
+            : q.type === 'Isian' ? 'short-answer' : 'true-false'
         }
 
         if (q.type === 'Pilihan Ganda') {
@@ -441,7 +392,6 @@ const EditQuizPage = () => {
           questionData.correctAnswer = q.trueFalseAnswer ? 'true' : 'false'
         }
 
-        // ← ADD IMAGE DATA
         if (q.imagePreview) {
           questionData.imageData = q.imagePreview
           questionData.imageName = q.image?.name || 'image'
@@ -470,48 +420,62 @@ const EditQuizPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Memuat quiz...</p>
+      <div className="min-h-screen bg-blue-200 flex items-center justify-center">
+        <div className="text-gray-800 text-lg font-bold">Memuat quiz...</div>
       </div>
     )
   }
 
-  const q = questions[activeIdx]
+  const q = questions.length > 0 ? questions[activeIdx] : null
+
+  if (!q) {
+    return (
+      <div className="min-h-screen bg-blue-200 flex items-center justify-center">
+        <div className="text-gray-800 text-lg font-bold">Tidak ada soal</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">Edit Kuis</h1>
-          <p className="text-gray-600">Ubah pertanyaan kuis Anda</p>
+    <div className="min-h-screen bg-blue-200 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-8 pt-6 pb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-blue-900 drop-shadow-lg">Edit Kuis</h1>
+            <p className="text-blue-800 text-sm">Ubah soal kuis Anda</p>
+          </div>
+          <button
+            onClick={() => navigate('/my-quizzes')}
+            className="bg-white/40 hover:bg-white/60 text-blue-900 px-5 py-2 rounded-lg transition font-semibold"
+          >
+            ← Kembali
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-lg p-8 mb-8">
-          {/* Quiz Header */}
-          <div className="mb-8 pb-8 border-b-2 border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Judul Kuis
-                </label>
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto px-8 pb-6">
+          <div className="bg-white rounded-2xl p-8 max-w-4xl mx-auto shadow-xl">
+            {/* JUDUL & KATEGORI INPUT */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Judul Kuis</label>
                 <input
                   type="text"
                   value={quizTitle}
                   onChange={(e) => setQuizTitle(e.target.value)}
                   placeholder="Masukkan judul kuis..."
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 transition"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-800 font-semibold focus:outline-none focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Kategori
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Kategori</label>
                 <select
                   value={quizCategory}
                   onChange={(e) => setQuizCategory(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 transition"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-100 font-semibold focus:outline-none focus:border-blue-500"
                 >
-                  {categories.map((cat) => (
+                  {['Bahasa', 'Sains', 'Matematika', 'Biologi', 'Sejarah', 'Geografi', 'Olahraga', 'Umum'].map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
                     </option>
@@ -519,287 +483,296 @@ const EditQuizPage = () => {
                 </select>
               </div>
             </div>
-          </div>
 
-          {/* Main Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Sidebar - Questions List */}
-            <div className="lg:col-span-1">
-              <h2 className="text-lg font-bold text-gray-800 mb-4">Soal ({questions.length})</h2>
-              <div
-                ref={scrollContainerRef}
-                className="space-y-2 max-h-96 overflow-y-auto pr-2"
-              >
-                {questions.map((_, idx) => (
-                  <div
-                    key={idx}
-                    ref={(el) => (questionRefs.current[idx] = el)}
-                    onClick={() => setActiveIdx(idx)}
-                    className={`p-3 rounded-lg cursor-pointer transition ${
-                      activeIdx === idx
-                        ? 'bg-blue-500 text-white shadow-md'
-                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                    }`}
-                  >
-                    <div className="font-semibold text-sm">Soal {idx + 1}</div>
-                    <div className="text-xs opacity-75 mt-1">{_.type}</div>
-                  </div>
-                ))}
-              </div>
-
+            {/* Question Number Tabs */}
+            <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+              {questions.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setActiveIdx(index)}
+                  className={`min-w-[60px] h-12 rounded-lg font-bold text-lg transition shadow-md ${
+                    activeIdx === index
+                      ? 'bg-blue-600 text-white scale-110'
+                      : 'bg-gray-300 text-gray-800 hover:bg-gray-400'
+                  }`}
+                >
+                  {index + 1}
+                </button>
+              ))}
               <button
-                type="button"
                 onClick={addQuestion}
-                className="w-full mt-6 py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition"
+                className="min-w-[60px] h-12 rounded-lg font-bold text-lg bg-green-500 text-white hover:bg-green-600 transition shadow-md"
               >
-                + Tambah Soal
+                +
               </button>
             </div>
 
-            {/* Main Editor */}
-            <div className="lg:col-span-3">
-              <div className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
-                {/* Question Type Selector */}
-                <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Tipe Soal
-                  </label>
-                  <select
-                    value={q.type}
-                    onChange={(e) => updateQuestionType(e.target.value)}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                  >
-                    <option>Pilihan Ganda</option>
-                    <option>Benar Salah</option>
-                    <option>Isian</option>
-                  </select>
-                </div>
-
-                {/* Question Text */}
-                <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Pertanyaan
-                  </label>
-                  <textarea
-                    value={q.question}
-                    onChange={(e) => updateQuestion('question', e.target.value)}
-                    placeholder="Masukkan pertanyaan..."
-                    rows="3"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition"
-                  />
-                </div>
-
-                {/* Image Upload WITH LARGER PREVIEW */}
-                <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Upload Gambar (Opsional)
-                  </label>
-                  <div className="space-y-4">
-                    {/* Upload Input */}
-                    <div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => uploadImage(e)}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none"
-                      />
-                    </div>
-
-                    {/* Image Preview - LARGER */}
-                    {q.imagePreview && (
-                      <div className="w-full max-w-lg">
-                        <p className="text-xs text-gray-600 mb-2">📸 Preview Gambar:</p>
-                        <div className="w-full h-64 rounded-lg border-2 border-gray-300 overflow-hidden bg-gray-100 flex items-center justify-center shadow-md hover:shadow-lg transition">
-                          <img
-                            src={q.imagePreview}
-                            alt="Preview"
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Remove Button */}
-                    {q.image && (
-                      <button
-                        type="button"
-                        onClick={() => removeImage()}
-                        className="text-sm text-red-600 hover:text-red-800 font-semibold flex items-center gap-1"
-                      >
-                        ✕ Hapus Gambar
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Pilihan Ganda */}
-                {q.type === 'Pilihan Ganda' && (
-                  <div className="mb-6 space-y-4">
-                    <div className="flex items-center gap-4 mb-4">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={q.multi}
-                          onChange={(e) => setMulti(e.target.checked)}
-                          className="w-4 h-4 cursor-pointer"
-                        />
-                        <span className="text-sm text-gray-700">Multiple Answer (Multiple Jawaban)</span>
-                      </label>
-                    </div>
-
-                    <div className="space-y-3">
-                      {q.options.map((opt, i) => (
-                        <div key={i} className="flex items-center gap-3 bg-white p-3 rounded-lg">
-                          <input
-                            type={q.multi ? 'checkbox' : 'radio'}
-                            name="answer"
-                            checked={q.multi ? q.correct[i] : q.correct[i]}
-                            onChange={() => toggleCorrect(i)}
-                            className="w-4 h-4 cursor-pointer"
-                          />
-                          <input
-                            type="text"
-                            value={opt}
-                            onChange={(e) => updateOption(i, e.target.value)}
-                            placeholder={`Pilihan ${i + 1}`}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                          />
-                          {q.options.length > 2 && (
-                            <button
-                              type="button"
-                              onClick={() => removeOption(i)}
-                              className="px-3 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-                            >
-                              Hapus
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={addOption}
-                      className="text-blue-600 hover:text-blue-800 font-semibold text-sm"
-                    >
-                      + Tambah Pilihan
-                    </button>
-                  </div>
-                )}
-
-                {/* Benar Salah */}
-                {q.type === 'Benar Salah' && (
-                  <div className="mb-6 space-y-3">
-                    <div>
-                      <label className="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-gray-300 cursor-pointer hover:border-blue-500">
-                        <input
-                          type="radio"
-                          name="trueFalse"
-                          checked={q.trueFalseAnswer === true}
-                          onChange={() => setTrueFalse(true)}
-                          className="w-4 h-4"
-                        />
-                        <span className="font-semibold text-gray-700">Benar</span>
-                      </label>
-                    </div>
-                    <div>
-                      <label className="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-gray-300 cursor-pointer hover:border-blue-500">
-                        <input
-                          type="radio"
-                          name="trueFalse"
-                          checked={q.trueFalseAnswer === false}
-                          onChange={() => setTrueFalse(false)}
-                          className="w-4 h-4"
-                        />
-                        <span className="font-semibold text-gray-700">Salah</span>
-                      </label>
-                    </div>
-                  </div>
-                )}
-
-                {/* Isian */}
-                {q.type === 'Isian' && (
-                  <div className="mb-6 space-y-3">
-                    <p className="text-sm text-gray-600 mb-3">
-                      Masukkan semua variasi jawaban yang benar (bisa ada lebih dari satu)
-                    </p>
-                    {q.acceptedAnswers.map((ans, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <input
-                          type="text"
-                          value={ans}
-                          onChange={(e) => updateAcceptedAnswer(i, e.target.value)}
-                          placeholder={`Jawaban ${i + 1}`}
-                          className="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                        />
-                        {q.acceptedAnswers.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeAcceptedAnswer(i)}
-                            className="px-3 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-                          >
-                            Hapus
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={addAcceptedAnswer}
-                      className="text-blue-600 hover:text-blue-800 font-semibold text-sm"
-                    >
-                      + Tambah Jawaban
-                    </button>
-                  </div>
-                )}
-
-                {/* Duration */}
-                <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Waktu (detik)
-                  </label>
+            {/* Time & Type Controls */}
+            <div className="flex gap-4 mb-6">
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2">
                   <input
-                    type="number"
-                    value={q.duration}
-                    onChange={(e) => updateQuestion('duration', parseInt(e.target.value))}
-                    min="5"
-                    max="300"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                    type="checkbox"
+                    checked={q.useTime}
+                    onChange={(e) => updateQuestion('useTime', e.target.checked)}
+                    className="w-4 h-4"
                   />
+                  <span className="text-sm font-semibold text-gray-700">Pakai Waktu</span>
+                </label>
+              </div>
+
+              {q.useTime && (
+                <select
+                  value={q.duration}
+                  onChange={(e) => updateQuestion('duration', parseInt(e.target.value))}
+                  className="px-4 py-2 border-2 border-gray-300 rounded-lg bg-gray-100 font-semibold"
+                >
+                  {[5, 10, 15, 20, 30, 45, 60].map((t) => (
+                    <option key={t} value={t}>
+                      {t} detik
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              <select
+                value={q.type}
+                onChange={(e) => updateQuestionType(e.target.value)}
+                className="px-4 py-2 border-2 border-gray-300 rounded-lg bg-gray-100 font-semibold flex-1"
+              >
+                <option>Pilihan Ganda</option>
+                <option>Benar Salah</option>
+                <option>Isian</option>
+              </select>
+            </div>
+
+            {/* Question Box */}
+            <div className="mb-6">
+              <textarea
+                value={q.question}
+                onChange={(e) => updateQuestion('question', e.target.value)}
+                placeholder="Masukkan pertanyaan..."
+                rows="3"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-lg font-semibold text-center text-gray-800 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            {/* Image Box */}
+            <div className="w-full flex justify-center mb-6">
+              <div className="bg-gray-100 h-[150px] w-full max-w-[450px] flex items-center justify-center font-bold text-base text-gray-600 rounded-xl shadow-md cursor-pointer hover:bg-gray-200 transition">
+                <label className="h-full w-full flex items-center justify-center cursor-pointer">
+                  <div>
+                    <div>📸 Upload Gambar..</div>
+                    {q.imagePreview && (
+                      <img src={q.imagePreview} alt="Preview" className="max-h-[120px] mx-auto mt-2" />
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => uploadImage(e)}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {q.image && (
+              <div className="flex justify-center mb-6">
+                <button
+                  type="button"
+                  onClick={() => removeImage()}
+                  className="text-red-600 hover:text-red-800 text-sm font-semibold"
+                >
+                  ✕ Hapus Gambar
+                </button>
+              </div>
+            )}
+
+            {/* Pilihan Ganda */}
+            {q.type === 'Pilihan Ganda' && (
+              <div className="mb-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={q.multi}
+                      onChange={(e) => setMulti(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm font-semibold text-gray-700">Beberapa jawaban benar</span>
+                  </label>
                 </div>
 
-                {/* Delete Button */}
-                {questions.length > 1 && (
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                  {q.options.map((opt, i) => (
+                    <div
+                      key={i}
+                      className={`${COLORS[i]} p-6 rounded-xl font-bold text-lg flex items-center relative shadow-md cursor-pointer hover:shadow-lg transition group`}
+                      onClick={() => toggleCorrect(i)}
+                    >
+                      <input
+                        type="text"
+                        value={opt}
+                        onChange={(e) => {
+                          e.stopPropagation()
+                          updateOption(i, e.target.value)
+                        }}
+                        placeholder={`Pilihan ${i + 1}`}
+                        className="w-full bg-transparent text-gray-800 font-bold text-base placeholder-gray-500 focus:outline-none"
+                      />
+                      <div
+                        className={`absolute top-4 right-4 w-8 h-8 border-2 flex items-center justify-center transition rounded-full ${
+                          q.correct[i]
+                            ? 'bg-blue-600 border-blue-600'
+                            : 'bg-white border-gray-600'
+                        }`}
+                      >
+                        {q.correct[i] && <span className="text-white font-bold text-lg">✓</span>}
+                      </div>
+                      {q.options.length > 2 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeOption(i)
+                          }}
+                          className="absolute top-2 right-2 text-red-600 hover:text-red-800 text-lg opacity-0 group-hover:opacity-100 transition"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {q.options.length < 4 && (
                   <button
-                    type="button"
-                    onClick={() => deleteQuestion(activeIdx)}
-                    className="w-full px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition"
+                    onClick={addOption}
+                    className="text-blue-600 hover:text-blue-800 font-semibold text-sm mt-4"
                   >
-                    Hapus Soal Ini
+                    + Tambah Pilihan
                   </button>
                 )}
               </div>
+            )}
+
+            {/* Benar Salah */}
+            {q.type === 'Benar Salah' && (
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                <div
+                  className="bg-green-400 p-6 rounded-2xl border-4 border-green-600 cursor-pointer transition hover:shadow-lg"
+                  onClick={() => setTrueFalse(true)}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-2xl text-white">Benar</span>
+                    {q.trueFalseAnswer === true ? (
+                      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                        <span className="text-green-600 font-bold text-lg">✓</span>
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 border-2 border-white rounded-full"></div>
+                    )}
+                  </div>
+                </div>
+
+                <div
+                  className="bg-red-400 p-6 rounded-2xl border-4 border-red-600 cursor-pointer transition hover:shadow-lg"
+                  onClick={() => setTrueFalse(false)}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-2xl text-white">Salah</span>
+                    {q.trueFalseAnswer === false ? (
+                      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                        <span className="text-red-600 font-bold text-lg">✓</span>
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 border-2 border-white rounded-full"></div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Isian */}
+            {q.type === 'Isian' && (
+              <div className="space-y-3 mb-6">
+                {q.acceptedAnswers.map((ans, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      value={ans}
+                      onChange={(e) => updateAcceptedAnswer(i, e.target.value)}
+                      placeholder={`Jawaban ${i + 1}`}
+                      className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-700"
+                    />
+                    {q.acceptedAnswers.length > 1 && (
+                      <button
+                        onClick={() => removeAcceptedAnswer(i)}
+                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm font-semibold"
+                      >
+                        Hapus
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  onClick={addAcceptedAnswer}
+                  className="text-blue-600 hover:text-blue-800 font-semibold text-sm"
+                >
+                  + Tambah Jawaban
+                </button>
+              </div>
+            )}
+
+            {/* Delete Question Button */}
+            <div className="mb-6 flex gap-6 justify-center">
+              <button
+                type="button"
+                onClick={() => deleteQuestion(activeIdx)}
+                disabled={questions.length === 1}
+                className={`px-6 py-2.5 text-base font-bold rounded-lg shadow-md border-2 border-gray-300 transition ${
+                  questions.length === 1
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-red-500 text-white hover:bg-red-600'
+                }`}
+              >
+                Hapus Soal
+              </button>
+            </div>
+
+            {/* Navigation */}
+            <div className="flex items-center justify-between pt-4 border-t-2 border-gray-200">
+              <button
+                onClick={() => setActiveIdx(Math.max(0, activeIdx - 1))}
+                disabled={activeIdx === 0}
+                className="bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 disabled:text-gray-400 text-gray-800 font-bold px-8 py-3 rounded-xl transition shadow-md"
+              >
+                ← Sebelumnya
+              </button>
+
+              <span className="text-gray-700 font-bold">
+                Soal {activeIdx + 1} dari {questions.length}
+              </span>
+
+              {activeIdx === questions.length - 1 ? (
+                <button
+                  onClick={handleSubmit}
+                  disabled={saving}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold px-8 py-3 rounded-xl transition shadow-lg"
+                >
+                  {saving ? 'Menyimpan...' : 'Update Quiz'}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setActiveIdx(Math.min(questions.length - 1, activeIdx + 1))}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl transition shadow-lg"
+                >
+                  Selanjutnya →
+                </button>
+              )}
             </div>
           </div>
-
-          {/* Form Actions */}
-          <div className="flex gap-4 justify-center mt-8 pt-8 border-t-2 border-gray-200">
-            <button
-              type="button"
-              onClick={() => navigate('/my-quizzes')}
-              className="px-8 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition"
-            >
-              {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
 
       <Footer />

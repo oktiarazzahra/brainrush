@@ -40,7 +40,6 @@ const DashboardCard = ({
           <span>{questions} Soal</span>
           {modules > 0 && (
             <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
-              {modules} modul
             </span>
           )}
         </div>

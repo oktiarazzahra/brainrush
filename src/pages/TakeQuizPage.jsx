@@ -1,6 +1,6 @@
-// src/pages/TakeQuizPage.jsx
 import { useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
+import Footer from '../components/Footer'
 
 const TakeQuizPage = () => {
   const navigate = useNavigate()
@@ -13,7 +13,7 @@ const TakeQuizPage = () => {
   const [quizFinished, setQuizFinished] = useState(false)
   const [score, setScore] = useState(0)
 
-  // Dummy questions
+  // Dummy questions - lengkap dengan semua tipe
   const questions = [
     {
       id: 1,
@@ -28,45 +28,80 @@ const TakeQuizPage = () => {
       id: 2,
       question: 'Pilih semua yang termasuk gas mulia:',
       image: null,
-      type: 'Multiple Choice',
+      type: 'Pilihan Ganda',
       options: ['Helium', 'Oksigen', 'Neon', 'Nitrogen'],
       correctAnswer: [0, 2],
       multi: true
     },
     {
       id: 3,
-      question: 'Air adalah senyawa',
+      question: 'Air adalah senyawa H2O',
       image: null,
-      type: 'Benar/Salah',
+      type: 'Benar Salah',
       correctAnswer: true
     },
     {
       id: 4,
-      question: 'Sebutkan 3 unsur dalam tabel periodik!',
-      image: null,
-      type: 'Essay'
-    },
-    {
-      id: 5,
-      question: 'Apa fungsi katalis?',
+      question: 'Apa fungsi katalis dalam reaksi kimia?',
       image: null,
       type: 'Pilihan Ganda',
       options: ['Mempercepat reaksi', 'Memperlambat reaksi', 'Menghasilkan energi', 'Menyerap panas'],
       correctAnswer: [0],
       multi: false
+    },
+    {
+      id: 5,
+      question: 'Sebutkan rumus senyawa NaCl!',
+      image: null,
+      type: 'Isian',
+      acceptedAnswers: ['NaCl', 'Natrium Klorida', 'garam dapur'],
+      correctAnswer: []
     }
   ]
 
+  const COLORS = ['bg-pink-200', 'bg-green-200', 'bg-yellow-100', 'bg-blue-200']
   const currentQ = questions[currentQuestion]
   const currentAnswer = answers[currentQuestion]
 
-  const optionColors = [
-    'bg-pink-200',
-    'bg-green-200',
-    'bg-yellow-200',
-    'bg-blue-200'
-  ]
+  // Calculate score
+  const calculateScore = () => {
+    let correct = 0
+    questions.forEach((q, index) => {
+      const userAnswer = answers[index]
 
+      if (q.type === 'Pilihan Ganda' && q.multi) {
+        // Multiple choice - harus exact match
+        const correctArr = q.correctAnswer.sort()
+        const userArr = Array.isArray(userAnswer) ? userAnswer.sort() : []
+        if (JSON.stringify(correctArr) === JSON.stringify(userArr)) {
+          correct++
+        }
+      } else if (q.type === 'Pilihan Ganda' && !q.multi) {
+        // Single choice
+        if (Array.isArray(userAnswer) && userAnswer[0] === q.correctAnswer[0]) {
+          correct++
+        }
+      } else if (q.type === 'Benar Salah') {
+        // True/False
+        if (userAnswer === q.correctAnswer) {
+          correct++
+        }
+      } else if (q.type === 'Isian') {
+        // Short answer - case insensitive
+        if (userAnswer) {
+          const isCorrect = q.acceptedAnswers.some(
+            ans => ans.toLowerCase() === userAnswer.toLowerCase().trim()
+          )
+          if (isCorrect) {
+            correct++
+          }
+        }
+      }
+    })
+    return Math.round((correct / questions.length) * 100)
+  }
+
+  // Handle answer selection
   const handleAnswerSelect = (optionIndex) => {
     if (currentQ.multi) {
       const current = answers[currentQuestion] || []
@@ -89,169 +124,256 @@ const TakeQuizPage = () => {
     }
   }
 
+  // Handle true/false
+  const handleTrueFalse = (value) => {
+    setAnswers({
+      ...answers,
+      [currentQuestion]: value
+    })
+  }
+
+  // Handle next
   const handleNext = () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1)
     } else {
+      const finalScore = calculateScore()
+      setScore(finalScore)
       setQuizFinished(true)
-      setScore(85)
     }
   }
 
-  // Result screen - FULLSCREEN BIRU
+  // Result screen
   if (quizFinished) {
     return (
-      <div className="min-h-screen bg-blue-600 flex items-center justify-center p-8">
-        <div className="bg-white rounded-2xl p-8 max-w-xl w-full shadow-2xl text-center">
-          <div className="text-5xl mb-4">🎉</div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-3">Quiz Selesai!</h1>
-          <div className="text-6xl font-black text-blue-600 mb-4">{score}</div>
-          <div className="flex gap-3 mt-6">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 rounded-xl transition"
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => window.location.reload()}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition"
-            >
-              Coba Lagi
-            </button>
+      <div className="min-h-screen bg-blue-200 flex flex-col">
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="bg-white rounded-2xl p-12 max-w-2xl w-full shadow-2xl text-center">
+            <div className="text-6xl mb-6">
+              {score >= 80 ? '🎉' : score >= 60 ? '😊' : '📚'}
+            </div>
+            <h1 className="text-4xl font-bold text-gray-800 mb-4">Quiz Selesai!</h1>
+            <div className="text-7xl font-black text-blue-600 mb-2">{score}%</div>
+            <p className="text-xl text-gray-600 mb-8">
+              {score >= 80 ? 'Luar biasa!' : score >= 60 ? 'Bagus!' : 'Terus belajar!'}
+            </p>
+
+            <div className="bg-blue-100 rounded-xl p-6 mb-8">
+              <p className="text-sm text-gray-600 mb-2">Hasil Anda</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {Math.round((score / 100) * questions.length)} dari {questions.length} soal benar
+              </p>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-xl transition shadow-md"
+              >
+                ← Dashboard
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition shadow-md"
+              >
+                Coba Lagi
+              </button>
+            </div>
           </div>
         </div>
+        <Footer />
       </div>
     )
   }
 
-  // Quiz screen - FULLSCREEN BIRU TANPA SIDEBAR
+  // Quiz screen
   return (
-    <div className="min-h-screen bg-blue-600 p-8">
-      <div className="max-w-5xl mx-auto">
-        {/* Header dengan Back button */}
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-blue-200 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-8 pt-6 pb-4">
           <div>
-            <h1 className="text-3xl font-bold text-white">{quizData?.title || 'Quiz'}</h1>
-            <p className="text-white/80 text-sm">Soal {currentQuestion + 1} dari {questions.length}</p>
+            <h1 className="text-3xl font-bold text-blue-900 drop-shadow-lg">
+              {quizData?.title || 'Quiz'}
+            </h1>
+            <p className="text-blue-800 text-sm">Soal {currentQuestion + 1} dari {questions.length}</p>
           </div>
           <button
             onClick={() => navigate('/dashboard')}
-            className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2 rounded-lg transition font-semibold flex items-center gap-2"
+            className="bg-white/40 hover:bg-white/60 text-blue-900 px-5 py-2 rounded-lg transition font-semibold"
           >
-            ← Back
+            ← Kembali
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-xl">
-          
-          {/* Question Tabs */}
-          <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-            {questions.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentQuestion(index)}
-                className={`min-w-[50px] h-12 rounded-lg font-bold text-lg transition shadow ${
-                  currentQuestion === index
-                    ? 'bg-blue-600 text-white'
-                    : answers[index] !== undefined
-                    ? 'bg-green-400 text-green-900'
-                    : 'bg-gray-300 text-gray-600'
-                }`}
-              >
-                {index + 1}
-              </button>
-            ))}
-          </div>
-
-          {/* Question Box */}
-          <div className="mb-4">
-            <div className="w-full bg-gray-200 text-lg font-semibold px-5 py-4 rounded-lg shadow text-center">
-              {currentQ.question}
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto px-8 pb-6">
+          <div className="bg-white rounded-2xl p-8 max-w-4xl mx-auto shadow-xl">
+            {/* Question Tabs */}
+            <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+              {questions.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentQuestion(index)}
+                  className={`min-w-[60px] h-12 rounded-lg font-bold text-lg transition shadow-md ${
+                    currentQuestion === index
+                      ? 'bg-blue-600 text-white scale-110'
+                      : answers[index] !== undefined
+                      ? 'bg-green-400 text-green-900'
+                      : 'bg-gray-300 text-gray-800 hover:bg-gray-400'
+                  }`}
+                >
+                  {index + 1}
+                </button>
+              ))}
             </div>
-          </div>
 
-          {/* Image Box - HANYA TAMPIL KALAU ADA GAMBAR */}
-          {currentQ.image && (
-            <div className="w-full flex justify-center mb-4">
-              <div className="bg-gray-100 rounded-xl p-4 shadow">
-                <img 
-                  src={currentQ.image} 
-                  alt="Gambar Soal" 
-                  className="max-h-48 rounded-lg object-cover" 
-                />
+            {/* Question Box */}
+            <div className="mb-6">
+              <div className="bg-gray-100 text-center text-lg font-semibold px-6 py-4 rounded-xl shadow-md text-gray-800">
+                {currentQ.question}
               </div>
             </div>
-          )}
 
-          {/* Options Grid */}
-          {(currentQ.type === 'Pilihan Ganda' || currentQ.type === 'Multiple Choice') && (
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {currentQ.options.map((option, index) => {
-                const isSelected = Array.isArray(currentAnswer) && currentAnswer.includes(index)
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleAnswerSelect(index)}
-                    className={`${optionColors[index]} px-6 py-4 rounded-xl font-bold text-base text-gray-800 flex items-center justify-between transition hover:opacity-90 shadow`}
-                  >
-                    <span>{option}</span>
-                    <div className={`w-8 h-8 rounded-full border-4 ${
-                      isSelected ? 'border-gray-800 bg-white' : 'border-gray-800 bg-white'
-                    } flex items-center justify-center`}>
-                      {isSelected && <span className="text-gray-800 text-lg font-bold">✓</span>}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          )}
+            {/* Image Box - HANYA TAMPIL KALAU ADA */}
+            {currentQ.image && (
+              <div className="w-full flex justify-center mb-6">
+                <div className="bg-gray-100 rounded-xl p-4 shadow-md">
+                  <img
+                    src={currentQ.image}
+                    alt="Gambar Soal"
+                    className="max-h-48 rounded-lg object-cover"
+                  />
+                </div>
+              </div>
+            )}
 
-          {/* True/False */}
-          {currentQ.type === 'Benar/Salah' && (
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            {/* Pilihan Ganda */}
+            {currentQ.type === 'Pilihan Ganda' && (
+              <div className="mb-6">
+                {currentQ.multi && (
+                  <p className="text-sm font-semibold text-gray-600 mb-3">💡 Bisa pilih lebih dari satu</p>
+                )}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                  {currentQ.options.map((option, index) => {
+                    const isSelected = Array.isArray(currentAnswer) && currentAnswer.includes(index)
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => handleAnswerSelect(index)}
+                        className={`${COLORS[index]} p-6 rounded-xl font-bold text-lg flex items-center justify-between relative shadow-md cursor-pointer hover:shadow-lg transition group`}
+                      >
+                        <span>{option}</span>
+                        <div
+                          className={`w-8 h-8 border-2 flex items-center justify-center rounded-full transition ${
+                            isSelected
+                              ? 'bg-blue-600 border-blue-600'
+                              : 'bg-white border-gray-600'
+                          }`}
+                        >
+                          {isSelected && <span className="text-white font-bold text-lg">✓</span>}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Benar Salah */}
+            {currentQ.type === 'Benar Salah' && (
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                <button
+                  onClick={() => handleTrueFalse(true)}
+                  className={`bg-green-400 p-6 rounded-2xl border-4 cursor-pointer transition hover:shadow-lg ${
+                    currentAnswer === true ? 'border-green-700 shadow-lg' : 'border-green-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-2xl text-white">Benar</span>
+                    {currentAnswer === true ? (
+                      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                        <span className="text-green-600 font-bold text-lg">✓</span>
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 border-2 border-white rounded-full"></div>
+                    )}
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleTrueFalse(false)}
+                  className={`bg-red-400 p-6 rounded-2xl border-4 cursor-pointer transition hover:shadow-lg ${
+                    currentAnswer === false ? 'border-red-700 shadow-lg' : 'border-red-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-2xl text-white">Salah</span>
+                    {currentAnswer === false ? (
+                      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                        <span className="text-red-600 font-bold text-lg">✓</span>
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 border-2 border-white rounded-full"></div>
+                    )}
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {/* Isian */}
+            {currentQ.type === 'Isian' && (
+              <div className="mb-6">
+                <input
+                  type="text"
+                  value={currentAnswer || ''}
+                  onChange={(e) => setAnswers({ ...answers, [currentQuestion]: e.target.value })}
+                  placeholder="Ketik jawaban kamu..."
+                  className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl text-base focus:outline-none focus:border-blue-500 shadow-md"
+                />
+                {currentQ.acceptedAnswers && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    💡 Jawaban yang diterima: {currentQ.acceptedAnswers.join(', ')}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Navigation */}
+            <div className="flex items-center justify-between pt-4 border-t-2 border-gray-200">
               <button
-                onClick={() => setAnswers({ ...answers, [currentQuestion]: true })}
-                className={`bg-green-200 rounded-xl px-6 py-5 font-bold text-xl transition shadow ${
-                  currentAnswer === true ? 'ring-4 ring-green-600' : ''
-                }`}
+                onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
+                disabled={currentQuestion === 0}
+                className="bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 disabled:text-gray-400 text-gray-800 font-bold px-8 py-3 rounded-xl transition shadow-md"
               >
-                ✅ BENAR
+                ← Sebelumnya
               </button>
-              <button
-                onClick={() => setAnswers({ ...answers, [currentQuestion]: false })}
-                className={`bg-pink-200 rounded-xl px-6 py-5 font-bold text-xl transition shadow ${
-                  currentAnswer === false ? 'ring-4 ring-red-600' : ''
-                }`}
-              >
-                ❌ SALAH
-              </button>
-            </div>
-          )}
 
-          {/* Essay */}
-          {currentQ.type === 'Essay' && (
-            <textarea
-              value={currentAnswer || ''}
-              onChange={(e) => setAnswers({ ...answers, [currentQuestion]: e.target.value })}
-              placeholder="Tulis jawaban kamu di sini..."
-              className="w-full h-40 p-4 border-4 border-gray-300 rounded-xl text-base focus:outline-none focus:border-blue-500 mb-4 shadow"
-            />
-          )}
+              <span className="text-gray-700 font-bold">
+                Soal {currentQuestion + 1} dari {questions.length}
+              </span>
 
-          {/* Button Next */}
-          {currentAnswer !== undefined && (
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={handleNext}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition shadow"
-              >
-                {currentQuestion < questions.length - 1 ? 'Selanjutnya →' : 'Selesai'}
-              </button>
+              {currentAnswer !== undefined ? (
+                <button
+                  onClick={handleNext}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl transition shadow-md"
+                >
+                  {currentQuestion < questions.length - 1 ? 'Selanjutnya →' : 'Selesai'}
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="bg-gray-400 text-gray-600 font-bold px-8 py-3 rounded-xl cursor-not-allowed opacity-50"
+                >
+                  {currentQuestion < questions.length - 1 ? 'Selanjutnya →' : 'Selesai'}
+                </button>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
+
+      <Footer />
     </div>
   )
 }

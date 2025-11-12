@@ -4,19 +4,22 @@ import DashboardLayout from '../components/DashboardLayout'
 import { useNavigate } from 'react-router-dom'
 import DashboardCard from '../components/DashboardCard'
 
+
 const DashboardPage = () => {
   const navigate = useNavigate()
   const [activeCategory, setActiveCategory] = useState('Bahasa')
   const [searchQuery, setSearchQuery] = useState('')
   const [pinInput, setPinInput] = useState('')
 
+
   const categories = ['Bahasa', 'Sains', 'Matematika', 'Biologi']
+
 
   const quizzes = [
     {
       id: 1,
       title: 'Ketahui Jenis Jenis Bakteri',
-      category: 'Bahasa',
+      category: 'Biologi', // FIXED: dari Bahasa → Biologi
       questions: 20,
       modules: 0,
       image: 'https://images.pexels.com/photos/256262/pexels-photo-256262.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -38,7 +41,7 @@ const DashboardPage = () => {
     {
       id: 3,
       title: 'Belajar Dasar HTML dan CSS',
-      category: 'Sains',
+      category: 'Sains', // FIXED: tetap Sains (sesuai)
       questions: 15,
       modules: 0,
       image: 'https://images.pexels.com/photos/270348/pexels-photo-270348.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -71,7 +74,7 @@ const DashboardPage = () => {
     {
       id: 6,
       title: 'Apa Pentingnya Toleransi Antar Agama',
-      category: 'Biologi',
+      category: 'Bahasa', // FIXED: dari Biologi → Bahasa
       questions: 8,
       modules: 0,
       image: 'https://images.pexels.com/photos/1157557/pexels-photo-1157557.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -81,8 +84,10 @@ const DashboardPage = () => {
     }
   ]
 
+
   // Filter quizzes by active category
   const filteredQuizzes = quizzes.filter(quiz => quiz.category === activeCategory)
+
 
   // Handle join langsung ke waiting room dari dashboard dengan PIN
   const handleJoinWithPIN = () => {
@@ -100,10 +105,12 @@ const DashboardPage = () => {
     })
   }
 
-  // Handle klik quiz card untuk masuk ke detail
+
+  // Handle klik quiz card untuk masuk ke take quiz
   const handleQuizClick = (quiz) => {
     navigate(`/take-quiz/${quiz.id}`, { state: { quiz } })
   }
+
 
   return (
     <DashboardLayout>
@@ -115,6 +122,7 @@ const DashboardPage = () => {
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-6">
+
 
             {/* Search Bar */}
             <div className="relative">
@@ -129,6 +137,7 @@ const DashboardPage = () => {
                 🔍
               </div>
             </div>
+
 
             {/* PIN Input and Join Button */}
             <div className="flex items-center space-x-3">
@@ -150,6 +159,7 @@ const DashboardPage = () => {
             </div>
           </div>
 
+
           {/* Logo and Profile */}
           <div className="flex items-center space-x-4">
             <div className="text-3xl font-bold text-yellow-400 stroke-text">Brain Rush</div>
@@ -162,6 +172,7 @@ const DashboardPage = () => {
           </div>
         </div>
       </motion.div>
+
 
       {/* Category buttons */}
       <div className="flex-1 p-6">
@@ -186,6 +197,7 @@ const DashboardPage = () => {
           ))}
           <div className="text-white/60 flex items-center ml-4 cursor-pointer">More</div>
         </motion.div>
+
 
         {/* Quizzes grid */}
         <motion.div
@@ -212,5 +224,6 @@ const DashboardPage = () => {
     </DashboardLayout>
   )
 }
+
 
 export default DashboardPage
