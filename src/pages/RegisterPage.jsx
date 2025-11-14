@@ -34,13 +34,14 @@ const RegisterPage = () => {
     setLoading(true)                                  // ← TAMBAHAN
 
     try {                                             // ← TAMBAHAN
-      await authService.register({                    // ← TAMBAHAN: API call
+      const response = await authService.register({  // ← TAMBAHAN: API call
         name: nama,
         email,
         password,
         passwordConfirm: konfirmasi
       })
-      navigate('/dashboard')                          // Arahkan ke dashboard setelah register
+      // Redirect ke halaman verify OTP dengan email
+      navigate('/verify-otp', { state: { email } })
     } catch (err) {                                   // ← TAMBAHAN
       setError(err.response?.data?.message || 'Registrasi gagal. Coba lagi.')
     } finally {                                       // ← TAMBAHAN

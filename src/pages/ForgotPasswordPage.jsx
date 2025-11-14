@@ -20,12 +20,16 @@ const ForgotPasswordPage = () => {
 
     try {
       const response = await authService.forgotPassword(email)
-      setMessage(response.message || 'Link reset password telah dikirim ke email Anda')
-      setEmail('')
+      setMessage(response.message || 'Kode OTP telah dikirim ke email Anda')
+      
+      // Redirect ke halaman reset password dengan email
+      setTimeout(() => {
+        navigate('/reset-password', { state: { email } })
+      }, 2000)
     } catch (err) {
       setError(
         err.response?.data?.message || 
-        'Gagal mengirim link reset password. Coba lagi.'
+        'Gagal mengirim kode OTP. Coba lagi.'
       )
     } finally {
       setLoading(false)
@@ -77,7 +81,7 @@ const ForgotPasswordPage = () => {
               disabled={loading}
               className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-300 hover:to-yellow-400 text-yellow-900 font-bold py-3 rounded-xl shadow-lg transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              {loading ? 'Mengirim...' : 'Kirim Link Reset'}
+              {loading ? 'Mengirim...' : 'Kirim Kode OTP'}
             </button>
           </form>
 

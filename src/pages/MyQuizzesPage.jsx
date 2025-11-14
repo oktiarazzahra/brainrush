@@ -90,8 +90,21 @@ const MyQuizzesPage = () => {
   const handleCoverUpload = e => {
     const file = e.target.files[0]
     if (file) {
-      console.log('📁 File selected:', file.name)
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Hanya file gambar yang diperbolehkan!')
+        return
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Ukuran file maksimal 5MB!')
+        return
+      }
+      
+      console.log('📁 File selected:', file.name, 'Size:', (file.size / 1024).toFixed(2), 'KB')
       setSelectedCoverFile(file)
+      
       const reader = new FileReader()
       reader.onloadend = () => {
         console.log('👀 Preview generated')
@@ -100,17 +113,49 @@ const MyQuizzesPage = () => {
       reader.readAsDataURL(file)
     }
   }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const file = e.dataTransfer.files[0]
+    if (file && file.type.startsWith('image/')) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Ukuran file maksimal 5MB!')
+        return
+      }
+      
+      console.log('📁 File dropped:', file.name)
+      setSelectedCoverFile(file)
+      
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setCoverPreview(reader.result)
+      }
+      reader.readAsDataURL(file)
+    } else {
+      alert('Hanya file gambar yang diperbolehkan!')
+    }
+  }
   
   const handleSaveCover = async () => {
-    if (!selectedCoverFile) {
+    if (!coverPreview) {
       alert('Pilih gambar dulu!');
       return;
     }
 
-
     try {
-      console.log('⏳ Uploading cover...', selectedQuizForCover)
-      await quizService.uploadCover(selectedQuizForCover, selectedCoverFile);
+      console.log('⏳ Uploading cover as base64...', selectedQuizForCover)
+      
+      // Send base64 data via updateQuiz
+      const quizData = { coverImage: coverPreview };
+      await quizService.updateQuiz(selectedQuizForCover, quizData);
+
       alert('Cover berhasil disimpan!');
       await fetchMyQuizzes();
       setShowCoverModal(false);
@@ -130,7 +175,8 @@ const MyQuizzesPage = () => {
     if (window.confirm('Hapus cover quiz?\n\nCover akan dihapus dan background akan kembali ke warna default.')) {
       try {
         console.log('⏳ Deleting cover...', selectedQuizForCover)
-        await quizService.deleteCover(selectedQuizForCover);
+        const quizData = { coverImage: null };
+        await quizService.updateQuiz(selectedQuizForCover, quizData);
         alert('Cover berhasil dihapus!');
         await fetchMyQuizzes();
         setShowCoverModal(false);
@@ -333,10 +379,9 @@ const MyQuizzesPage = () => {
                       >
                         {quiz.coverImage ? (
                           <img 
-                            src={`http://localhost:5000${quiz.coverImage}`} 
+                            src={quiz.coverImage} 
                             alt={quiz.title} 
                             className="w-full h-full object-cover"
-                            onLoad={() => console.log('✅ Image loaded:', quiz.coverImage)}
                             onError={(e) => {
                               console.error('❌ Image load error:', quiz.coverImage)
                               e.target.parentElement.classList.add('bg-gradient-to-r', 'from-blue-200', 'to-blue-300')
@@ -509,32 +554,87 @@ const MyQuizzesPage = () => {
                   ? 'Ubah atau Hapus Cover' 
                   : 'Tambah Cover Quiz'}
               </h2>
-              {coverPreview ? (
-                <div className="mb-6">
-                  <img src={coverPreview} alt="Preview" className="w-full h-48 object-cover rounded-xl" />
-                </div>
-              ) : quizzes.find(q => (q.id || q._id) === selectedQuizForCover)?.coverImage ? (
-                <div className="mb-6">
-                  <img 
-                    src={`http://localhost:5000${quizzes.find(q => (q.id || q._id) === selectedQuizForCover)?.coverImage}`} 
-                    alt="Current Cover" 
-                    className="w-full h-48 object-cover rounded-xl" 
-                  />
-                </div>
-              ) : (
-                <div className="mb-6 border-2 border-dashed border-gray-300 rounded-xl p-6 text-center bg-gray-50">
-                  <svg className="w-12 h-12 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              
+              {/* Preview Area */}
+              <div 
+                className="mb-6 border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-gray-50 hover:border-blue-400 transition-colors"
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+              >
+                {coverPreview ? (
+                  <div className="relative group">
+                    <img src={coverPreview} alt="Preview" className="w-full h-64 object-cover" />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <p className="text-white font-semibold">Preview Cover Baru</p>
+                    </div>
+                  </div>
+                ) : quizzes.find(q => (q.id || q._id) === selectedQuizForCover)?.coverImage ? (
+                  <div className="relative group">
+                    <img 
+                      src={quizzes.find(q => (q.id || q._id) === selectedQuizForCover)?.coverImage} 
+                      alt="Current Cover" 
+                      className="w-full h-64 object-cover" 
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <p className="text-white font-semibold">Cover Saat Ini</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-12 text-center">
+                    <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-gray-600 font-semibold mb-2">Drag & Drop gambar disini</p>
+                    <p className="text-gray-500 text-sm mb-4">atau klik tombol di bawah untuk pilih file</p>
+                    <p className="text-gray-400 text-xs">Format: JPG, PNG, GIF (Max 5MB)</p>
+                  </div>
+                )}
+              </div>
+              
+              {/* File Input Button */}
+              <label className="block mb-6">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleCoverUpload} 
+                  className="hidden"
+                  id="cover-upload-input"
+                />
+                <div className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold rounded-xl text-center cursor-pointer transition-all shadow-lg hover:shadow-xl">
+                  <svg className="w-5 h-5 inline-block mr-2 -mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
-                  <p className="text-gray-600 text-sm">Pilih gambar untuk cover</p>
+                  {coverPreview ? 'Pilih Gambar Lain' : 'Pilih Gambar'}
+                </div>
+              </label>
+              
+              {/* Selected File Info */}
+              {selectedCoverFile && (
+                <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <svg className="w-5 h-5 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-semibold text-blue-900">{selectedCoverFile.name}</p>
+                        <p className="text-xs text-blue-600">{(selectedCoverFile.size / 1024).toFixed(2)} KB</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedCoverFile(null)
+                        setCoverPreview(null)
+                      }}
+                      className="text-red-500 hover:text-red-700 font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
               )}
-              <input 
-                type="file" 
-                accept="image/*" 
-                onChange={handleCoverUpload} 
-                className="w-full mb-6 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500" 
-              />
+              
+              {/* Action Buttons */}
               <div className="flex gap-3">
                 <button 
                   onClick={() => setShowCoverModal(false)} 

@@ -1,12 +1,36 @@
 // src/components/AvatarUpload.jsx
-import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 
-const AvatarUpload = ({ avatar, onAvatarChange }) => {
-  const handleAvatarClick = () => {
-    console.log('Change avatar clicked')
-    if (onAvatarChange) {
-      onAvatarChange()
+const avatarStyles = [
+  'adventurer',
+  'avataaars',
+  'big-smile',
+  'bottts',
+  'fun-emoji',
+  'lorelei',
+  'micah',
+  'miniavs',
+  'pixel-art'
+]
+
+const AvatarUpload = ({ avatar, onChange }) => {
+  const [showPicker, setShowPicker] = useState(false)
+  const [selectedStyle, setSelectedStyle] = useState('avataaars')
+  const [seed, setSeed] = useState(Date.now().toString())
+
+  const handleGenerateAvatar = (style) => {
+    const newSeed = Date.now().toString()
+    setSeed(newSeed)
+    setSelectedStyle(style)
+    const newAvatar = `https://api.dicebear.com/7.x/${style}/svg?seed=${newSeed}`
+    if (onChange) {
+      onChange(newAvatar)
     }
+  }
+
+  const handleRandomize = () => {
+    handleGenerateAvatar(selectedStyle)
   }
 
   return (
@@ -30,7 +54,7 @@ const AvatarUpload = ({ avatar, onAvatarChange }) => {
           transition={{ type: "spring", stiffness: 300 }}
         />
         <motion.button
-          onClick={handleAvatarClick}
+          onClick={() => setShowPicker(!showPicker)}
           type="button"
           className="absolute bottom-0 right-0 bg-amber-500 hover:bg-amber-600 text-white rounded-full p-2 shadow-lg transition-colors"
           whileHover={{ scale: 1.1, rotate: 15 }}
@@ -42,6 +66,63 @@ const AvatarUpload = ({ avatar, onAvatarChange }) => {
           </svg>
         </motion.button>
       </motion.div>
+
+      <AnimatePresence>
+        {showPicker && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="bg-white rounded-lg shadow-xl p-4 mb-4 w-full max-w-md"
+          >
+            <h3 className="text-lg font-semibold text-blue-700 mb-3 text-center">Pilih Style Avatar</h3>
+            
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {avatarStyles.map((style) => (
+                <motion.button
+                  key={style}
+                  type="button"
+                  onClick={() => handleGenerateAvatar(style)}
+                  className={`p-2 rounded-lg border-2 transition-all ${
+                    selectedStyle === style
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-300 hover:border-blue-300'
+                  }`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <img
+                    src={`https://api.dicebear.com/7.x/${style}/svg?seed=preview${style}`}
+                    alt={style}
+                    className="w-16 h-16 mx-auto rounded-full bg-white"
+                  />
+                  <p className="text-xs mt-1 text-center text-gray-600">{style}</p>
+                </motion.button>
+              ))}
+            </div>
+
+            <motion.button
+              type="button"
+              onClick={handleRandomize}
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2 rounded-lg font-semibold hover:from-amber-600 hover:to-orange-600 transition-all"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              🎲 Randomize
+            </motion.button>
+
+            <motion.button
+              type="button"
+              onClick={() => setShowPicker(false)}
+              className="w-full mt-2 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-all"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              Selesai
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

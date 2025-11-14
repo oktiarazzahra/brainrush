@@ -2,15 +2,18 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
+
 const PlayerWaitingRoomPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { pin, playerName, avatar, fromDashboard } = location.state || {}
 
+
   // Simulasi daftar pemain yang join (termasuk diri sendiri)
   const [players, setPlayers] = useState([
     { id: 1, name: playerName || 'Kamu', avatar: avatar?.emoji || '👽', color: avatar?.color || 'bg-blue-500' }
   ])
+
 
   // Simulasi: dalam 2 detik, 2 player lain join
   useEffect(() => {
@@ -24,6 +27,7 @@ const PlayerWaitingRoomPage = () => {
     return () => clearTimeout(timer)
   }, [])
 
+
   // Simulasi perubahan status: setelah 10 detik quiz dimulai
   const [quizStarted, setQuizStarted] = useState(false)
   useEffect(() => {
@@ -31,20 +35,19 @@ const PlayerWaitingRoomPage = () => {
     return () => clearTimeout(timer)
   }, [])
 
+
   useEffect(() => {
     if (quizStarted) {
       navigate('/play', { state: { pin, playerName, avatar } })
     }
   }, [quizStarted, navigate, pin, playerName, avatar])
 
-  // Tombol keluar dinamis
+
+  // Tombol keluar - SELALU KE HOME
   const handleExit = () => {
-    if (fromDashboard) {
-      navigate('/dashboard')
-    } else {
-      navigate('/')
-    }
+    navigate('/')
   }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-blue-400 flex flex-col">
@@ -63,6 +66,7 @@ const PlayerWaitingRoomPage = () => {
           </button>
         </div>
       </div>
+
 
       {/* MAIN CONTENT */}
       <div className="flex-1 flex items-center justify-center p-8">
@@ -85,6 +89,7 @@ const PlayerWaitingRoomPage = () => {
               </div>
             )}
 
+
             <div className="mb-8">
               <h3 className="text-xl font-bold text-gray-700 mb-4">Players ({players.length})</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -104,6 +109,7 @@ const PlayerWaitingRoomPage = () => {
               </div>
             </div>
 
+
             <div className="text-center text-gray-600">
               {quizStarted ? (
                 <p className="text-lg font-semibold">Quiz sedang dimulai ...</p>
@@ -120,5 +126,6 @@ const PlayerWaitingRoomPage = () => {
     </div>
   )
 }
+
 
 export default PlayerWaitingRoomPage

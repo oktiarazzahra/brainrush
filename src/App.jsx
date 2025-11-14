@@ -4,8 +4,9 @@ import JoinGamePage from './pages/JoinGamePage'
 import PlayerWaitingRoomPage from './pages/PlayerWaitingRoomPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
-import ForgotPasswordPage from './pages/ForgotPasswordPage'  // ✅ TAMBAHAN BARU
-import ResetPasswordPage from './pages/ResetPasswordPage'      // ✅ TAMBAHAN BARU
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
+import VerifyOTPPage from './pages/VerifyOTPPage'
 import DashboardPage from './pages/DashboardPage'
 import ProfilePage from './pages/ProfilePage'
 import MyQuizzesPage from './pages/MyQuizzesPage'
@@ -27,8 +28,9 @@ function App() {
         <Route path="/" element={<HomePageWrapper />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />        {/* ✅ BARU */}
-        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />  {/* ✅ BARU */}
+        <Route path="/verify-otp" element={<VerifyOTPPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Dashboard Routes */}
         <Route path="/dashboard" element={<DashboardPage />} />

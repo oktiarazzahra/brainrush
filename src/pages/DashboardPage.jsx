@@ -1,93 +1,89 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import DashboardLayout from '../components/DashboardLayout'
 import { useNavigate } from 'react-router-dom'
 import DashboardCard from '../components/DashboardCard'
+import { quizService } from '../services/quizService'
+import { authService } from '../services/authService'
 
 
 const DashboardPage = () => {
   const navigate = useNavigate()
-  const [activeCategory, setActiveCategory] = useState('Bahasa')
+  const [activeCategory, setActiveCategory] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [pinInput, setPinInput] = useState('')
+  const [quizzes, setQuizzes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [userData, setUserData] = useState(null)
 
+  useEffect(() => {
+    fetchData()
+  }, [])
 
-  const categories = ['Bahasa', 'Sains', 'Matematika', 'Biologi']
-
-
-  const quizzes = [
-    {
-      id: 1,
-      title: 'Ketahui Jenis Jenis Bakteri',
-      category: 'Biologi', // FIXED: dari Bahasa → Biologi
-      questions: 20,
-      modules: 0,
-      image: 'https://images.pexels.com/photos/256262/pexels-photo-256262.jpeg?auto=compress&cs=tinysrgb&w=400',
-      bgColor: 'from-blue-400 to-purple-500',
-      textColor: 'text-blue-900',
-      author: 'Brain_Rush'
-    },
-    {
-      id: 2,
-      title: 'Belajar Pembagian dan Perkalian',
-      category: 'Matematika',
-      questions: 25,
-      modules: 0,
-      image: 'https://images.pexels.com/photos/3729557/pexels-photo-3729557.jpeg?auto=compress&cs=tinysrgb&w=400',
-      bgColor: 'from-green-400 to-blue-500',
-      textColor: 'text-green-900',
-      author: 'Brain_Rush'
-    },
-    {
-      id: 3,
-      title: 'Belajar Dasar HTML dan CSS',
-      category: 'Sains', // FIXED: tetap Sains (sesuai)
-      questions: 15,
-      modules: 0,
-      image: 'https://images.pexels.com/photos/270348/pexels-photo-270348.jpeg?auto=compress&cs=tinysrgb&w=400',
-      bgColor: 'from-purple-500 to-pink-500',
-      textColor: 'text-purple-900',
-      author: 'Brain_Rush'
-    },
-    {
-      id: 4,
-      title: 'Belajar Fisika Dasar',
-      category: 'Sains',
-      questions: 20,
-      modules: 0,
-      image: 'https://images.pexels.com/photos/2280571/pexels-photo-2280571.jpeg?auto=compress&cs=tinysrgb&w=400',
-      bgColor: 'from-gray-400 to-blue-400',
-      textColor: 'text-gray-900',
-      author: 'Brain_Rush'
-    },
-    {
-      id: 5,
-      title: 'Belajar Bahasa Asing',
-      category: 'Bahasa',
-      questions: 10,
-      modules: 0,
-      image: 'https://images.pexels.com/photos/159866/books-book-pages-read-literature-159866.jpeg?auto=compress&cs=tinysrgb&w=400',
-      bgColor: 'from-yellow-400 to-orange-500',
-      textColor: 'text-yellow-900',
-      author: 'Brain_Rush'
-    },
-    {
-      id: 6,
-      title: 'Apa Pentingnya Toleransi Antar Agama',
-      category: 'Bahasa', // FIXED: dari Biologi → Bahasa
-      questions: 8,
-      modules: 0,
-      image: 'https://images.pexels.com/photos/1157557/pexels-photo-1157557.jpeg?auto=compress&cs=tinysrgb&w=400',
-      bgColor: 'from-teal-400 to-blue-500',
-      textColor: 'text-teal-900',
-      author: 'Brain_Rush'
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const [quizzesData, profileData] = await Promise.all([
+        quizService.getPublishedQuizzes(),
+        authService.getProfile()
+      ])
+      setQuizzes(quizzesData.quizzes || [])
+      setUserData(profileData.data.user)
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      if (error.message.includes('401')) {
+        authService.logout()
+        navigate('/login')
+      }
+    } finally {
+      setLoading(false)
     }
+  }
+
+  // Get unique categories from quizzes
+  const categories = ['All', ...new Set(quizzes.map(q => q.category).filter(Boolean))]
+
+  // Filter quizzes by category and search
+  const filteredQuizzes = quizzes.filter(quiz => {
+    const matchCategory = activeCategory === 'All' || quiz.category === activeCategory
+    const matchSearch = quiz.title.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchCategory && matchSearch
+  })
+
+  // Get avatar emoji from stored avatar
+  const getAvatarEmoji = () => {
+    if (!userData || !userData.avatar) return '🤖'
+    const avatars = ['🍓', '🤖', '👽', '🦄', '🦁', '🐸', '🐺', '🐬', '🦉', '🌟']
+    const match = userData.avatar.match(/avatar-(\d+)/)
+    if (match) {
+      const index = parseInt(match[1])
+      return avatars[index] || '🤖'
+    }
+    return '🤖'
+  }
+
+  // Color gradients for quiz cards
+  const colorGradients = [
+    'from-blue-400 to-purple-500',
+    'from-green-400 to-blue-500',
+    'from-purple-500 to-pink-500',
+    'from-yellow-400 to-orange-500',
+    'from-red-400 to-pink-500',
+    'from-teal-400 to-blue-500',
+    'from-indigo-400 to-purple-500',
+    'from-pink-400 to-rose-500'
   ]
 
-
-  // Filter quizzes by active category
-  const filteredQuizzes = quizzes.filter(quiz => quiz.category === activeCategory)
-
+  const textColors = [
+    'text-blue-900',
+    'text-green-900',
+    'text-purple-900',
+    'text-yellow-900',
+    'text-red-900',
+    'text-teal-900',
+    'text-indigo-900',
+    'text-pink-900'
+  ]
 
   // Handle join langsung ke waiting room dari dashboard dengan PIN
   const handleJoinWithPIN = () => {
@@ -163,12 +159,12 @@ const DashboardPage = () => {
           {/* Logo and Profile */}
           <div className="flex items-center space-x-4">
             <div className="text-3xl font-bold text-yellow-400 stroke-text">Brain Rush</div>
-            <img
-              src="https://api.dicebear.com/7.x/pixel-art/svg?seed=sunflower99"
-              alt="Profile"
-              className="h-11 w-11 rounded-full border-2 border-white cursor-pointer hover:scale-110 transition"
+            <div
+              className="h-11 w-11 rounded-full border-2 border-white cursor-pointer hover:scale-110 transition bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-2xl"
               onClick={() => navigate('/profile')}
-            />
+            >
+              {loading ? '⏳' : getAvatarEmoji()}
+            </div>
           </div>
         </div>
       </motion.div>
@@ -176,50 +172,68 @@ const DashboardPage = () => {
 
       {/* Category buttons */}
       <div className="flex-1 p-6">
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="flex space-x-4 mb-6"
-        >
-          {categories.map(category => (
-            <motion.button
-              key={category}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setActiveCategory(category)}
-              className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 ${
-                activeCategory === category ? 'bg-white text-blue-600 shadow-lg' : 'bg-white/10 text-white hover:bg-white/20'
-              }`}
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-white border-r-transparent mb-4"></div>
+              <p className="text-white text-xl font-semibold">Loading quizzes...</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="flex space-x-4 mb-6 overflow-x-auto pb-2"
             >
-              {category}
-            </motion.button>
-          ))}
-          <div className="text-white/60 flex items-center ml-4 cursor-pointer">More</div>
-        </motion.div>
+              {categories.map(category => (
+                <motion.button
+                  key={category}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setActiveCategory(category)}
+                  className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 whitespace-nowrap ${
+                    activeCategory === category ? 'bg-white text-blue-600 shadow-lg' : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  {category}
+                </motion.button>
+              ))}
+            </motion.div>
 
 
-        {/* Quizzes grid */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-        >
-          {filteredQuizzes.map(quiz => (
-            <DashboardCard
-              key={quiz.id}
-              title={quiz.title}
-              author={quiz.author}
-              questions={quiz.questions}
-              modules={quiz.modules}
-              image={quiz.image}
-              bgColor={quiz.bgColor}
-              textColor={quiz.textColor}
-              onClick={() => handleQuizClick(quiz)}
-            />
-          ))}
-        </motion.div>
+            {/* Quizzes grid */}
+            {filteredQuizzes.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="text-6xl mb-4">📚</div>
+                <p className="text-white text-xl font-semibold">No quizzes found</p>
+                <p className="text-white/70 mt-2">Try selecting a different category or create your own quiz!</p>
+              </div>
+            ) : (
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              >
+                {filteredQuizzes.map((quiz, index) => (
+                  <DashboardCard
+                    key={quiz._id}
+                    title={quiz.title}
+                    author={quiz.createdBy?.name || 'Anonymous'}
+                    questions={quiz.questions?.length || 0}
+                    modules={0}
+                    image={quiz.coverImage || `https://images.pexels.com/photos/${256262 + index}/pexels-photo.jpeg?auto=compress&cs=tinysrgb&w=400`}
+                    bgColor={colorGradients[index % colorGradients.length]}
+                    textColor={textColors[index % textColors.length]}
+                    onClick={() => handleQuizClick(quiz)}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </>
+        )}
       </div>
     </DashboardLayout>
   )

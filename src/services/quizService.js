@@ -8,6 +8,24 @@ const getAuthHeader = () => {
 };
 
 export const quizService = {
+  getPublishedQuizzes: async () => {
+    try {
+      const response = await fetch(`${API_URL}/quizzes/published`, {
+        headers: getAuthHeader(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching published quizzes:', error);
+      throw error;
+    }
+  },
+
   getMyQuizzes: async () => {
     try {
       const response = await fetch(`${API_URL}/quizzes/my-quizzes`, {
@@ -147,47 +165,49 @@ export const quizService = {
     }
   },
 
-  uploadCover: async (quizId, file) => {
-    try {
-      const formData = new FormData();
-      formData.append('cover', file);
+  // DEPRECATED: Use updateQuiz with coverImage field instead
+  // uploadCover: async (quizId, file) => {
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append('cover', file);
 
-      const response = await fetch(`${API_URL}/quizzes/${quizId}/cover`, {
-        method: 'PUT',
-        headers: getAuthHeader(),
-        body: formData,
-      });
+  //     const response = await fetch(`${API_URL}/quizzes/${quizId}/cover`, {
+  //       method: 'PUT',
+  //       headers: getAuthHeader(),
+  //       body: formData,
+  //     });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+  //     if (!response.ok) {
+  //       throw new Error(`HTTP error! status: ${response.status}`);
+  //     }
 
-      const data = await response.json();
-      console.log('✅ Cover uploaded:', data);
-      return data;
-    } catch (error) {
-      console.error('❌ Error uploading cover:', error);
-      throw error;
-    }
-  },
+  //     const data = await response.json();
+  //     console.log('✅ Cover uploaded:', data);
+  //     return data;
+  //   } catch (error) {
+  //     console.error('❌ Error uploading cover:', error);
+  //     throw error;
+  //   }
+  // },
 
-  deleteCover: async (quizId) => {
-    try {
-      const response = await fetch(`${API_URL}/quizzes/${quizId}/cover`, {
-        method: 'DELETE',
-        headers: getAuthHeader(),
-      });
+  // DEPRECATED: Use updateQuiz with coverImage: null instead
+  // deleteCover: async (quizId) => {
+  //   try {
+  //     const response = await fetch(`${API_URL}/quizzes/${quizId}/cover`, {
+  //       method: 'DELETE',
+  //       headers: getAuthHeader(),
+  //     });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+  //     if (!response.ok) {
+  //       throw new Error(`HTTP error! status: ${response.status}`);
+  //     }
 
-      const data = await response.json();
-      console.log('✅ Cover deleted:', data);
-      return data;
-    } catch (error) {
-      console.error('❌ Error deleting cover:', error);
-      throw error;
-    }
-  },
+  //     const data = await response.json();
+  //     console.log('✅ Cover deleted:', data);
+  //     return data;
+  //   } catch (error) {
+  //     console.error('❌ Error deleting cover:', error);
+  //     throw error;
+  //   }
+  // },
 };

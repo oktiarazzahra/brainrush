@@ -1,150 +1,261 @@
 // src/pages/ProfilePage.jsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import Header from '../components/Header'
 import Footer from '../components/Footer'
-import AvatarUpload from '../components/AvatarUpload'
-
-const user = {
-  avatar: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=sunflower99',
-  username: 'tiiara_dina10',
-  name: 'sunflower99',
-  kelas: '3 SMA',
-  bahasa: 'English'
-}
+import AvatarSelector from '../components/AvatarSelector'
+import { authService } from '../services/authService'
 
 const ProfilePage = () => {
   const navigate = useNavigate()
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [userData, setUserData] = useState(null)
+  const [selectedAvatar, setSelectedAvatar] = useState(0)
   const [formData, setFormData] = useState({
-    username: user.username,
-    name: user.name,
-    kelas: user.kelas,
-    bahasa: user.bahasa
+    name: '',
+    email: ''
   })
+
+  useEffect(() => {
+    if (!authService.isAuthenticated()) {
+      navigate('/login')
+      return
+    }
+    fetchProfile()
+  }, [])
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true)
+      const response = await authService.getProfile()
+      const user = response.data.user
+      setUserData(user)
+      setFormData({
+        name: user.name || '',
+        email: user.email || ''
+      })
+      // Extract avatar index from stored avatar or default to 0
+      if (user.avatar && user.avatar.includes('avatar-')) {
+        const avatarIndex = parseInt(user.avatar.split('avatar-')[1]) || 0
+        setSelectedAvatar(avatarIndex)
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Gagal memuat profile')
+      if (err.response?.status === 401) {
+        authService.logout()
+        navigate('/login')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log('Profile updated:', formData)
+    setError('')
+    setSuccess('')
+
+    if (!formData.name.trim()) {
+      setError('Nama tidak boleh kosong')
+      return
+    }
+
+    try {
+      setSaving(true)
+      const response = await authService.updateProfile({
+        name: formData.name,
+        avatar: `avatar-${selectedAvatar}`
+      })
+      setSuccess('Profile berhasil diupdate!')
+      setUserData(response.data.user)
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err) {
+      setError(err.response?.data?.message || 'Gagal update profile')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleLogout = () => {
-    navigate('/')
-  }
-
-  const handleAvatarChange = () => {
-    console.log('Avatar change requested')
-  }
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
-  }
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } }
+    authService.logout()
+    navigate('/login')
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-sky-400 via-blue-500 to-blue-600">
-      <div className="bg-gradient-to-r from-sky-600 to-blue-800 px-6 py-4 shadow-lg">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500">
+      {/* Header */}
+      <motion.div
+        className="bg-gradient-to-r from-indigo-700 to-purple-700 px-6 py-5 shadow-2xl"
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ type: "spring", stiffness: 100 }}
+      >
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <motion.button
             onClick={() => navigate("/dashboard")}
-            className="text-white hover:text-sky-100 transition-colors flex items-center gap-2"
-            whileHover={{ scale: 1.1, x: -3 }}
+            className="text-white hover:text-yellow-300 transition-colors flex items-center gap-2 font-semibold"
+            whileHover={{ scale: 1.05, x: -5 }}
             whileTap={{ scale: 0.95 }}
           >
-            <span className="text-2xl font-bold">{'<'}</span>
-            <span>Back</span>
+            <span className="text-3xl">←</span>
+            <span className="text-lg">Back</span>
           </motion.button>
-          <motion.h1
-            className="text-2xl font-bold text-white"
-            variants={itemVariants}
-          >
-            Profile
-          </motion.h1>
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">
+            👤 My Profile
+          </h1>
+          <div className="w-20"></div> {/* Spacer for centering */}
         </div>
-      </div>
+      </motion.div>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-8 py-6">
-        <motion.div
-          className="w-full max-w-xl bg-white rounded-xl shadow-lg p-8"
-          initial="hidden"
-          animate="visible"
-          variants={containerVariants}
-        >
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8">
+        {loading ? (
           <motion.div
-            className="flex flex-col items-center mb-6"
-            variants={itemVariants}
+            className="bg-white/90 backdrop-blur rounded-2xl shadow-2xl p-12 text-center"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
           >
-            <AvatarUpload
-              avatar={formData.avatar || user.avatar}
-              onChange={handleAvatarChange}
-            />
-            <h2 className="text-lg font-semibold text-blue-700 mt-2">{formData.username}</h2>
+            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-purple-600 border-r-transparent mb-4"></div>
+            <p className="text-xl font-semibold text-purple-600">Loading your profile...</p>
           </motion.div>
-          <form onSubmit={handleSubmit}>
-            <motion.div
-              className="grid grid-cols-1 gap-y-4"
-              variants={itemVariants}
+        ) : error && !userData ? (
+          <motion.div
+            className="bg-white/90 backdrop-blur rounded-2xl shadow-2xl p-12 text-center max-w-md"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <div className="text-6xl mb-4">😢</div>
+            <p className="text-xl font-semibold text-red-600 mb-6">{error}</p>
+            <button
+              onClick={() => navigate('/login')}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 rounded-xl font-bold hover:shadow-xl transition-all transform hover:scale-105"
             >
+              Go to Login
+            </button>
+          </motion.div>
+        ) : userData ? (
+          <motion.div
+            className="w-full max-w-2xl bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-8 md:p-10"
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            {/* Success/Error Messages */}
+            {error && (
+              <motion.div
+                className="mb-6 p-4 bg-red-100 border-2 border-red-400 text-red-700 rounded-xl font-semibold text-center"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                ❌ {error}
+              </motion.div>
+            )}
+
+            {success && (
+              <motion.div
+                className="mb-6 p-4 bg-green-100 border-2 border-green-400 text-green-700 rounded-xl font-semibold text-center"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                ✅ {success}
+              </motion.div>
+            )}
+
+            {/* Avatar Selection */}
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-purple-700 mb-4">Choose Your Avatar</h2>
+              <AvatarSelector
+                selectedAvatar={selectedAvatar}
+                onAvatarSelect={setSelectedAvatar}
+              />
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              <motion.div
+                className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white text-center shadow-lg"
+                whileHover={{ scale: 1.05 }}
+              >
+                <div className="text-4xl mb-2">🎮</div>
+                <div className="text-3xl font-bold">{userData.totalGamesPlayed || 0}</div>
+                <div className="text-sm opacity-90">Games Played</div>
+              </motion.div>
+
+              <motion.div
+                className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white text-center shadow-lg"
+                whileHover={{ scale: 1.05 }}
+              >
+                <div className="text-4xl mb-2">🏆</div>
+                <div className="text-3xl font-bold">{userData.totalScore || 0}</div>
+                <div className="text-sm opacity-90">Total Score</div>
+              </motion.div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Email Field */}
               <div>
-                <label className="block font-medium text-blue-800">Nama Lengkap</label>
+                <label className="block text-sm font-bold text-purple-700 mb-2">
+                  📧 Email Address
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  disabled
+                  className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-300 rounded-xl text-gray-600 cursor-not-allowed font-medium"
+                />
+                <p className="text-xs text-gray-500 mt-1 italic">Email cannot be changed</p>
+              </div>
+
+              {/* Name Field */}
+              <div>
+                <label className="block text-sm font-bold text-purple-700 mb-2">
+                  ✏️ Full Name
+                </label>
                 <input
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className="mt-1 w-full px-4 py-2 rounded-lg border border-blue-300 focus:ring-2 focus:ring-blue-400"
+                  disabled={saving}
+                  placeholder="Enter your name"
+                  className="w-full px-4 py-3 bg-white border-2 border-purple-300 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-500 disabled:opacity-50 font-medium transition-all"
+                  required
                 />
               </div>
-              <div>
-                <label className="block font-medium text-blue-800">Kelas</label>
-                <input
-                  type="text"
-                  name="kelas"
-                  value={formData.kelas}
-                  onChange={handleChange}
-                  className="mt-1 w-full px-4 py-2 rounded-lg border border-blue-300 focus:ring-2 focus:ring-blue-400"
-                />
+
+              {/* Action Buttons */}
+              <div className="flex gap-4 pt-4">
+                <motion.button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  whileHover={{ scale: saving ? 1 : 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {saving ? '💾 Saving...' : '💾 Save Changes'}
+                </motion.button>
+
+                <motion.button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  🚪 Logout
+                </motion.button>
               </div>
-              <div>
-                <label className="block font-medium text-blue-800">Bahasa</label>
-                <input
-                  type="text"
-                  name="bahasa"
-                  value={formData.bahasa}
-                  onChange={handleChange}
-                  className="mt-1 w-full px-4 py-2 rounded-lg border border-blue-300 focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-            </motion.div>
-            <motion.div
-              className="mt-6 flex gap-4 justify-end"
-              variants={itemVariants}
-            >
-              <button
-                type="submit"
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-800 transition"
-              >
-                Simpan
-              </button>
-              <button
-                type="button"
-                className="bg-gray-200 text-blue-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition"
-                onClick={handleLogout}
-              >
-                Logout
-              </button>
-            </motion.div>
-          </form>
-        </motion.div>
+            </form>
+          </motion.div>
+        ) : null}
       </main>
 
       <Footer />
