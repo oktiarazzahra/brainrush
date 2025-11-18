@@ -19,6 +19,7 @@ import QuizReviewPage from './pages/QuizReviewPage'
 import WaitingRoomPage from './pages/WaitingRoomPage'
 import QuizResultsPage from './pages/QuizResultsPage'
 import EditQuizPage from './pages/EditQuizPage'
+import TakeQuizPage from './pages/TakeQuizPage'
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
         <Route path="/my-quizzes" element={<MyQuizzesPage />} />
         <Route path="/create-quiz" element={<CreateQuizPage />} />
         <Route path="/edit-quiz/:id" element={<EditQuizPage />} />
+        <Route path="/take-quiz/:quizId" element={<TakeQuizPage />} />
 
         {/* Waiting Room Route */}
         <Route path="/waiting-room" element={<WaitingRoomPage />} />

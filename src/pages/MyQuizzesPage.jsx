@@ -67,16 +67,28 @@ const MyQuizzesPage = () => {
     setOpenMenuId(null)
   }
   
-  const handleAkses = (quizId, currentAccess) => { 
+  const handleAkses = (quizId, isPublic) => { 
     setSelectedQuizId(quizId)
-    setSelectedQuizAccess(currentAccess || 'public')
+    setSelectedQuizAccess(isPublic ? 'public' : 'private')
     setShowAccessModal(true)
     setOpenMenuId(null)
   }
   
-  const handleSaveAccess = () => { 
-    alert(`Akses quiz berhasil diubah ke ${selectedQuizAccess}!`)
-    setShowAccessModal(false)
+  const handleSaveAccess = async () => { 
+    try {
+      if (selectedQuizAccess === 'public') {
+        await quizService.setPublic(selectedQuizId)
+      } else {
+        await quizService.setPrivate(selectedQuizId)
+      }
+      
+      await fetchMyQuizzes()
+      alert(`Akses quiz berhasil diubah ke ${selectedQuizAccess === 'public' ? 'Public' : 'Private'}!`)
+      setShowAccessModal(false)
+    } catch (error) {
+      console.error('Error updating quiz access:', error)
+      alert('Gagal mengubah akses quiz. Coba lagi.')
+    }
   }
   
   const handleTambahCover = quizId => { 
@@ -266,7 +278,6 @@ const MyQuizzesPage = () => {
     if (activeTab === 'My Quiz') return (
       <>
         <button onClick={e => { e.stopPropagation(); handleBuatLive(quizId) }} className="w-full px-3 py-2 text-left hover:bg-blue-50 text-blue-600">Buat Live</button>
-        <button onClick={e => { e.stopPropagation(); handleAkses(quizId, quiz.access) }} className="w-full px-3 py-2 text-left hover:bg-gray-100 transition">Akses</button>
         <button onClick={e => { e.stopPropagation(); handleUnpublish(quizId, quiz.title) }} className="w-full px-3 py-2 text-left hover:bg-orange-50 text-orange-600">Unpublish</button>
       </>
     )

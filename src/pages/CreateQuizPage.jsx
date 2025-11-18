@@ -115,7 +115,15 @@ const CreateQuizPage = () => {
 
   const removeOption = (i, idx = activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
-    if (questions[idx].options.length <= 2) {
+    const currentQuestion = questions[idx]
+    
+    // Pilihan Ganda harus selalu 4 opsi
+    if (currentQuestion.type === 'Pilihan Ganda' && currentQuestion.options.length <= 4) {
+      alert('Pilihan Ganda harus memiliki 4 pilihan!')
+      return
+    }
+    
+    if (currentQuestion.options.length <= 2) {
       alert('Minimal harus ada 2 pilihan!')
       return
     }
@@ -518,7 +526,7 @@ const CreateQuizPage = () => {
                       >
                         {q.correct[i] && <span className="text-white font-bold text-lg">✓</span>}
                       </div>
-                      {q.options.length > 2 && (
+                      {q.type !== 'Pilihan Ganda' && q.options.length > 2 && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
@@ -533,7 +541,7 @@ const CreateQuizPage = () => {
                   ))}
                 </div>
 
-                {q.options.length < 4 && (
+                {q.type !== 'Pilihan Ganda' && q.options.length < 4 && (
                   <button
                     onClick={addOption}
                     className="text-blue-600 hover:text-blue-800 font-semibold text-sm mt-4"

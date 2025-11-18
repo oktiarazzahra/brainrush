@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
-import Footer from '../components/Footer'
+import { quizService } from '../services/quizService'
 
 const TakeQuizPage = () => {
   const navigate = useNavigate()
@@ -12,56 +12,119 @@ const TakeQuizPage = () => {
   const [answers, setAnswers] = useState({})
   const [quizFinished, setQuizFinished] = useState(false)
   const [score, setScore] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [quiz, setQuiz] = useState(null)
+  const [questions, setQuestions] = useState([])
 
-  // Dummy questions - lengkap dengan semua tipe
-  const questions = [
-    {
-      id: 1,
-      question: 'Apa lambang kimia untuk oksigen?',
-      image: 'https://images.unsplash.com/photo-1603126857599-f6e157fa2fe6?w=600&h=300&fit=crop',
-      type: 'Pilihan Ganda',
-      options: ['O', 'O2', 'H2O', 'CO2'],
-      correctAnswer: [0],
-      multi: false
-    },
-    {
-      id: 2,
-      question: 'Pilih semua yang termasuk gas mulia:',
-      image: null,
-      type: 'Pilihan Ganda',
-      options: ['Helium', 'Oksigen', 'Neon', 'Nitrogen'],
-      correctAnswer: [0, 2],
-      multi: true
-    },
-    {
-      id: 3,
-      question: 'Air adalah senyawa H2O',
-      image: null,
-      type: 'Benar Salah',
-      correctAnswer: true
-    },
-    {
-      id: 4,
-      question: 'Apa fungsi katalis dalam reaksi kimia?',
-      image: null,
-      type: 'Pilihan Ganda',
-      options: ['Mempercepat reaksi', 'Memperlambat reaksi', 'Menghasilkan energi', 'Menyerap panas'],
-      correctAnswer: [0],
-      multi: false
-    },
-    {
-      id: 5,
-      question: 'Sebutkan rumus senyawa NaCl!',
-      image: null,
-      type: 'Isian',
-      acceptedAnswers: ['NaCl', 'Natrium Klorida', 'garam dapur'],
-      correctAnswer: []
+  // Fetch quiz data from API
+  useEffect(() => {
+    const fetchQuiz = async () => {
+      try {
+        setLoading(true)
+        console.log('Fetching quiz with ID:', quizId)
+        const response = await quizService.getQuizById(quizId)
+        console.log('Quiz response:', response)
+        const quizData = response
+        setQuiz(quizData)
+
+        // Format questions from database to UI format
+        const formattedQuestions = quizData.questions.map((q, index) => {
+          // Normalize question type
+          let questionType = q.questionType
+          if (questionType === 'multiple-choice') questionType = 'Pilihan Ganda'
+          if (questionType === 'multiple-answer') questionType = 'Pilihan Ganda'
+          if (questionType === 'true-false') questionType = 'Benar Salah'
+          if (questionType === 'short-answer') questionType = 'Isian'
+
+          // Determine if multiple answers are allowed
+          const isMulti = Array.isArray(q.correctAnswer) && q.correctAnswer.length > 1
+
+          return {
+            id: index + 1,
+            question: q.question,
+            image: q.imageData || null, // Use base64 image data
+            type: questionType,
+            options: q.options || [],
+            correctAnswer: q.correctAnswer,
+            acceptedAnswers: q.acceptedAnswers || [],
+            multi: isMulti,
+            timeLimit: q.timeLimit || 30
+          }
+        })
+
+        console.log('Formatted questions:', formattedQuestions)
+        setQuestions(formattedQuestions)
+        setLoading(false)
+      } catch (err) {
+        console.error('Error fetching quiz:', err)
+        setError('Gagal memuat quiz. Silakan coba lagi.')
+        setLoading(false)
+      }
     }
-  ]
+
+    if (quizId) {
+      fetchQuiz()
+    } else {
+      console.error('No quizId provided')
+      setError('Quiz ID tidak ditemukan')
+      setLoading(false)
+    }
+  }, [quizId])
 
   const COLORS = ['bg-pink-200', 'bg-green-200', 'bg-yellow-100', 'bg-blue-200']
   const currentQ = questions[currentQuestion]
   const currentAnswer = answers[currentQuestion]
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-blue-200 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-16 w-16 animate-spin rounded-full border-4 border-solid border-white border-r-transparent mb-4"></div>
+          <p className="text-white text-2xl font-bold">Loading Quiz...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-blue-200 flex items-center justify-center p-8">
+        <div className="bg-white rounded-2xl p-12 max-w-md w-full shadow-2xl text-center">
+          <div className="text-6xl mb-6">❌</div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">Oops!</h1>
+          <p className="text-gray-600 mb-8">{error}</p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition shadow-md"
+          >
+            Kembali ke Dashboard
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // No questions found
+  if (!questions || questions.length === 0) {
+    return (
+      <div className="min-h-screen bg-blue-200 flex items-center justify-center p-8">
+        <div className="bg-white rounded-2xl p-12 max-w-md w-full shadow-2xl text-center">
+          <div className="text-6xl mb-6">📝</div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">Quiz Kosong</h1>
+          <p className="text-gray-600 mb-8">Quiz ini belum memiliki soal.</p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition shadow-md"
+          >
+            Kembali ke Dashboard
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // Calculate score
   const calculateScore = () => {
@@ -71,14 +134,18 @@ const TakeQuizPage = () => {
 
       if (q.type === 'Pilihan Ganda' && q.multi) {
         // Multiple choice - harus exact match
-        const correctArr = q.correctAnswer.sort()
+        const correctArr = Array.isArray(q.correctAnswer) 
+          ? q.correctAnswer.sort() 
+          : [q.correctAnswer].sort()
         const userArr = Array.isArray(userAnswer) ? userAnswer.sort() : []
         if (JSON.stringify(correctArr) === JSON.stringify(userArr)) {
           correct++
         }
       } else if (q.type === 'Pilihan Ganda' && !q.multi) {
         // Single choice
-        if (Array.isArray(userAnswer) && userAnswer[0] === q.correctAnswer[0]) {
+        const correctIndex = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer
+        const userIndex = Array.isArray(userAnswer) ? userAnswer[0] : userAnswer
+        if (userIndex === correctIndex) {
           correct++
         }
       } else if (q.type === 'Benar Salah') {
@@ -88,7 +155,7 @@ const TakeQuizPage = () => {
         }
       } else if (q.type === 'Isian') {
         // Short answer - case insensitive
-        if (userAnswer) {
+        if (userAnswer && q.acceptedAnswers && q.acceptedAnswers.length > 0) {
           const isCorrect = q.acceptedAnswers.some(
             ans => ans.toLowerCase() === userAnswer.toLowerCase().trim()
           )
@@ -181,7 +248,6 @@ const TakeQuizPage = () => {
             </div>
           </div>
         </div>
-        <Footer />
       </div>
     )
   }
@@ -194,7 +260,7 @@ const TakeQuizPage = () => {
         <div className="flex items-center justify-between px-8 pt-6 pb-4">
           <div>
             <h1 className="text-3xl font-bold text-blue-900 drop-shadow-lg">
-              {quizData?.title || 'Quiz'}
+              {quiz?.title || 'Quiz'}
             </h1>
             <p className="text-blue-800 text-sm">Soal {currentQuestion + 1} dari {questions.length}</p>
           </div>
@@ -372,8 +438,6 @@ const TakeQuizPage = () => {
           </div>
         </div>
       </div>
-
-      <Footer />
     </div>
   )
 }

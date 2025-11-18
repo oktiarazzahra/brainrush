@@ -1,126 +1,167 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import DashboardLayout from '../components/DashboardLayout'
+import { learningService } from '../services/learningService'
 
 const BelajarMandiriPage = () => {
   const navigate = useNavigate()
   const [selectedQuiz, setSelectedQuiz] = useState(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
+  const [scheduledQuizzes, setScheduledQuizzes] = useState([])
+  const [quizQuestions, setQuizQuestions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [stats, setStats] = useState(null)
 
-  const scheduledQuizzes = [
-    {
-      id: 1,
-      title: 'Kimia Dasar',
-      category: 'Sains',
-      questions: 10,
-      score: 85,
-      date: '10 Okt 2025',
-      image: 'https://images.unsplash.com/photo-1603126857599-f6e157fa2fe6?w=400&h=250&fit=crop',
-      bgColor: 'from-blue-200 to-blue-400',
-      difficulty: 'Sedang',
-      timeSpent: '15 menit'
-    },
-    {
-      id: 2,
-      title: 'Logika Matematika',
-      category: 'Matematika',
-      questions: 8,
-      score: 95,
-      date: '11 Okt 2025',
-      image: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=400&h=250&fit=crop',
-      bgColor: 'from-green-200 to-green-400',
-      difficulty: 'Mudah',
-      timeSpent: '10 menit'
-    },
-    {
-      id: 3,
-      title: 'Bahasa Inggris',
-      category: 'Bahasa',
-      questions: 15,
-      score: 70,
-      date: '9 Okt 2025',
-      image: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=400&h=250&fit=crop',
-      bgColor: 'from-purple-200 to-purple-400',
-      difficulty: 'Sulit',
-      timeSpent: '20 menit'
-    }
-  ]
+  // Fetch learning history on mount
+  useEffect(() => {
+    fetchLearningHistory()
+  }, [])
 
-  const quizQuestions = [
-    {
-      id: 1,
-      question: 'Apa lambang kimia untuk oksigen?',
-      image: 'https://images.unsplash.com/photo-1603126857599-f6e157fa2fe6?w=600&h=300&fit=crop',
-      options: ['O', 'O2', 'H2O', 'CO2'],
-      correctAnswers: [0],
-      userAnswers: [0],
-      isCorrect: true,
-      multipleCorrect: false,
-      explanation: 'Lambang kimia untuk oksigen adalah O.'
-    },
-    {
-      id: 2,
-      question: 'Berapa nomor atom karbon?',
-      image: null,
-      options: ['4', '6', '8', '12'],
-      correctAnswers: [1],
-      userAnswers: [1],
-      isCorrect: true,
-      multipleCorrect: false,
-      explanation: 'Nomor atom karbon adalah 6.'
-    },
-    {
-      id: 3,
-      question: 'Apa rumus kimia air?',
-      image: 'https://images.unsplash.com/photo-1548256551-2370ea4c2149?w=600&h=300&fit=crop',
-      options: ['H2O', 'CO2', 'O2', 'H2O2'],
-      correctAnswers: [0],
-      userAnswers: [0],
-      isCorrect: true,
-      multipleCorrect: false,
-      explanation: 'Rumus kimia air adalah H2O.'
-    },
-    {
-      id: 4,
-      question: 'Unsur apa yang memiliki simbol Fe?',
-      image: null,
-      options: ['Fluorin', 'Besi', 'Fosfor', 'Ferrum'],
-      correctAnswers: [1],
-      userAnswers: [2],
-      isCorrect: false,
-      multipleCorrect: false,
-      explanation: 'Fe adalah simbol untuk Besi (dari bahasa Latin: Ferrum).'
-    },
-    {
-      id: 5,
-      question: 'Manakah yang termasuk gas mulia?',
-      image: null,
-      options: ['Helium', 'Neon', 'Argon', 'Nitrogen'],
-      correctAnswers: [0, 1, 2],
-      userAnswers: [0, 1, 2],
-      isCorrect: true,
-      multipleCorrect: true,
-      explanation: 'Gas mulia adalah Helium, Neon, dan Argon.'
+  const fetchLearningHistory = async () => {
+    try {
+      setLoading(true)
+      const [historyResponse, statsResponse] = await Promise.all([
+        learningService.getLearningHistory(),
+        learningService.getLearningStats()
+      ])
+
+      // Format history data for UI
+      const formattedQuizzes = historyResponse.data.history.map((item, index) => {
+        const bgColors = ['from-blue-200 to-blue-400', 'from-green-200 to-green-400', 'from-purple-200 to-purple-400', 'from-pink-200 to-pink-400']
+        const difficulties = ['Mudah', 'Sedang', 'Sulit']
+        
+        return {
+          id: item.id,
+          title: item.quizTitle,
+          category: item.category,
+          questions: 0, // Will be populated when viewing details
+          score: item.percentage,
+          date: new Date(item.completedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          image: null,
+          bgColor: bgColors[index % bgColors.length],
+          difficulty: difficulties[Math.floor(item.percentage / 34)], // 0-33: Sulit, 34-66: Sedang, 67-100: Mudah
+          timeSpent: '-'
+        }
+      })
+
+      setScheduledQuizzes(formattedQuizzes)
+      setStats(statsResponse.data.stats)
+      setLoading(false)
+    } catch (err) {
+      console.error('Error fetching learning history:', err)
+      setError('Gagal memuat riwayat belajar')
+      setLoading(false)
     }
-  ]
+  }
+
+  const fetchQuizDetails = async (scoreId) => {
+    try {
+      const response = await learningService.getLearningResult(scoreId)
+      const result = response.data.result
+
+      // Format questions for review modal
+      const formattedQuestions = result.answers.map((answer) => {
+        const isMultiple = Array.isArray(answer.correctAnswer)
+        
+        return {
+          id: answer.questionNumber,
+          question: answer.questionText,
+          image: null,
+          options: answer.options || [],
+          correctAnswers: Array.isArray(answer.correctAnswer) ? answer.correctAnswer : [answer.correctAnswer],
+          userAnswers: Array.isArray(answer.userAnswer) ? answer.userAnswer : [answer.userAnswer],
+          isCorrect: answer.isCorrect,
+          multipleCorrect: isMultiple,
+          explanation: answer.explanation || 'Tidak ada penjelasan tersedia.'
+        }
+      })
+
+      setQuizQuestions(formattedQuestions)
+    } catch (err) {
+      console.error('Error fetching quiz details:', err)
+      alert('Gagal memuat detail quiz')
+    }
+  }
   
   const colors = ['bg-pink-200', 'bg-green-200', 'bg-yellow-100', 'bg-blue-200']
   const currentQ = selectedQuiz ? quizQuestions[currentQuestion] : null
   const totalQuiz = scheduledQuizzes.length
-  const totalScore = scheduledQuizzes.reduce((sum, q) => sum + q.score, 0)
-  const avgScore = Math.round(totalScore / totalQuiz)
+  const avgScore = stats?.averagePercentage || 0
   const collectCategory = [...new Set(scheduledQuizzes.map(q => q.category))]
+  const totalQuestions = scheduledQuizzes.reduce((sum, q) => sum + (q.questions || 0), 0)
 
-  const handleOpenReview = (quiz) => { setSelectedQuiz(quiz); setCurrentQuestion(0) }
-  const handleCloseReview = () => { setSelectedQuiz(null); setCurrentQuestion(0) }
+  const handleOpenReview = async (quiz) => { 
+    setSelectedQuiz(quiz)
+    setCurrentQuestion(0)
+    await fetchQuizDetails(quiz.id)
+  }
+  
+  const handleCloseReview = () => { 
+    setSelectedQuiz(null)
+    setCurrentQuestion(0)
+    setQuizQuestions([])
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block h-16 w-16 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent mb-4"></div>
+            <p className="text-gray-700 text-xl font-bold">Loading...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center bg-white rounded-2xl p-8 shadow-lg">
+            <div className="text-6xl mb-4">❌</div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Oops!</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button
+              onClick={fetchLearningHistory}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg"
+            >
+              Coba Lagi
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout>
       <div className="flex-1 flex flex-col">
         <main className="flex-1 bg-gradient-to-br from-blue-100 via-blue-300 to-blue-200 mx-4 rounded-2xl p-8 mb-8 mt-8 overflow-y-auto min-h-[70vh]">
           
-          {/* Stats Section */}
+          {/* Empty State */}
+          {scheduledQuizzes.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center bg-white rounded-2xl p-12 shadow-lg">
+                <div className="text-6xl mb-4">📚</div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Belum Ada Riwayat</h2>
+                <p className="text-gray-600 mb-6">Mulai belajar dengan mengerjakan quiz!</p>
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg"
+                >
+                  Cari Quiz
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Stats Section */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
               📈 Statistik Belajar
@@ -158,8 +199,8 @@ const BelajarMandiriPage = () => {
                 transition={{ delay: 0.3 }}
                 className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition"
               >
-                <p className="text-gray-600 text-xs font-semibold mb-1">Total Soal</p>
-                <p className="text-3xl font-bold text-purple-600">{scheduledQuizzes.reduce((sum, q) => sum + q.questions, 0)}</p>
+                <p className="text-gray-600 text-xs font-semibold mb-1">Skor Tertinggi</p>
+                <p className="text-3xl font-bold text-purple-600">{stats?.bestQuizPercentage || 0}</p>
               </motion.div>
             </div>
           </div>
@@ -182,12 +223,18 @@ const BelajarMandiriPage = () => {
                 >
                   {/* Image Header */}
                   <div className={`h-40 bg-gradient-to-r ${quiz.bgColor} flex items-center justify-center overflow-hidden relative`}>
-                    <img 
-                      src={quiz.image} 
-                      alt={quiz.title} 
-                      className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition"></div>
+                    {quiz.image ? (
+                      <>
+                        <img 
+                          src={quiz.image} 
+                          alt={quiz.title} 
+                          className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition"></div>
+                      </>
+                    ) : (
+                      <div className="text-6xl opacity-50">📚</div>
+                    )}
                     
                     {/* Badges */}
                     <div className="absolute top-3 right-3 flex flex-col gap-2">
@@ -210,17 +257,9 @@ const BelajarMandiriPage = () => {
                     
                     {/* Info Grid */}
                     <div className="grid grid-cols-2 gap-2 mb-4">
-                      <div className="bg-blue-50 rounded-lg p-2 text-center">
-                        <p className="text-xs text-gray-600">Soal</p>
-                        <p className="font-bold text-blue-600">{quiz.questions}</p>
-                      </div>
-                      <div className="bg-green-50 rounded-lg p-2 text-center">
+                      <div className="bg-green-50 rounded-lg p-2 text-center col-span-2">
                         <p className="text-xs text-gray-600">Skor</p>
-                        <p className="font-bold text-green-600">{quiz.score}</p>
-                      </div>
-                      <div className="bg-purple-50 rounded-lg p-2 text-center col-span-2">
-                        <p className="text-xs text-gray-600">⏱️ Waktu</p>
-                        <p className="font-bold text-purple-600">{quiz.timeSpent}</p>
+                        <p className="font-bold text-green-600">{quiz.score}%</p>
                       </div>
                     </div>
 
@@ -239,7 +278,8 @@ const BelajarMandiriPage = () => {
                 </motion.div>
               ))}
             </div>
-          </div>
+          </>
+          )}
 
         </main>
       </div>

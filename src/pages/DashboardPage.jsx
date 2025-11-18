@@ -40,12 +40,16 @@ const DashboardPage = () => {
     }
   }
 
-  // Get unique categories from quizzes
-  const categories = ['All', ...new Set(quizzes.map(q => q.category).filter(Boolean))]
+  // Get unique categories from quizzes + predefined categories
+  const predefinedCategories = ['Bahasa', 'Sains', 'Matematika', 'Biologi', 'Sejarah', 'Geografi', 'Olahraga', 'Umum']
+  const quizCategories = [...new Set(quizzes.map(q => q.category).filter(Boolean))]
+  const allCategories = [...new Set([...predefinedCategories, ...quizCategories])]
+  const categories = ['All', ...allCategories.sort()]
 
   // Filter quizzes by category and search
   const filteredQuizzes = quizzes.filter(quiz => {
-    const matchCategory = activeCategory === 'All' || quiz.category === activeCategory
+    const quizCategory = quiz.category || 'Umum'
+    const matchCategory = activeCategory === 'All' || quizCategory === activeCategory
     const matchSearch = quiz.title.toLowerCase().includes(searchQuery.toLowerCase())
     return matchCategory && matchSearch
   })
@@ -104,7 +108,7 @@ const DashboardPage = () => {
 
   // Handle klik quiz card untuk masuk ke take quiz
   const handleQuizClick = (quiz) => {
-    navigate(`/take-quiz/${quiz.id}`, { state: { quiz } })
+    navigate(`/take-quiz/${quiz._id}`, { state: { quiz } })
   }
 
 

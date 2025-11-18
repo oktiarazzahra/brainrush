@@ -165,6 +165,44 @@ export const quizService = {
     }
   },
 
+  setPublic: async (quizId) => {
+    try {
+      const response = await fetch(`${API_URL}/quizzes/${quizId}/public`, {
+        method: 'PUT',
+        headers: getAuthHeader(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error setting quiz to public:', error);
+      throw error;
+    }
+  },
+
+  setPrivate: async (quizId) => {
+    try {
+      const response = await fetch(`${API_URL}/quizzes/${quizId}/private`, {
+        method: 'PUT',
+        headers: getAuthHeader(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error setting quiz to private:', error);
+      throw error;
+    }
+  },
+
   // DEPRECATED: Use updateQuiz with coverImage field instead
   // uploadCover: async (quizId, file) => {
   //   try {
