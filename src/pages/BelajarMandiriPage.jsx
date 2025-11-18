@@ -71,6 +71,7 @@ const BelajarMandiriPage = () => {
           image: null,
           options: answer.options || [],
           correctAnswers: Array.isArray(answer.correctAnswer) ? answer.correctAnswer : [answer.correctAnswer],
+          acceptedAnswers: answer.acceptedAnswers || [], // For short answer
           userAnswers: Array.isArray(answer.userAnswer) ? answer.userAnswer : [answer.userAnswer],
           isCorrect: answer.isCorrect,
           multipleCorrect: isMultiple,
@@ -278,7 +279,8 @@ const BelajarMandiriPage = () => {
                 </motion.div>
               ))}
             </div>
-          </>
+          </div>
+            </>
           )}
 
         </main>
@@ -358,53 +360,83 @@ const BelajarMandiriPage = () => {
                         )}
                       </div>
                     </div>
-                    {/* Options Grid */}
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-8">
-                      {currentQ.options.map((option, i) => {
-                        const isCorrect = currentQ.correctAnswers.includes(i)
-                        const isUserAnswer = currentQ.userAnswers.includes(i)
-                        const isWrong = isUserAnswer && !isCorrect
-                        return (
-                          <div 
-                            key={i} 
-                            className={`${colors[i]} p-6 rounded-xl font-bold text-lg flex items-center relative shadow-md ${
-                              isCorrect ? 'ring-4 ring-green-600' : isWrong ? 'ring-4 ring-red-600' : ''
-                            }`}
-                          >
-                            <div className="w-full flex items-center justify-between">
-                              <span>{option}</span>
-                              {isCorrect && <span className="text-green-700 text-2xl">✓</span>}
-                              {isWrong && <span className="text-red-700 text-2xl">✗</span>}
-                            </div>
-                            <div
-                              className={`absolute top-4 right-4 w-8 h-8 border-2 flex items-center justify-center ${
-                                currentQ.multipleCorrect ? 'rounded-md' : 'rounded-full'
-                              } ${
-                                isCorrect ? 'bg-green-600 border-green-600' : 
-                                isWrong ? 'bg-red-600 border-red-600' : 'bg-white border-gray-600'
-                              }`}
-                            >
-                              {(isCorrect || isWrong) && (
-                                <span className="text-white text-lg">{isCorrect ? '✓' : '✗'}</span>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                    {/* Toggle */}
-                    <div className="mb-6 flex gap-6 justify-center">
-                      <button className={`px-6 py-2.5 font-bold rounded-lg shadow-md border-2 border-gray-300 ${
-                        !currentQ.multipleCorrect ? 'bg-blue-800 text-white' : 'bg-white'
-                      }`}>
-                        Satu jawaban benar
-                      </button>
-                      <button className={`px-6 py-2.5 font-bold rounded-lg shadow-md border-2 border-gray-300 ${
-                        currentQ.multipleCorrect ? 'bg-blue-800 text-white' : 'bg-white'
-                      }`}>
-                        Beberapa jawaban benar
-                      </button>
-                    </div>
+                    {/* Options Grid - Hanya untuk Pilihan Ganda */}
+                    {currentQ.options && currentQ.options.length > 0 ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-8">
+                          {currentQ.options.map((option, i) => {
+                            const isCorrect = currentQ.correctAnswers.includes(i)
+                            const isUserAnswer = currentQ.userAnswers.includes(i)
+                            const isWrong = isUserAnswer && !isCorrect
+                            return (
+                              <div 
+                                key={i} 
+                                className={`${colors[i]} p-6 rounded-xl font-bold text-lg flex items-center relative shadow-md ${
+                                  isCorrect ? 'ring-4 ring-green-600' : isWrong ? 'ring-4 ring-red-600' : ''
+                                }`}
+                              >
+                                <div className="w-full flex items-center justify-between">
+                                  <span>{option}</span>
+                                  {isCorrect && <span className="text-green-700 text-2xl">✓</span>}
+                                  {isWrong && <span className="text-red-700 text-2xl">✗</span>}
+                                </div>
+                                <div
+                                  className={`absolute top-4 right-4 w-8 h-8 border-2 flex items-center justify-center ${
+                                    currentQ.multipleCorrect ? 'rounded-md' : 'rounded-full'
+                                  } ${
+                                    isCorrect ? 'bg-green-600 border-green-600' : 
+                                    isWrong ? 'bg-red-600 border-red-600' : 'bg-white border-gray-600'
+                                  }`}
+                                >
+                                  {(isCorrect || isWrong) && (
+                                    <span className="text-white text-lg">{isCorrect ? '✓' : '✗'}</span>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        {/* Toggle - Hanya untuk Pilihan Ganda */}
+                        <div className="mb-6 flex gap-6 justify-center">
+                          <button className={`px-6 py-2.5 font-bold rounded-lg shadow-md border-2 border-gray-300 ${
+                            !currentQ.multipleCorrect ? 'bg-blue-800 text-white' : 'bg-white'
+                          }`}>
+                            Satu jawaban benar
+                          </button>
+                          <button className={`px-6 py-2.5 font-bold rounded-lg shadow-md border-2 border-gray-300 ${
+                            currentQ.multipleCorrect ? 'bg-blue-800 text-white' : 'bg-white'
+                          }`}>
+                            Beberapa jawaban benar
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      /* Untuk soal Isian / Benar-Salah */
+                      <div className="mb-8 space-y-4">
+                        <div className="bg-green-50 rounded-xl p-6 border-2 border-green-600">
+                          <p className="text-sm text-gray-600 font-semibold mb-2">✅ Jawaban yang Benar:</p>
+                          <p className="text-xl font-bold text-green-700">
+                            {typeof currentQ.correctAnswers[0] === 'boolean'
+                              ? (currentQ.correctAnswers[0] ? 'Benar' : 'Salah')
+                              : currentQ.acceptedAnswers && currentQ.acceptedAnswers.length > 0
+                                ? currentQ.acceptedAnswers.join(' / ')
+                                : (Array.isArray(currentQ.correctAnswers) 
+                                    ? currentQ.correctAnswers.join(', ')
+                                    : currentQ.correctAnswers || '-')}
+                          </p>
+                        </div>
+                        <div className={`rounded-xl p-6 border-2 ${currentQ.isCorrect ? 'bg-green-50 border-green-600' : 'bg-red-50 border-red-600'}`}>
+                          <p className="text-sm text-gray-600 font-semibold mb-2">
+                            {currentQ.isCorrect ? '✅' : '❌'} Jawaban Anda:
+                          </p>
+                          <p className={`text-xl font-bold ${currentQ.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                            {typeof currentQ.userAnswers[0] === 'boolean' 
+                              ? (currentQ.userAnswers[0] ? 'Benar' : 'Salah')
+                              : currentQ.userAnswers[0] || '-'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     {/* Explanation */}
                     <div className="bg-blue-50 border-l-4 border-blue-600 rounded-r-lg p-5 mb-6">
                       <h4 className="font-bold text-blue-900 mb-2">💡 Pembahasan:</h4>

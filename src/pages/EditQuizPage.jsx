@@ -41,6 +41,8 @@ const EditQuizPage = () => {
   const { id } = useParams()
   const [quizTitle, setQuizTitle] = useState('')
   const [quizCategory, setQuizCategory] = useState('Bahasa')
+  const [timerMode, setTimerMode] = useState('per-question')
+  const [totalTime, setTotalTime] = useState(30)
   const [questions, setQuestions] = useState([])
   const [activeIdx, setActiveIdx] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -59,6 +61,8 @@ const EditQuizPage = () => {
         const quiz = await quizService.getQuizById(id)
         setQuizTitle(quiz.title || '')
         setQuizCategory(quiz.category || 'Bahasa')
+        setTimerMode(quiz.timerMode || 'per-question')
+        setTotalTime(quiz.totalTime ? Math.round(quiz.totalTime / 60) : 30)
 
         if (quiz.questions && quiz.questions.length > 0) {
           setQuestions(
@@ -404,6 +408,8 @@ const EditQuizPage = () => {
         title: quizTitle,
         description: `Kategori: ${quizCategory}`,
         category: quizCategory,
+        timerMode: timerMode,
+        totalTime: timerMode === 'total-time' ? totalTime * 60 : undefined,
         questions: formattedQuestions
       }
 
@@ -484,6 +490,44 @@ const EditQuizPage = () => {
               </div>
             </div>
 
+            {/* TIMER SETTINGS */}
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
+              <h3 className="font-bold text-blue-900 mb-4 flex items-center gap-2">
+                <span className="text-xl">⏱️</span> Pengaturan Waktu
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Mode Timer</label>
+                  <select
+                    value={timerMode}
+                    onChange={(e) => setTimerMode(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-white font-semibold focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="none">Tanpa Batas Waktu</option>
+                    <option value="per-question">Timer Per Soal</option>
+                    <option value="total-time">Total Waktu Kuis</option>
+                  </select>
+                </div>
+                {timerMode === 'total-time' && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Total Waktu (Menit)</label>
+                    <input
+                      type="number"
+                      value={totalTime}
+                      onChange={(e) => setTotalTime(Math.max(1, parseInt(e.target.value) || 1))}
+                      min="1"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-800 font-semibold focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                )}
+              </div>
+              <p className="text-sm text-gray-600 mt-3">
+                {timerMode === 'none' && '✓ Siswa dapat mengerjakan tanpa batasan waktu'}
+                {timerMode === 'per-question' && '✓ Setiap soal memiliki timer terpisah sesuai durasi yang ditentukan'}
+                {timerMode === 'total-time' && '✓ Siswa memiliki waktu total untuk mengerjakan semua soal'}
+              </p>
+            </div>
+
             {/* Question Number Tabs */}
             <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
               {questions.map((_, index) => (
@@ -509,30 +553,34 @@ const EditQuizPage = () => {
 
             {/* Time & Type Controls */}
             <div className="flex gap-4 mb-6">
-              <div className="flex items-center gap-2">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={q.useTime}
-                    onChange={(e) => updateQuestion('useTime', e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-semibold text-gray-700">Pakai Waktu</span>
-                </label>
-              </div>
+              {timerMode === 'per-question' && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={q.useTime}
+                        onChange={(e) => updateQuestion('useTime', e.target.checked)}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm font-semibold text-gray-700">Pakai Waktu</span>
+                    </label>
+                  </div>
 
-              {q.useTime && (
-                <select
-                  value={q.duration}
-                  onChange={(e) => updateQuestion('duration', parseInt(e.target.value))}
-                  className="px-4 py-2 border-2 border-gray-300 rounded-lg bg-gray-100 font-semibold"
-                >
-                  {[5, 10, 15, 20, 30, 45, 60].map((t) => (
-                    <option key={t} value={t}>
-                      {t} detik
-                    </option>
-                  ))}
-                </select>
+                  {q.useTime && (
+                    <select
+                      value={q.duration}
+                      onChange={(e) => updateQuestion('duration', parseInt(e.target.value))}
+                      className="px-4 py-2 border-2 border-gray-300 rounded-lg bg-gray-100 font-semibold"
+                    >
+                      {[5, 10, 15, 20, 30, 45, 60].map((t) => (
+                        <option key={t} value={t}>
+                          {t} detik
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </>
               )}
 
               <select

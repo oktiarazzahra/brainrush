@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { quizService } from '../services/quizService'
+import { learningService } from '../services/learningService'
 
 const TakeQuizPage = () => {
   const navigate = useNavigate()
@@ -12,10 +13,20 @@ const TakeQuizPage = () => {
   const [answers, setAnswers] = useState({})
   const [quizFinished, setQuizFinished] = useState(false)
   const [score, setScore] = useState(0)
+  const [correctCount, setCorrectCount] = useState(0)
+  const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [quiz, setQuiz] = useState(null)
   const [questions, setQuestions] = useState([])
+  
+  // Timer states
+  const [timeLeft, setTimeLeft] = useState(0) // Time left for current question
+  const [totalTimeSpent, setTotalTimeSpent] = useState(0) // Total time spent on quiz
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now()) // When current question started
+  const [timePerQuestion, setTimePerQuestion] = useState({}) // Track time spent per question
+  const [timerMode, setTimerMode] = useState('per-question') // 'none', 'per-question', 'total-time'
+  const [totalQuizTime, setTotalQuizTime] = useState(0) // Total time for entire quiz (if total-time mode)
 
   // Fetch quiz data from API
   useEffect(() => {
@@ -42,6 +53,7 @@ const TakeQuizPage = () => {
 
           return {
             id: index + 1,
+            _id: q._id, // Store MongoDB _id for submission
             question: q.question,
             image: q.imageData || null, // Use base64 image data
             type: questionType,
@@ -55,6 +67,24 @@ const TakeQuizPage = () => {
 
         console.log('Formatted questions:', formattedQuestions)
         setQuestions(formattedQuestions)
+        
+        // Determine timer mode and initialize
+        const mode = quizData.timerMode || 'per-question'
+        setTimerMode(mode)
+        
+        if (mode === 'total-time') {
+          // Total time mode - use quiz total time
+          const totalTime = quizData.totalTime || (formattedQuestions.length * 30) // Default 30s per question
+          setTotalQuizTime(totalTime)
+          setTimeLeft(totalTime)
+        } else {
+          // Per question mode - use first question's time limit
+          if (formattedQuestions.length > 0) {
+            setTimeLeft(formattedQuestions[0].timeLimit)
+          }
+        }
+        
+        setQuestionStartTime(Date.now())
         setLoading(false)
       } catch (err) {
         console.error('Error fetching quiz:', err)
@@ -71,6 +101,62 @@ const TakeQuizPage = () => {
       setLoading(false)
     }
   }, [quizId])
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (loading || quizFinished || !questions.length) return
+    
+    // Skip timer if mode is 'none'
+    if (timerMode === 'none') {
+      // Still track total time without countdown
+      const timer = setInterval(() => {
+        setTotalTimeSpent((prev) => prev + 1)
+      }, 1000)
+      return () => clearInterval(timer)
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          // Time's up - different handling based on mode
+          if (timerMode === 'total-time') {
+            // Total time mode - auto submit immediately
+            calculateScoreAndSubmit()
+          } else {
+            // Per question mode - auto advance
+            handleTimeUp()
+          }
+          return 0
+        }
+        return prev - 1
+      })
+      
+      // Track total time
+      setTotalTimeSpent((prev) => prev + 1)
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [currentQuestion, loading, quizFinished, questions.length, timerMode])
+
+  // Handle time up for current question (per-question mode only)
+  const handleTimeUp = () => {
+    // Save time spent on this question
+    const timeSpent = Math.round((Date.now() - questionStartTime) / 1000)
+    setTimePerQuestion(prev => ({
+      ...prev,
+      [currentQuestion]: timeSpent
+    }))
+
+    // Auto advance to next question or finish
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1)
+      setTimeLeft(questions[currentQuestion + 1].timeLimit)
+      setQuestionStartTime(Date.now())
+    } else {
+      // Last question - auto submit
+      calculateScoreAndSubmit()
+    }
+  }
 
   const COLORS = ['bg-pink-200', 'bg-green-200', 'bg-yellow-100', 'bg-blue-200']
   const currentQ = questions[currentQuestion]
@@ -126,11 +212,22 @@ const TakeQuizPage = () => {
     )
   }
 
-  // Calculate score
-  const calculateScore = () => {
+  // Calculate score and prepare submission data
+  const calculateScoreAndSubmit = async () => {
     let correct = 0
+    const submissionAnswers = []
+
     questions.forEach((q, index) => {
       const userAnswer = answers[index]
+      let isCorrect = false
+      let formattedAnswer = userAnswer
+
+      console.log(`\n🔍 Question ${index + 1}:`, {
+        type: q.type,
+        multi: q.multi,
+        correctAnswer: q.correctAnswer,
+        userAnswer: userAnswer
+      })
 
       if (q.type === 'Pilihan Ganda' && q.multi) {
         // Multiple choice - harus exact match
@@ -138,34 +235,74 @@ const TakeQuizPage = () => {
           ? q.correctAnswer.sort() 
           : [q.correctAnswer].sort()
         const userArr = Array.isArray(userAnswer) ? userAnswer.sort() : []
-        if (JSON.stringify(correctArr) === JSON.stringify(userArr)) {
-          correct++
-        }
+        isCorrect = JSON.stringify(correctArr) === JSON.stringify(userArr)
+        formattedAnswer = userArr
+        console.log('Multiple choice:', { correctArr, userArr, isCorrect })
       } else if (q.type === 'Pilihan Ganda' && !q.multi) {
         // Single choice
         const correctIndex = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer
         const userIndex = Array.isArray(userAnswer) ? userAnswer[0] : userAnswer
-        if (userIndex === correctIndex) {
-          correct++
-        }
+        isCorrect = userIndex === correctIndex
+        formattedAnswer = userIndex
+        console.log('Single choice:', { correctIndex, userIndex, isCorrect })
       } else if (q.type === 'Benar Salah') {
-        // True/False
-        if (userAnswer === q.correctAnswer) {
-          correct++
-        }
+        // True/False - handle both string and boolean
+        const correctBool = q.correctAnswer === true || q.correctAnswer === 'true'
+        const userBool = userAnswer === true || userAnswer === 'true'
+        isCorrect = correctBool === userBool
+        formattedAnswer = userAnswer
+        console.log('True/False:', { correct: q.correctAnswer, user: userAnswer, correctBool, userBool, isCorrect })
       } else if (q.type === 'Isian') {
         // Short answer - case insensitive
         if (userAnswer && q.acceptedAnswers && q.acceptedAnswers.length > 0) {
-          const isCorrect = q.acceptedAnswers.some(
+          isCorrect = q.acceptedAnswers.some(
             ans => ans.toLowerCase() === userAnswer.toLowerCase().trim()
           )
-          if (isCorrect) {
-            correct++
-          }
         }
+        formattedAnswer = userAnswer || ''
+        console.log('Short answer:', { accepted: q.acceptedAnswers, user: userAnswer, isCorrect })
       }
+
+      console.log(`Result: ${isCorrect ? '✅ CORRECT' : '❌ WRONG'}`)
+
+      if (isCorrect) {
+        correct++
+      }
+
+      // Get the question _id from formatted questions
+      submissionAnswers.push({
+        questionId: questions[index]._id,
+        answer: formattedAnswer,
+        timeSpent: 0 // Could track time per question if needed
+      })
     })
-    return Math.round((correct / questions.length) * 100)
+
+    const percentage = Math.round((correct / questions.length) * 100)
+    setScore(percentage)
+    setCorrectCount(correct)
+
+    console.log('📊 Submission data:', {
+      quizId,
+      totalQuestions: questions.length,
+      correctAnswers: correct,
+      percentage,
+      answers: submissionAnswers
+    })
+
+    // Submit to backend
+    try {
+      setSubmitting(true)
+      const response = await learningService.submitLearning(quizId, submissionAnswers)
+      console.log('✅ Submission successful:', response)
+      setSubmitting(false)
+      setQuizFinished(true)
+    } catch (error) {
+      console.error('❌ Error submitting quiz:', error)
+      setSubmitting(false)
+      // Still show results even if submission fails
+      setQuizFinished(true)
+      alert('Gagal menyimpan hasil ke server, tapi hasil tetap ditampilkan.')
+    }
   }
 
   // Handle answer selection
@@ -201,13 +338,34 @@ const TakeQuizPage = () => {
 
   // Handle next
   const handleNext = () => {
+    // Save time spent on current question
+    const timeSpent = Math.round((Date.now() - questionStartTime) / 1000)
+    setTimePerQuestion(prev => ({
+      ...prev,
+      [currentQuestion]: timeSpent
+    }))
+
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1)
+      
+      // Reset timer based on mode
+      if (timerMode === 'per-question') {
+        setTimeLeft(questions[currentQuestion + 1].timeLimit)
+      }
+      // For total-time mode, timer keeps counting down
+      
+      setQuestionStartTime(Date.now())
     } else {
-      const finalScore = calculateScore()
-      setScore(finalScore)
-      setQuizFinished(true)
+      // Last question - calculate and submit
+      calculateScoreAndSubmit()
     }
+  }
+
+  // Format time display (seconds to MM:SS)
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
   // Result screen
@@ -216,36 +374,48 @@ const TakeQuizPage = () => {
       <div className="min-h-screen bg-blue-200 flex flex-col">
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="bg-white rounded-2xl p-12 max-w-2xl w-full shadow-2xl text-center">
-            <div className="text-6xl mb-6">
-              {score >= 80 ? '🎉' : score >= 60 ? '😊' : '📚'}
-            </div>
-            <h1 className="text-4xl font-bold text-gray-800 mb-4">Quiz Selesai!</h1>
-            <div className="text-7xl font-black text-blue-600 mb-2">{score}%</div>
-            <p className="text-xl text-gray-600 mb-8">
-              {score >= 80 ? 'Luar biasa!' : score >= 60 ? 'Bagus!' : 'Terus belajar!'}
-            </p>
+            {submitting ? (
+              <>
+                <div className="inline-block h-16 w-16 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent mb-4"></div>
+                <p className="text-gray-700 text-xl font-bold">Menyimpan hasil...</p>
+              </>
+            ) : (
+              <>
+                <div className="text-6xl mb-6">
+                  {score >= 80 ? '🎉' : score >= 60 ? '😊' : '📚'}
+                </div>
+                <h1 className="text-4xl font-bold text-gray-800 mb-4">Quiz Selesai!</h1>
+                <div className="text-7xl font-black text-blue-600 mb-2">{score}%</div>
+                <p className="text-xl text-gray-600 mb-8">
+                  {score >= 80 ? 'Luar biasa!' : score >= 60 ? 'Bagus!' : 'Terus belajar!'}
+                </p>
 
-            <div className="bg-blue-100 rounded-xl p-6 mb-8">
-              <p className="text-sm text-gray-600 mb-2">Hasil Anda</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {Math.round((score / 100) * questions.length)} dari {questions.length} soal benar
-              </p>
-            </div>
+                <div className="bg-blue-100 rounded-xl p-6 mb-8">
+                  <p className="text-sm text-gray-600 mb-2">Hasil Anda</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {correctCount} dari {questions.length} soal benar
+                  </p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Waktu: {formatTime(totalTimeSpent)}
+                  </p>
+                </div>
 
-            <div className="flex gap-4">
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-xl transition shadow-md"
-              >
-                ← Dashboard
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition shadow-md"
-              >
-                Coba Lagi
-              </button>
-            </div>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => navigate('/belajar-mandiri')}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl transition shadow-md"
+                  >
+                    📚 Lihat Review
+                  </button>
+                  <button
+                    onClick={() => navigate('/dashboard')}
+                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-xl transition shadow-md"
+                  >
+                    ← Dashboard
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -264,12 +434,34 @@ const TakeQuizPage = () => {
             </h1>
             <p className="text-blue-800 text-sm">Soal {currentQuestion + 1} dari {questions.length}</p>
           </div>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="bg-white/40 hover:bg-white/60 text-blue-900 px-5 py-2 rounded-lg transition font-semibold"
-          >
-            ← Kembali
-          </button>
+          
+          {/* Timer Display */}
+          <div className="flex items-center gap-4">
+            {timerMode !== 'none' && (
+              <div className={`px-6 py-3 rounded-xl font-bold text-xl shadow-lg transition-all ${
+                timeLeft <= 5 
+                  ? 'bg-red-500 text-white animate-pulse' 
+                  : timeLeft <= 10 
+                  ? 'bg-yellow-500 text-white' 
+                  : 'bg-white text-blue-900'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{timeLeft <= 10 ? '⏰' : '⏱️'}</span>
+                  <span>{formatTime(timeLeft)}</span>
+                </div>
+                <div className="text-xs text-center mt-1 opacity-70">
+                  {timerMode === 'total-time' ? 'Total Waktu' : `Soal ${currentQuestion + 1}`}
+                </div>
+              </div>
+            )}
+            
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="bg-white/40 hover:bg-white/60 text-blue-900 px-5 py-2 rounded-lg transition font-semibold"
+            >
+              ← Kembali
+            </button>
+          </div>
         </div>
 
         {/* Main Content */}
