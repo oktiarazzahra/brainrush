@@ -62,7 +62,9 @@ const MyQuizzesPage = () => {
   const handleBuatLive = async quizId => {
     try {
       setOpenMenuId(null)
+      console.log('🎮 Creating live game for quiz:', quizId)
       const response = await gameService.createGame(quizId)
+      console.log('✅ Game created successfully:', response)
       const gameData = response.data.game
       const quiz = quizzes.find(q => (q.id || q._id) === quizId)
       
@@ -76,8 +78,9 @@ const MyQuizzesPage = () => {
         } 
       })
     } catch (error) {
-      console.error('Error creating live game:', error)
-      alert('Gagal membuat live game. Coba lagi.')
+      console.error('❌ Error creating live game:', error)
+      console.error('Error details:', error.response?.data || error.message)
+      alert(`Gagal membuat live game: ${error.response?.data?.message || error.message}`)
     }
   }
   
