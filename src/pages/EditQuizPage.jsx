@@ -63,7 +63,7 @@ const EditQuizPage = () => {
         setQuizTitle(quiz.title || '')
         setQuizCategory(quiz.category || 'Bahasa')
         setTimerMode(quizTimerMode)
-        setTotalTime(quiz.totalTime ? Math.round(quiz.totalTime / 60) : 30)
+        setTotalTime(quiz.totalTime && quiz.totalTime > 0 ? Math.round(quiz.totalTime / 60) : 30)
 
         if (quiz.questions && quiz.questions.length > 0) {
           setQuestions(
@@ -354,7 +354,7 @@ const EditQuizPage = () => {
 
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i]
-      if (!q.question.trim()) {
+      if (!q.text.trim()) {
         alert(`Soal ${i + 1}: Pertanyaan harus diisi!`)
         return
       }
@@ -420,7 +420,7 @@ const EditQuizPage = () => {
         description: `Kategori: ${quizCategory}`,
         category: quizCategory,
         timerMode: timerMode,
-        totalTime: timerMode === 'total-time' ? totalTime * 60 : undefined,
+        totalTime: timerMode === 'total-time' ? totalTime * 60 : null,
         questions: formattedQuestions
       }
 

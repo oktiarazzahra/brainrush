@@ -29,6 +29,7 @@ const TakeQuizPage = () => {
   const [timePerQuestion, setTimePerQuestion] = useState({}) // Track time spent per question
   const [timerMode, setTimerMode] = useState('per-question') // 'none', 'per-question', 'total-time'
   const [totalQuizTime, setTotalQuizTime] = useState(0) // Total time for entire quiz (if total-time mode)
+  const [timerEndTime, setTimerEndTime] = useState(null) // Absolute end time based on system time
 
   // Fetch quiz data from API
   useEffect(() => {
@@ -38,6 +39,7 @@ const TakeQuizPage = () => {
         console.log('Fetching quiz with ID:', quizId)
         const response = await quizService.getQuizById(quizId)
         console.log('Quiz response:', response)
+        console.log('📋 Full Quiz Data:', JSON.stringify(response, null, 2))
         const quizData = response
         setQuiz(quizData)
 
@@ -74,15 +76,28 @@ const TakeQuizPage = () => {
         const mode = quizData.timerMode || 'per-question'
         setTimerMode(mode)
         
+        console.log('🎮 Quiz Timer Info:', {
+          timerMode: mode,
+          totalTime: quizData.totalTime,
+          totalTimeType: typeof quizData.totalTime,
+          questionCount: formattedQuestions.length
+        })
+        
         if (mode === 'total-time') {
           // Total time mode - use quiz total time
-          const totalTime = quizData.totalTime || (formattedQuestions.length * 30) // Default 30s per question
+          const totalTime = quizData.totalTime && quizData.totalTime > 0 
+            ? quizData.totalTime 
+            : (formattedQuestions.length * 30) // Default 30s per question
+          console.log('⏱️ Total Time Mode - Setting timer to:', totalTime, 'seconds')
           setTotalQuizTime(totalTime)
           setTimeLeft(totalTime)
+          setTimerEndTime(Date.now() + (totalTime * 1000)) // Set absolute end time
         } else {
           // Per question mode - use first question's time limit
           if (formattedQuestions.length > 0) {
-            setTimeLeft(formattedQuestions[0].timeLimit)
+            const questionTime = formattedQuestions[0].timeLimit
+            setTimeLeft(questionTime)
+            setTimerEndTime(Date.now() + (questionTime * 1000)) // Set absolute end time
           }
         }
         
@@ -112,6 +127,7 @@ const TakeQuizPage = () => {
             // Restore timer state
             if (progress.timeLeft !== null && progress.timeLeft !== undefined) {
               setTimeLeft(progress.timeLeft)
+              setTimerEndTime(Date.now() + (progress.timeLeft * 1000)) // Recalculate end time
               console.log('⏱️ Restored timer:', progress.timeLeft, 'seconds')
             }
             if (progress.totalTimeSpent) {
@@ -145,7 +161,7 @@ const TakeQuizPage = () => {
     }
   }, [quizId])
 
-  // Timer countdown effect
+  // Timer countdown effect - using system time for accuracy
   useEffect(() => {
     if (loading || quizFinished || !questions.length) return
     
@@ -158,28 +174,62 @@ const TakeQuizPage = () => {
       return () => clearInterval(timer)
     }
 
+    // Use system time to calculate remaining time accurately
     const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          // Time's up - different handling based on mode
-          if (timerMode === 'total-time') {
-            // Total time mode - auto submit immediately
-            calculateScoreAndSubmit()
-          } else {
-            // Per question mode - auto advance
-            handleTimeUp()
-          }
-          return 0
+      const now = Date.now()
+      const remainingMs = timerEndTime - now
+      const remainingSec = Math.ceil(remainingMs / 1000)
+      
+      if (remainingSec <= 0) {
+        // Time's up - different handling based on mode
+        setTimeLeft(0)
+        clearInterval(timer)
+        
+        if (timerMode === 'total-time') {
+          // Total time mode - auto submit immediately
+          calculateScoreAndSubmit()
+        } else {
+          // Per question mode - auto advance
+          handleTimeUp()
         }
-        return prev - 1
-      })
+      } else {
+        setTimeLeft(remainingSec)
+      }
       
       // Track total time
       setTotalTimeSpent((prev) => prev + 1)
-    }, 1000)
+    }, 100) // Update every 100ms for smoother display, calculate from system time
 
     return () => clearInterval(timer)
-  }, [currentQuestion, loading, quizFinished, questions.length, timerMode])
+  }, [currentQuestion, loading, quizFinished, questions.length, timerMode, timerEndTime])
+
+  // Auto-save progress every 3 seconds for real-time sync
+  useEffect(() => {
+    if (loading || quizFinished || !questions.length) return
+    
+    const autoSaveInterval = setInterval(() => {
+      if (hasUnsavedProgress) {
+        saveCurrentProgress()
+      }
+    }, 3000) // Auto-save every 3 seconds for real-time
+
+    return () => clearInterval(autoSaveInterval)
+  }, [loading, quizFinished, questions.length, hasUnsavedProgress, answers, timeLeft])
+
+  // Save progress before page unload (browser close/reload)
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedProgress && !quizFinished) {
+        saveCurrentProgress()
+        e.preventDefault()
+        e.returnValue = 'Progress akan disimpan. Yakin ingin keluar?'
+        return e.returnValue
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedProgress, quizFinished])
 
   // Handle time up for current question (per-question mode only)
   const handleTimeUp = () => {
@@ -193,7 +243,9 @@ const TakeQuizPage = () => {
     // Auto advance to next question or finish
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1)
-      setTimeLeft(questions[currentQuestion + 1].timeLimit)
+      const nextQuestionTime = questions[currentQuestion + 1].timeLimit
+      setTimeLeft(nextQuestionTime)
+      setTimerEndTime(Date.now() + (nextQuestionTime * 1000)) // Update end time
       setQuestionStartTime(Date.now())
     } else {
       // Last question - auto submit
@@ -436,7 +488,9 @@ const TakeQuizPage = () => {
       
       // Reset timer based on mode
       if (timerMode === 'per-question') {
-        setTimeLeft(questions[currentQuestion + 1].timeLimit)
+        const nextQuestionTime = questions[currentQuestion + 1].timeLimit
+        setTimeLeft(nextQuestionTime)
+        setTimerEndTime(Date.now() + (nextQuestionTime * 1000)) // Update end time
       }
       // For total-time mode, timer keeps counting down
       

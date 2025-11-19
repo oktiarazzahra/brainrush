@@ -319,9 +319,15 @@ const CreateQuizPage = () => {
         description: `Kategori: ${quizCategory}`,
         category: quizCategory,
         timerMode: timerMode,
-        totalTime: timerMode === 'total-time' ? totalTime * 60 : undefined,
+        totalTime: timerMode === 'total-time' ? totalTime * 60 : null,
         questions: formattedQuestions
       }
+
+      console.log('📤 Creating quiz with data:', {
+        timerMode: quizData.timerMode,
+        totalTime: quizData.totalTime,
+        questionCount: quizData.questions.length
+      })
 
       await quizService.createQuiz(quizData)
       alert('Quiz berhasil disimpan! 🎉')
