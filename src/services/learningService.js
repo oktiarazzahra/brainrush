@@ -86,7 +86,7 @@ export const learningService = {
   },
 
   // Submit learning answers
-  submitLearning: async (quizId, answers) => {
+  submitLearning: async (quizId, answers, progressId = null) => {
     try {
       const response = await fetch(`${API_URL}/learning/submit`, {
         method: 'POST',
@@ -97,6 +97,7 @@ export const learningService = {
         body: JSON.stringify({
           quizId,
           answers,
+          progressId,
         }),
       });
 
@@ -108,6 +109,60 @@ export const learningService = {
       return data;
     } catch (error) {
       console.error('Error submitting learning:', error);
+      throw error;
+    }
+  },
+
+  // Save progress for incomplete quiz
+  saveProgress: async (quizId, currentQuestionIndex, answers, totalQuestions, timeLeft = null, timerMode = 'per-question', totalTimeSpent = 0) => {
+    try {
+      const response = await fetch(`${API_URL}/learning/save-progress`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify({
+          quizId,
+          currentQuestionIndex,
+          answers,
+          totalQuestions,
+          timeLeft,
+          timerMode,
+          totalTimeSpent,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error saving progress:', error);
+      throw error;
+    }
+  },
+
+  // Get saved progress for a quiz
+  getProgress: async (quizId) => {
+    try {
+      const response = await fetch(`${API_URL}/learning/progress/${quizId}`, {
+        headers: getAuthHeader(),
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null; // No progress found
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error getting progress:', error);
       throw error;
     }
   },

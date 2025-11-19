@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Footer from '../components/Footer'
 import { quizService } from '../services/quizService'
 
 const compressImage = (file) => {
@@ -112,6 +111,7 @@ const CreateQuizPage = () => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
     arr[idx].options.push('')
+    arr[idx].correct.push(false)
     setQuestions(arr)
   }
 
@@ -716,8 +716,6 @@ const CreateQuizPage = () => {
           </div>
         </div>
       </div>
-
-      <Footer />
     </div>
   )
 }

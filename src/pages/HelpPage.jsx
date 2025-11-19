@@ -21,7 +21,7 @@ const HelpPage = () => {
       icon: '🎯',
       title: 'Membuat Quiz',
       description: 'Pelajari cara membuat quiz interaktif',
-      color: 'from-blue-500 to-cyan-500',
+      color: 'from-slate-400 to-slate-500',
       details: [
         'Klik menu "Buat" di sidebar',
         'Pilih "Buat Kuis Baru"',
@@ -35,7 +35,7 @@ const HelpPage = () => {
       icon: '🎮',
       title: 'Main Quiz Live',
       description: 'Bergabung dan ikuti quiz secara real-time',
-      color: 'from-green-500 to-emerald-500',
+      color: 'from-teal-400 to-cyan-500',
       details: [
         'Masukkan PIN quiz di halaman utama',
         'Klik tombol "JOIN"',
@@ -49,7 +49,7 @@ const HelpPage = () => {
       icon: '📊',
       title: 'Lihat Statistik',
       description: 'Cek performa dan history kamu',
-      color: 'from-purple-500 to-pink-500',
+      color: 'from-violet-400 to-purple-500',
       details: [
         'Buka menu "History" untuk melihat quiz lama',
         'Klik quiz untuk detail hasil',
@@ -63,7 +63,7 @@ const HelpPage = () => {
       icon: '📚',
       title: 'Belajar Mandiri',
       description: 'Latihan soal tanpa batasan waktu',
-      color: 'from-orange-500 to-red-500',
+      color: 'from-amber-400 to-orange-400',
       details: [
         'Pilih menu "Belajar Mandiri"',
         'Browse quiz yang tersedia',
@@ -127,7 +127,7 @@ const HelpPage = () => {
     <DashboardLayout>
       <div className="flex-1 flex flex-col">
         
-        <main className="flex-1 bg-gradient-to-br from-blue-100 via-blue-300 to-blue-200 mx-8 rounded-2xl p-8 mb-8 mt-10 overflow-y-auto">
+        <main className="flex-1 bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 mx-8 rounded-2xl p-8 mb-8 mt-10 overflow-y-auto">
           
           {/* Hero Section - Compact */}
           <div className="text-center mb-8">
@@ -183,7 +183,7 @@ const HelpPage = () => {
                           transition={{ delay: idx * 0.05 }}
                           className="flex items-start gap-2 text-sm"
                         >
-                          <span className="flex-shrink-0 w-5 h-5 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                          <span className="flex-shrink-0 w-5 h-5 bg-gradient-to-br from-slate-400 to-slate-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
                             {idx + 1}
                           </span>
                           <span className="text-gray-700 pt-0.5">{detail}</span>
@@ -224,26 +224,26 @@ const HelpPage = () => {
               Tips & Trik
             </h2>
             <div className="grid md:grid-cols-3 gap-3">
-              <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-4">
-                <div className="text-2xl mb-2">🚀</div>
-                <h4 className="font-bold text-gray-800 text-sm mb-1">Quiz Lebih Seru</h4>
-                <p className="text-xs text-gray-600">Tambahkan gambar dan timer</p>
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4">
+                <div className="text-2xl mb-2">🎯</div>
+                <h4 className="font-bold text-gray-800 text-sm mb-1">Cari Quiz Favorit</h4>
+                <p className="text-xs text-gray-600">Filter berdasarkan kategori di dashboard</p>
               </div>
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4">
-                <div className="text-2xl mb-2">🏆</div>
-                <h4 className="font-bold text-gray-800 text-sm mb-1">Skor Maksimal</h4>
-                <p className="text-xs text-gray-600">Jawab cepat untuk bonus poin</p>
+              <div className="bg-gradient-to-br from-violet-50 to-purple-100 rounded-xl p-4">
+                <div className="text-2xl mb-2">📝</div>
+                <h4 className="font-bold text-gray-800 text-sm mb-1">Kelola Quiz Kamu</h4>
+                <p className="text-xs text-gray-600">Edit atau hapus quiz di menu "Buat"</p>
               </div>
-              <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-4">
-                <div className="text-2xl mb-2">📱</div>
-                <h4 className="font-bold text-gray-800 text-sm mb-1">Main Dimana Saja</h4>
-                <p className="text-xs text-gray-600">Akses dari HP, tablet, atau PC</p>
+              <div className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-xl p-4">
+                <div className="text-2xl mb-2">📊</div>
+                <h4 className="font-bold text-gray-800 text-sm mb-1">Lihat Progres</h4>
+                <p className="text-xs text-gray-600">Cek history untuk review hasil quiz</p>
               </div>
             </div>
           </div>
 
           {/* Contact Support - Compact, Email Only */}
-          <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-lg p-6 text-white text-center">
+          <div className="bg-gradient-to-br from-slate-600 to-slate-700 rounded-2xl shadow-lg p-6 text-white text-center">
             <motion.div
               animate={{ rotate: [0, 10, -10, 0] }}
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
@@ -258,7 +258,7 @@ const HelpPage = () => {
             <div className="flex gap-3 justify-center">
               <a
                 href="mailto:support@brainrush.com"
-                className="inline-flex items-center justify-center gap-2 bg-white text-blue-600 font-bold py-3 px-6 rounded-xl hover:shadow-xl hover:scale-105 transition-all"
+                className="inline-flex items-center justify-center gap-2 bg-white text-slate-700 font-bold py-3 px-6 rounded-xl hover:shadow-xl hover:scale-105 transition-all"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -267,7 +267,7 @@ const HelpPage = () => {
               </a>
               <button
                 onClick={() => setShowReportModal(true)}
-                className="inline-flex items-center justify-center gap-2 bg-yellow-400 text-gray-900 font-bold py-3 px-6 rounded-xl hover:shadow-xl hover:scale-105 transition-all"
+                className="inline-flex items-center justify-center gap-2 bg-amber-100 text-slate-800 font-bold py-3 px-6 rounded-xl hover:shadow-xl hover:scale-105 transition-all"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -390,14 +390,14 @@ const HelpPage = () => {
                 </div>
 
                 {/* Info Box */}
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                   <div className="flex gap-3">
                     <div className="text-2xl">ℹ️</div>
                     <div className="flex-1">
-                      <p className="text-sm font-semibold text-blue-900 mb-1">
+                      <p className="text-sm font-semibold text-slate-800 mb-1">
                         Informasi Penting
                       </p>
-                      <p className="text-xs text-blue-800">
+                      <p className="text-xs text-slate-700">
                         Laporan Anda akan disimpan di sistem kami dan tim support akan segera meninjau. 
                         Anda akan menerima konfirmasi via email di <span className="font-bold">{reportForm.email || 'email Anda'}</span>.
                       </p>
@@ -417,7 +417,7 @@ const HelpPage = () => {
                   <button
                     type="submit"
                     disabled={sending}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold rounded-xl transition shadow-lg hover:shadow-xl"
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold rounded-xl transition shadow-lg hover:shadow-xl"
                   >
                     {sending ? (
                       <span className="flex items-center justify-center gap-2">

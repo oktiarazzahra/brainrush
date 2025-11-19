@@ -36,7 +36,7 @@ const AdminSupportPage = () => {
       calculateStats(response.data.tickets)
     } catch (error) {
       console.error('Error fetching tickets:', error)
-      alert('Gagal memuat data tickets')
+      alert('Gagal memuat data laporan')
     } finally {
       setLoading(false)
     }
@@ -55,21 +55,21 @@ const AdminSupportPage = () => {
   const handleUpdateStatus = async (ticketId, newStatus) => {
     try {
       await supportService.updateTicket(ticketId, { status: newStatus })
-      alert('Status ticket berhasil diupdate!')
+      alert('Status laporan berhasil diupdate!')
       fetchTickets()
       if (selectedTicket && selectedTicket._id === ticketId) {
         setSelectedTicket({ ...selectedTicket, status: newStatus })
       }
     } catch (error) {
       console.error('Error updating ticket:', error)
-      alert('Gagal update status ticket')
+      alert('Gagal update status laporan')
     }
   }
 
   const handleUpdatePriority = async (ticketId, newPriority) => {
     try {
       await supportService.updateTicket(ticketId, { priority: newPriority })
-      alert('Priority ticket berhasil diupdate!')
+      alert('Priority laporan berhasil diupdate!')
       fetchTickets()
     } catch (error) {
       console.error('Error updating priority:', error)
@@ -124,10 +124,10 @@ const AdminSupportPage = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-            <span className="text-4xl">🎫</span>
-            Support Tickets
+            <span className="text-4xl">📋</span>
+            Laporan Pengguna
           </h1>
-          <p className="text-gray-600">Kelola semua laporan dan support tickets dari pengguna</p>
+          <p className="text-gray-600">Kelola semua laporan masalah dan feedback dari pengguna</p>
         </div>
 
           {/* Stats Cards */}
@@ -137,7 +137,7 @@ const AdminSupportPage = () => {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-xl p-6 shadow-md"
             >
-              <p className="text-sm text-gray-600 font-semibold mb-1">Total Tickets</p>
+              <p className="text-sm text-gray-600 font-semibold mb-1">Total Laporan</p>
               <p className="text-3xl font-bold text-blue-600">{stats.total}</p>
             </motion.div>
             <motion.div
@@ -219,13 +219,13 @@ const AdminSupportPage = () => {
             <div className="flex justify-center items-center h-64">
               <div className="text-center">
                 <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent mb-4"></div>
-                <p className="text-gray-700 text-lg font-semibold">Loading tickets...</p>
+                <p className="text-gray-700 text-lg font-semibold">Memuat laporan...</p>
               </div>
             </div>
           ) : tickets.length === 0 ? (
             <div className="bg-white rounded-xl p-12 text-center shadow-md">
               <div className="text-6xl mb-4">📭</div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Tidak ada tickets</h3>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Tidak ada laporan</h3>
               <p className="text-gray-600">Belum ada laporan yang sesuai dengan filter</p>
             </div>
           ) : (
@@ -322,7 +322,7 @@ const AdminSupportPage = () => {
                     {selectedTicket.subject}
                   </h2>
                   <p className="text-sm text-gray-500">
-                    Ticket ID: {selectedTicket._id}
+                    ID Laporan: {selectedTicket._id}
                   </p>
                 </div>
                 <button

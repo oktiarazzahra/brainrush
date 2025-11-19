@@ -210,7 +210,7 @@ const AdminUsersPage = () => {
                             ? 'bg-purple-100 text-purple-700' 
                             : 'bg-blue-100 text-blue-700'
                         }`}>
-                          {user.role === 'admin' ? '🛡️ Admin' : '👤 User'}
+                          {user.role === 'admin' ? 'Admin' : 'User'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -219,7 +219,7 @@ const AdminUsersPage = () => {
                             ? 'bg-green-100 text-green-700' 
                             : 'bg-yellow-100 text-yellow-700'
                         }`}>
-                          {user.isVerified ? '✅ Verified' : '⏳ Pending'}
+                          {user.isVerified ? 'Verified' : 'Pending'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -297,7 +297,7 @@ const AdminUsersPage = () => {
                       ? 'bg-purple-100 text-purple-700' 
                       : 'bg-blue-100 text-blue-700'
                   }`}>
-                    {selectedUser.role === 'admin' ? '🛡️ Admin' : '👤 User'}
+                    {selectedUser.role === 'admin' ? 'Admin' : 'User'}
                   </span>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4">
@@ -307,7 +307,7 @@ const AdminUsersPage = () => {
                       ? 'bg-green-100 text-green-700' 
                       : 'bg-yellow-100 text-yellow-700'
                   }`}>
-                    {selectedUser.isVerified ? '✅ Verified' : '⏳ Pending'}
+                    {selectedUser.isVerified ? 'Verified' : 'Pending'}
                   </span>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4">

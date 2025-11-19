@@ -89,88 +89,59 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-blue-50">
       {/* Header */}
-      <motion.div
-        className="bg-gradient-to-r from-indigo-700 to-purple-700 px-6 py-5 shadow-2xl"
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 100 }}
-      >
+      <div className="bg-white border-b border-blue-100 px-6 py-4 shadow-sm">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <motion.button
+          <button
             onClick={() => navigate("/dashboard")}
-            className="text-white hover:text-yellow-300 transition-colors flex items-center gap-2 font-semibold"
-            whileHover={{ scale: 1.05, x: -5 }}
-            whileTap={{ scale: 0.95 }}
+            className="text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-2 font-medium"
           >
-            <span className="text-3xl">←</span>
-            <span className="text-lg">Back</span>
-          </motion.button>
-          <h1 className="text-3xl font-bold text-white drop-shadow-lg">
-            👤 My Profile
+            <span className="text-xl">←</span>
+            <span>Back</span>
+          </button>
+          <h1 className="text-xl font-semibold text-gray-900">
+            My Profile
           </h1>
-          <div className="w-20"></div> {/* Spacer for centering */}
+          <div className="w-16"></div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8">
+      <main className="flex-1 flex flex-col items-center px-4 py-8">
         {loading ? (
-          <motion.div
-            className="bg-white/90 backdrop-blur rounded-2xl shadow-2xl p-12 text-center"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-purple-600 border-r-transparent mb-4"></div>
-            <p className="text-xl font-semibold text-purple-600">Loading your profile...</p>
-          </motion.div>
+          <div className="bg-white rounded-lg shadow p-12 text-center border border-blue-100">
+            <div className="inline-block h-10 w-10 animate-spin rounded-full border-3 border-solid border-blue-600 border-r-transparent mb-4"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
         ) : error && !userData ? (
-          <motion.div
-            className="bg-white/90 backdrop-blur rounded-2xl shadow-2xl p-12 text-center max-w-md"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <div className="text-6xl mb-4">😢</div>
-            <p className="text-xl font-semibold text-red-600 mb-6">{error}</p>
+          <div className="bg-white rounded-lg shadow p-12 text-center max-w-md border border-blue-100">
+            <p className="text-lg text-red-600 mb-6">{error}</p>
             <button
               onClick={() => navigate('/login')}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 rounded-xl font-bold hover:shadow-xl transition-all transform hover:scale-105"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition"
             >
               Go to Login
             </button>
-          </motion.div>
+          </div>
         ) : userData ? (
-          <motion.div
-            className="w-full max-w-2xl bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-8 md:p-10"
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
+          <div className="w-full max-w-2xl bg-white rounded-lg shadow-md border border-blue-100 p-6 md:p-8">
             {/* Success/Error Messages */}
             {error && (
-              <motion.div
-                className="mb-6 p-4 bg-red-100 border-2 border-red-400 text-red-700 rounded-xl font-semibold text-center"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                ❌ {error}
-              </motion.div>
+              <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                {error}
+              </div>
             )}
 
             {success && (
-              <motion.div
-                className="mb-6 p-4 bg-green-100 border-2 border-green-400 text-green-700 rounded-xl font-semibold text-center"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                ✅ {success}
-              </motion.div>
+              <div className="mb-6 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
+                {success}
+              </div>
             )}
 
             {/* Avatar Selection */}
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-purple-700 mb-4">Choose Your Avatar</h2>
+            <div className="mb-6 pb-6 border-b border-blue-100">
+              <h2 className="text-base font-semibold text-blue-900 mb-4">Avatar</h2>
               <AvatarSelector
                 selectedAvatar={selectedAvatar}
                 onAvatarSelect={setSelectedAvatar}
@@ -178,46 +149,38 @@ const ProfilePage = () => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              <motion.div
-                className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white text-center shadow-lg"
-                whileHover={{ scale: 1.05 }}
-              >
-                <div className="text-4xl mb-2">🎮</div>
-                <div className="text-3xl font-bold">{userData.totalGamesPlayed || 0}</div>
-                <div className="text-sm opacity-90">Games Played</div>
-              </motion.div>
+            <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-blue-100">
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                <div className="text-sm text-blue-600 mb-1">Games Played</div>
+                <div className="text-2xl font-semibold text-blue-900">{userData.totalGamesPlayed || 0}</div>
+              </div>
 
-              <motion.div
-                className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white text-center shadow-lg"
-                whileHover={{ scale: 1.05 }}
-              >
-                <div className="text-4xl mb-2">🏆</div>
-                <div className="text-3xl font-bold">{userData.totalScore || 0}</div>
-                <div className="text-sm opacity-90">Total Score</div>
-              </motion.div>
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                <div className="text-sm text-blue-600 mb-1">Total Score</div>
+                <div className="text-2xl font-semibold text-blue-900">{userData.totalScore || 0}</div>
+              </div>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email Field */}
               <div>
-                <label className="block text-sm font-bold text-purple-700 mb-2">
-                  📧 Email Address
+                <label className="block text-sm font-medium text-blue-900 mb-1">
+                  Email Address
                 </label>
                 <input
                   type="email"
                   value={formData.email}
                   disabled
-                  className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-300 rounded-xl text-gray-600 cursor-not-allowed font-medium"
+                  className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-gray-500 text-sm cursor-not-allowed"
                 />
-                <p className="text-xs text-gray-500 mt-1 italic">Email cannot be changed</p>
+                <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
               </div>
 
               {/* Name Field */}
               <div>
-                <label className="block text-sm font-bold text-purple-700 mb-2">
-                  ✏️ Full Name
+                <label className="block text-sm font-medium text-blue-900 mb-1">
+                  Full Name
                 </label>
                 <input
                   type="text"
@@ -226,35 +189,31 @@ const ProfilePage = () => {
                   onChange={handleChange}
                   disabled={saving}
                   placeholder="Enter your name"
-                  className="w-full px-4 py-3 bg-white border-2 border-purple-300 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-500 disabled:opacity-50 font-medium transition-all"
+                  className="w-full px-3 py-2 bg-white border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 disabled:opacity-50 text-sm transition"
                   required
                 />
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-4 pt-4">
-                <motion.button
+              <div className="flex gap-3 pt-2">
+                <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  whileHover={{ scale: saving ? 1 : 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-medium text-sm transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                 >
-                  {saving ? '💾 Saving...' : '💾 Save Changes'}
-                </motion.button>
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
 
-                <motion.button
+                <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2.5 rounded-lg font-medium text-sm transition shadow-sm"
                 >
-                  🚪 Logout
-                </motion.button>
+                  Logout
+                </button>
               </div>
             </form>
-          </motion.div>
+          </div>
         ) : null}
       </main>
 

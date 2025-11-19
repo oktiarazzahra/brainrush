@@ -9,6 +9,7 @@ const BelajarMandiriPage = () => {
   const [selectedQuiz, setSelectedQuiz] = useState(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [scheduledQuizzes, setScheduledQuizzes] = useState([])
+  const [inProgressQuizzes, setInProgressQuizzes] = useState([])
   const [quizQuestions, setQuizQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -27,10 +28,10 @@ const BelajarMandiriPage = () => {
         learningService.getLearningStats()
       ])
 
-      // Format history data for UI
+      const bgColors = ['from-blue-200 to-blue-400', 'from-green-200 to-green-400', 'from-purple-200 to-purple-400', 'from-pink-200 to-pink-400']
+
+      // Format completed history data for UI
       const formattedQuizzes = historyResponse.data.history.map((item, index) => {
-        const bgColors = ['from-blue-200 to-blue-400', 'from-green-200 to-green-400', 'from-purple-200 to-purple-400', 'from-pink-200 to-pink-400']
-        
         return {
           id: item.id,
           title: item.quizTitle,
@@ -40,11 +41,29 @@ const BelajarMandiriPage = () => {
           date: new Date(item.completedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
           image: null,
           bgColor: bgColors[index % bgColors.length],
-          timeSpent: '-'
+          timeSpent: '-',
+          isCompleted: true
+        }
+      })
+
+      // Format in-progress quizzes
+      const formattedInProgress = (historyResponse.data.inProgress || []).map((item, index) => {
+        return {
+          id: item.id,
+          quizId: item.quizId,
+          title: item.quizTitle,
+          category: item.category,
+          currentQuestionIndex: item.currentQuestionIndex,
+          totalQuestions: item.totalQuestions,
+          image: null,
+          bgColor: bgColors[index % bgColors.length],
+          lastUpdated: new Date(item.lastUpdated).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          isCompleted: false
         }
       })
 
       setScheduledQuizzes(formattedQuizzes)
+      setInProgressQuizzes(formattedInProgress)
       setStats(statsResponse.data.stats)
       setLoading(false)
     } catch (err) {
@@ -144,7 +163,7 @@ const BelajarMandiriPage = () => {
         <main className="flex-1 bg-gradient-to-br from-blue-100 via-blue-300 to-blue-200 mx-4 rounded-2xl p-8 mb-8 mt-8 overflow-y-auto min-h-[70vh]">
           
           {/* Empty State */}
-          {scheduledQuizzes.length === 0 ? (
+          {scheduledQuizzes.length === 0 && inProgressQuizzes.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center bg-white rounded-2xl p-12 shadow-lg">
                 <div className="text-6xl mb-4">📚</div>
@@ -204,12 +223,88 @@ const BelajarMandiriPage = () => {
             </div>
           </div>
 
+          {/* In-Progress Section */}
+          {inProgressQuizzes.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
+                ⏳ Sedang Dikerjakan
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {inProgressQuizzes.map((quiz, index) => (
+                  <motion.div
+                    key={quiz.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ scale: 1.05, y: -5 }}
+                    className="bg-white rounded-xl shadow-lg overflow-hidden cursor-pointer group border-2 border-yellow-400"
+                    onClick={() => navigate(`/take-quiz/${quiz.quizId}`)}
+                  >
+                    {/* Image Header */}
+                    <div className={`h-28 bg-gradient-to-r ${quiz.bgColor} flex items-center justify-center overflow-hidden relative`}>
+                      {quiz.image ? (
+                        <>
+                          <img 
+                            src={quiz.image} 
+                            alt={quiz.title} 
+                            className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          />
+                          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition"></div>
+                        </>
+                      ) : (
+                        <div className="text-4xl opacity-50">📚</div>
+                      )}
+                      
+                      {/* Badges */}
+                      <div className="absolute top-2 right-2">
+                        <span className="bg-yellow-500 text-white rounded-full px-2 py-0.5 text-xs font-bold">
+                          Belum Selesai
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="p-3">
+                      <h3 className="font-bold text-sm text-gray-800 mb-2 group-hover:text-blue-600 transition line-clamp-2">{quiz.title}</h3>
+                      
+                      {/* Progress Bar */}
+                      <div className="mb-2">
+                        <div className="flex justify-between text-xs text-gray-600 mb-1">
+                          <span className="text-xs">Progress</span>
+                          <span className="text-xs font-semibold">{quiz.currentQuestionIndex}/{quiz.totalQuestions}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5">
+                          <div 
+                            className="bg-yellow-500 h-1.5 rounded-full transition-all"
+                            style={{ width: `${(quiz.currentQuestionIndex / quiz.totalQuestions) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      {/* Footer */}
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                        <p className="text-xs text-gray-500">{quiz.lastUpdated}</p>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-md text-xs font-bold transition"
+                        >
+                          Continue →
+                        </motion.button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Quiz Cards Section */}
           <div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              📚 Quiz Tersedia
+            <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
+              📚 Quiz Selesai
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {scheduledQuizzes.map((quiz, index) => (
                 <motion.div
                   key={quiz.id}
@@ -221,7 +316,7 @@ const BelajarMandiriPage = () => {
                   onClick={() => handleOpenReview(quiz)}
                 >
                   {/* Image Header */}
-                  <div className={`h-40 bg-gradient-to-r ${quiz.bgColor} flex items-center justify-center overflow-hidden relative`}>
+                  <div className={`h-28 bg-gradient-to-r ${quiz.bgColor} flex items-center justify-center overflow-hidden relative`}>
                     {quiz.image ? (
                       <>
                         <img 
@@ -232,36 +327,36 @@ const BelajarMandiriPage = () => {
                         <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition"></div>
                       </>
                     ) : (
-                      <div className="text-6xl opacity-50">📚</div>
+                      <div className="text-4xl opacity-50">📚</div>
                     )}
                     
                     {/* Badges */}
-                    <div className="absolute top-3 right-3">
-                      <span className="bg-white/95 rounded-full px-3 py-1 text-xs font-bold text-gray-700">
+                    <div className="absolute top-2 right-2">
+                      <span className="bg-white/95 rounded-full px-2 py-0.5 text-xs font-bold text-gray-700">
                         {quiz.category}
                       </span>
                     </div>
                   </div>
                   
                   {/* Content */}
-                  <div className="p-5">
-                    <h3 className="font-bold text-lg text-gray-800 mb-3 group-hover:text-blue-600 transition">{quiz.title}</h3>
+                  <div className="p-3">
+                    <h3 className="font-bold text-sm text-gray-800 mb-2 group-hover:text-blue-600 transition line-clamp-2">{quiz.title}</h3>
                     
                     {/* Info Grid */}
-                    <div className="grid grid-cols-2 gap-2 mb-4">
-                      <div className="bg-green-50 rounded-lg p-2 text-center col-span-2">
+                    <div className="mb-2">
+                      <div className="bg-green-50 rounded-lg p-2 text-center">
                         <p className="text-xs text-gray-600">Skor</p>
-                        <p className="font-bold text-green-600">{quiz.score}%</p>
+                        <p className="font-bold text-lg text-green-600">{quiz.score}%</p>
                       </div>
                     </div>
 
                     {/* Footer */}
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-200">
                       <p className="text-xs text-gray-500">{quiz.date}</p>
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.95 }}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded-lg text-xs font-bold transition"
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-xs font-bold transition"
                       >
                         Review →
                       </motion.button>

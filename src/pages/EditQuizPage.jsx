@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import Footer from '../components/Footer'
 import { quizService } from '../services/quizService'
 
 const compressImage = (file) => {
@@ -210,12 +209,21 @@ const EditQuizPage = () => {
     if (idx < 0 || idx >= questions.length) return
     const arr = [...questions]
     arr[idx].options.push('')
+    arr[idx].correct.push(false)
     setQuestions(arr)
   }
 
   const removeOption = (i, idx = activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
-    if (questions[idx].options.length <= 2) {
+    const currentQuestion = questions[idx]
+    
+    // Pilihan Ganda harus selalu 4 opsi
+    if (currentQuestion.type === 'Pilihan Ganda' && currentQuestion.options.length <= 4) {
+      alert('Pilihan Ganda harus memiliki 4 pilihan!')
+      return
+    }
+    
+    if (currentQuestion.options.length <= 2) {
       alert('Minimal harus ada 2 pilihan!')
       return
     }
@@ -678,7 +686,7 @@ const EditQuizPage = () => {
                       >
                         {q.correct[i] && <span className="text-white font-bold text-lg">✓</span>}
                       </div>
-                      {q.options.length > 2 && (
+                      {q.type !== 'Pilihan Ganda' && q.options.length > 2 && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
@@ -693,7 +701,7 @@ const EditQuizPage = () => {
                   ))}
                 </div>
 
-                {q.options.length < 4 && (
+                {q.type !== 'Pilihan Ganda' && q.options.length < 4 && (
                   <button
                     onClick={addOption}
                     className="text-blue-600 hover:text-blue-800 font-semibold text-sm mt-4"
@@ -822,8 +830,6 @@ const EditQuizPage = () => {
           </div>
         </div>
       </div>
-
-      <Footer />
     </div>
   )
 }

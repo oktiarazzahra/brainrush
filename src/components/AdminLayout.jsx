@@ -14,8 +14,8 @@ const AdminLayout = ({ children }) => {
   }
 
   const menuItems = [
-    { path: '/admin/users', label: '👥 Kelola Pengguna', icon: '👥' },
-    { path: '/admin/support', label: '🎫 Support Tickets', icon: '🎫' }
+    { path: '/admin/users', label: 'Kelola Pengguna', icon: '👥' },
+    { path: '/admin/support', label: 'Laporan Pengguna', icon: '📋' }
   ]
 
   return (
@@ -27,7 +27,7 @@ const AdminLayout = ({ children }) => {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-xl font-bold">🛡️</span>
+                  <span className="text-white text-xl font-bold">A</span>
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-gray-800">Admin Panel</h1>
@@ -38,9 +38,8 @@ const AdminLayout = ({ children }) => {
 
             <button
               onClick={() => setShowLogoutConfirm(true)}
-              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition flex items-center gap-2"
+              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition"
             >
-              <span>🚪</span>
               Logout
             </button>
           </div>
@@ -61,10 +60,7 @@ const AdminLayout = ({ children }) => {
                     : 'border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                 }`}
               >
-                <span className="flex items-center gap-2">
-                  <span>{item.icon}</span>
-                  <span>{item.label}</span>
-                </span>
+                {item.label}
               </button>
             ))}
           </div>
@@ -91,7 +87,6 @@ const AdminLayout = ({ children }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center mb-6">
-              <div className="text-6xl mb-4">🚪</div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Logout dari Admin Panel?</h2>
               <p className="text-gray-600">Anda akan kembali ke halaman login</p>
             </div>

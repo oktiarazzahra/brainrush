@@ -19,6 +19,8 @@ const TakeQuizPage = () => {
   const [error, setError] = useState(null)
   const [quiz, setQuiz] = useState(null)
   const [questions, setQuestions] = useState([])
+  const [progressId, setProgressId] = useState(null)
+  const [hasUnsavedProgress, setHasUnsavedProgress] = useState(false)
   
   // Timer states
   const [timeLeft, setTimeLeft] = useState(0) // Time left for current question
@@ -85,6 +87,47 @@ const TakeQuizPage = () => {
         }
         
         setQuestionStartTime(Date.now())
+        
+        // Check for saved progress
+        try {
+          const progressResponse = await learningService.getProgress(quizId)
+          if (progressResponse && progressResponse.data && progressResponse.data.progress) {
+            const progress = progressResponse.data.progress
+            console.log('📥 Found saved progress:', progress)
+            
+            // Restore progress
+            setProgressId(progress.id)
+            setCurrentQuestion(progress.currentQuestionIndex)
+            
+            // Restore answers
+            const restoredAnswers = {}
+            progress.answers.forEach((ans) => {
+              const qIndex = formattedQuestions.findIndex(q => q._id === ans.questionId.toString())
+              if (qIndex !== -1) {
+                restoredAnswers[qIndex] = ans.userAnswer
+              }
+            })
+            setAnswers(restoredAnswers)
+            
+            // Restore timer state
+            if (progress.timeLeft !== null && progress.timeLeft !== undefined) {
+              setTimeLeft(progress.timeLeft)
+              console.log('⏱️ Restored timer:', progress.timeLeft, 'seconds')
+            }
+            if (progress.totalTimeSpent) {
+              setTotalTimeSpent(progress.totalTimeSpent)
+            }
+            
+            // Show notification
+            const timeLeftMin = Math.floor(progress.timeLeft / 60)
+            const timeLeftSec = progress.timeLeft % 60
+            const timeMsg = progress.timeLeft ? ` (Waktu tersisa: ${timeLeftMin}:${timeLeftSec.toString().padStart(2, '0')})` : ''
+            alert(`Melanjutkan dari soal ${progress.currentQuestionIndex + 1} dari ${progress.totalQuestions}${timeMsg}`)
+          }
+        } catch (err) {
+          console.log('No saved progress found or error loading:', err)
+        }
+        
         setLoading(false)
       } catch (err) {
         console.error('Error fetching quiz:', err)
@@ -292,10 +335,11 @@ const TakeQuizPage = () => {
     // Submit to backend
     try {
       setSubmitting(true)
-      const response = await learningService.submitLearning(quizId, submissionAnswers)
+      const response = await learningService.submitLearning(quizId, submissionAnswers, progressId)
       console.log('✅ Submission successful:', response)
       setSubmitting(false)
       setQuizFinished(true)
+      setHasUnsavedProgress(false)
     } catch (error) {
       console.error('❌ Error submitting quiz:', error)
       setSubmitting(false)
@@ -305,8 +349,44 @@ const TakeQuizPage = () => {
     }
   }
 
+  // Auto-save progress
+  const saveCurrentProgress = async () => {
+    if (!quiz || questions.length === 0) return
+    
+    try {
+      // Convert answers to backend format
+      const answersArray = Object.entries(answers).map(([index, answer]) => ({
+        questionId: questions[parseInt(index)]._id,
+        userAnswer: answer,
+        isCorrect: false, // Will be calculated on submit
+        timeSpent: 0
+      }))
+      
+      const response = await learningService.saveProgress(
+        quizId,
+        currentQuestion,
+        answersArray,
+        questions.length,
+        timeLeft,
+        timerMode,
+        totalTimeSpent
+      )
+      
+      if (response.data && response.data.progressId) {
+        setProgressId(response.data.progressId)
+      }
+      
+      setHasUnsavedProgress(false)
+      console.log('💾 Progress saved with timer:', timeLeft, 'seconds left')
+    } catch (error) {
+      console.error('Failed to save progress:', error)
+    }
+  }
+
   // Handle answer selection
   const handleAnswerSelect = (optionIndex) => {
+    setHasUnsavedProgress(true)
+    
     if (currentQ.multi) {
       const current = answers[currentQuestion] || []
       if (current.includes(optionIndex)) {
@@ -330,6 +410,7 @@ const TakeQuizPage = () => {
 
   // Handle true/false
   const handleTrueFalse = (value) => {
+    setHasUnsavedProgress(true)
     setAnswers({
       ...answers,
       [currentQuestion]: value
@@ -337,7 +418,7 @@ const TakeQuizPage = () => {
   }
 
   // Handle next
-  const handleNext = () => {
+  const handleNext = async () => {
     // Save time spent on current question
     const timeSpent = Math.round((Date.now() - questionStartTime) / 1000)
     setTimePerQuestion(prev => ({
@@ -346,6 +427,11 @@ const TakeQuizPage = () => {
     }))
 
     if (currentQuestion < questions.length - 1) {
+      // Save progress before moving to next question
+      if (hasUnsavedProgress) {
+        await saveCurrentProgress()
+      }
+      
       setCurrentQuestion(currentQuestion + 1)
       
       // Reset timer based on mode
@@ -456,7 +542,16 @@ const TakeQuizPage = () => {
             )}
             
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={async () => {
+                // Save progress before leaving
+                if (hasUnsavedProgress && Object.keys(answers).length > 0) {
+                  const shouldSave = window.confirm('Simpan progress sebelum keluar?')
+                  if (shouldSave) {
+                    await saveCurrentProgress()
+                  }
+                }
+                navigate('/dashboard')
+              }}
               className="bg-white/40 hover:bg-white/60 text-blue-900 px-5 py-2 rounded-lg transition font-semibold"
             >
               ← Kembali

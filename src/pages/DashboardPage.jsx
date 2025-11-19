@@ -163,12 +163,16 @@ const DashboardPage = () => {
           {/* Logo and Profile */}
           <div className="flex items-center space-x-4">
             <div className="text-3xl font-bold text-yellow-400 stroke-text">Brain Rush</div>
-            <div
-              className="h-11 w-11 rounded-full border-2 border-white cursor-pointer hover:scale-110 transition bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-2xl"
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-300 via-blue-400 to-blue-500 p-0.5 cursor-pointer shadow-lg transition"
               onClick={() => navigate('/profile')}
             >
-              {loading ? '⏳' : getAvatarEmoji()}
-            </div>
+              <div className="h-full w-full rounded-full bg-white flex items-center justify-center text-2xl">
+                {loading ? '⏳' : getAvatarEmoji()}
+              </div>
+            </motion.div>
           </div>
         </div>
       </motion.div>
