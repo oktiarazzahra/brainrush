@@ -91,8 +91,8 @@ const EditQuizPage = () => {
               let trueFalseAnswer = null
               let acceptedAnswers = []
               let multi = false
-              // Jika mode adalah 'total-time', ignore timeLimit per soal
-              let useTime = quizTimerMode === 'per-question' && q.timeLimit !== null && q.timeLimit !== undefined
+              // Derive useTime dari timeLimit: jika timeLimit ada (bukan null), berarti useTime true
+              let useTime = q.timeLimit !== null && q.timeLimit !== undefined
 
               // SET DATA BERDASARKAN TYPE
               if (type === 'Pilihan Ganda') {
