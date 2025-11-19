@@ -1,10 +1,19 @@
 // src/pages/HelpPage.jsx
 import { useState } from 'react'
 import DashboardLayout from '../components/DashboardLayout'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { supportService } from '../services/supportService'
 
 const HelpPage = () => {
   const [activeCard, setActiveCard] = useState(null)
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [reportForm, setReportForm] = useState({
+    subject: '',
+    category: 'bug',
+    description: '',
+    email: ''
+  })
+  const [sending, setSending] = useState(false)
 
   const helpCategories = [
     {
@@ -64,6 +73,55 @@ const HelpPage = () => {
       ]
     }
   ]
+
+  const handleReportSubmit = async (e) => {
+    e.preventDefault()
+    
+    if (!reportForm.subject || !reportForm.description || !reportForm.email) {
+      alert('Mohon lengkapi semua field!')
+      return
+    }
+
+    // Validasi email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(reportForm.email)) {
+      alert('Format email tidak valid!')
+      return
+    }
+
+    setSending(true)
+    
+    try {
+      // Kirim ke backend API
+      const response = await supportService.submitTicket(reportForm)
+      
+      // Tampilkan success message dengan ticket ID
+      alert(
+        `✅ Laporan berhasil dikirim!\n\n` +
+        `Ticket ID: ${response.data.ticketId}\n\n` +
+        `Tim kami akan segera meninjau laporan Anda dan menghubungi melalui email jika diperlukan.\n\n` +
+        `Terima kasih telah membantu meningkatkan Brain Rush!`
+      )
+      
+      // Reset form dan tutup modal
+      setReportForm({ subject: '', category: 'bug', description: '', email: '' })
+      setShowReportModal(false)
+      
+    } catch (error) {
+      console.error('Submit ticket error:', error)
+      alert(
+        `❌ Gagal mengirim laporan\n\n` +
+        `${error.message || 'Terjadi kesalahan. Silakan coba lagi.'}`
+      )
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const resetForm = () => {
+    setReportForm({ subject: '', category: 'bug', description: '', email: '' })
+    setShowReportModal(false)
+  }
 
   return (
     <DashboardLayout>
@@ -195,21 +253,195 @@ const HelpPage = () => {
             </motion.div>
             <h2 className="text-2xl font-bold mb-2">Butuh Bantuan Lebih?</h2>
             <p className="text-white/90 mb-4 text-sm">
-              Hubungi tim support kami melalui email
+              Hubungi tim support kami atau laporkan masalah
             </p>
-            <a
-              href="mailto:support@brainrush.com"
-              className="inline-flex items-center justify-center gap-2 bg-white text-blue-600 font-bold py-3 px-6 rounded-xl hover:shadow-xl hover:scale-105 transition-all"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              <span>support@brainrush.com</span>
-            </a>
+            <div className="flex gap-3 justify-center">
+              <a
+                href="mailto:support@brainrush.com"
+                className="inline-flex items-center justify-center gap-2 bg-white text-blue-600 font-bold py-3 px-6 rounded-xl hover:shadow-xl hover:scale-105 transition-all"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <span>Email Langsung</span>
+              </a>
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="inline-flex items-center justify-center gap-2 bg-yellow-400 text-gray-900 font-bold py-3 px-6 rounded-xl hover:shadow-xl hover:scale-105 transition-all"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>Laporkan Masalah</span>
+              </button>
+            </div>
           </div>
 
         </main>
       </div>
+
+      {/* Report Problem Modal */}
+      <AnimatePresence>
+        {showReportModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+            onClick={resetForm}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl p-8 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                    <span className="text-3xl">🚨</span>
+                    Laporkan Masalah
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Bantu kami meningkatkan Brain Rush dengan melaporkan bug atau masalah yang Anda temui
+                  </p>
+                </div>
+                <button
+                  onClick={resetForm}
+                  className="text-gray-400 hover:text-gray-600 transition"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleReportSubmit} className="space-y-4">
+                {/* Category */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Kategori Masalah *
+                  </label>
+                  <select
+                    value={reportForm.category}
+                    onChange={(e) => setReportForm({ ...reportForm, category: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 transition"
+                    required
+                  >
+                    <option value="bug">🐛 Bug / Error</option>
+                    <option value="feature">💡 Permintaan Fitur</option>
+                    <option value="ui">🎨 Masalah Tampilan (UI/UX)</option>
+                    <option value="performance">⚡ Performa Lambat</option>
+                    <option value="security">🔒 Masalah Keamanan</option>
+                    <option value="other">❓ Lainnya</option>
+                  </select>
+                </div>
+
+                {/* Subject */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Judul Masalah *
+                  </label>
+                  <input
+                    type="text"
+                    value={reportForm.subject}
+                    onChange={(e) => setReportForm({ ...reportForm, subject: e.target.value })}
+                    placeholder="Contoh: Quiz tidak bisa disimpan"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 transition"
+                    required
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Email Anda *
+                  </label>
+                  <input
+                    type="email"
+                    value={reportForm.email}
+                    onChange={(e) => setReportForm({ ...reportForm, email: e.target.value })}
+                    placeholder="email@example.com"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 transition"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Kami akan menghubungi Anda melalui email ini
+                  </p>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Deskripsi Detail *
+                  </label>
+                  <textarea
+                    value={reportForm.description}
+                    onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
+                    placeholder="Jelaskan masalah secara detail:&#10;- Apa yang terjadi?&#10;- Kapan masalah muncul?&#10;- Langkah-langkah untuk reproduce masalah&#10;- Screenshot (jika ada)"
+                    rows="6"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 transition resize-none"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Semakin detail penjelasan Anda, semakin cepat kami bisa membantu
+                  </p>
+                </div>
+
+                {/* Info Box */}
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="flex gap-3">
+                    <div className="text-2xl">ℹ️</div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-blue-900 mb-1">
+                        Informasi Penting
+                      </p>
+                      <p className="text-xs text-blue-800">
+                        Laporan Anda akan disimpan di sistem kami dan tim support akan segera meninjau. 
+                        Anda akan menerima konfirmasi via email di <span className="font-bold">{reportForm.email || 'email Anda'}</span>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-xl transition"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={sending}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold rounded-xl transition shadow-lg hover:shadow-xl"
+                  >
+                    {sending ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Mengirim...
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Kirim Laporan
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </DashboardLayout>
   )
 }

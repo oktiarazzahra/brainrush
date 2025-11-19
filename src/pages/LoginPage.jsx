@@ -18,8 +18,18 @@ const LoginPage = () => {
     setLoading(true)
 
     try {
-      await authService.login(email, password)
-      navigate('/dashboard')
+      const response = await authService.login(email, password)
+      
+      // Check role and redirect accordingly
+      const userRole = response.data.user.role
+      
+      if (userRole === 'admin') {
+        // Redirect admin to admin users page
+        navigate('/admin/users')
+      } else {
+        // Redirect regular user to dashboard
+        navigate('/dashboard')
+      }
     } catch (err) {
       setError(
         err.response?.data?.message ||

@@ -175,7 +175,7 @@ const DashboardPage = () => {
 
 
       {/* Category buttons */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 px-8 py-6">
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -219,7 +219,7 @@ const DashboardPage = () => {
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.4 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
               >
                 {filteredQuizzes.map((quiz, index) => (
                   <DashboardCard

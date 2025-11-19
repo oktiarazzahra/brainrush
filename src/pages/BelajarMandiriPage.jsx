@@ -30,7 +30,6 @@ const BelajarMandiriPage = () => {
       // Format history data for UI
       const formattedQuizzes = historyResponse.data.history.map((item, index) => {
         const bgColors = ['from-blue-200 to-blue-400', 'from-green-200 to-green-400', 'from-purple-200 to-purple-400', 'from-pink-200 to-pink-400']
-        const difficulties = ['Mudah', 'Sedang', 'Sulit']
         
         return {
           id: item.id,
@@ -41,7 +40,6 @@ const BelajarMandiriPage = () => {
           date: new Date(item.completedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
           image: null,
           bgColor: bgColors[index % bgColors.length],
-          difficulty: difficulties[Math.floor(item.percentage / 34)], // 0-33: Sulit, 34-66: Sedang, 67-100: Mudah
           timeSpent: '-'
         }
       })
@@ -238,16 +236,9 @@ const BelajarMandiriPage = () => {
                     )}
                     
                     {/* Badges */}
-                    <div className="absolute top-3 right-3 flex flex-col gap-2">
+                    <div className="absolute top-3 right-3">
                       <span className="bg-white/95 rounded-full px-3 py-1 text-xs font-bold text-gray-700">
                         {quiz.category}
-                      </span>
-                      <span className={`rounded-full px-3 py-1 text-xs font-bold text-white ${
-                        quiz.difficulty === 'Mudah' ? 'bg-green-500' :
-                        quiz.difficulty === 'Sedang' ? 'bg-yellow-500' :
-                        'bg-red-500'
-                      }`}>
-                        {quiz.difficulty}
                       </span>
                     </div>
                   </div>

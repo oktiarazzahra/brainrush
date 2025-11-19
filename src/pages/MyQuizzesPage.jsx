@@ -247,8 +247,14 @@ const MyQuizzesPage = () => {
   }
   
   const handleShare = quizId => { 
-    const link = `https://brainrush.com/results/${quizId}`
+    // Gunakan production URL jika sudah deploy, atau localhost untuk development
+    // TODO: Ganti dengan URL production Anda setelah deploy (misalnya: https://brainrush.vercel.app atau https://yourdomain.com)
+    const productionUrl = 'https://brainrush.vercel.app' // Ganti dengan URL production Anda
+    const isDevelopment = window.location.hostname === 'localhost'
+    const baseUrl = isDevelopment ? window.location.origin : productionUrl
+    const link = `${baseUrl}/take-quiz/${quizId}`
     setShareLink(link)
+    setSelectedQuizId(quizId)
     setShowShareModal(true)
     setOpenMenuId(null)
   }
@@ -278,6 +284,8 @@ const MyQuizzesPage = () => {
     if (activeTab === 'My Quiz') return (
       <>
         <button onClick={e => { e.stopPropagation(); handleBuatLive(quizId) }} className="w-full px-3 py-2 text-left hover:bg-blue-50 text-blue-600">Buat Live</button>
+        <button onClick={e => { e.stopPropagation(); handleShare(quizId) }} className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600">Bagikan Quiz</button>
+        <button onClick={e => { e.stopPropagation(); handleTambahCover(quizId) }} className="w-full px-3 py-2 text-left hover:bg-purple-50 text-purple-600">Tambah Cover</button>
         <button onClick={e => { e.stopPropagation(); handleUnpublish(quizId, quiz.title) }} className="w-full px-3 py-2 text-left hover:bg-orange-50 text-orange-600">Unpublish</button>
       </>
     )
@@ -527,12 +535,46 @@ const MyQuizzesPage = () => {
               onClick={e => e.stopPropagation()}
             >
               <h2 className="text-2xl font-bold text-gray-800 mb-4">Bagikan Quiz</h2>
-              <div className="bg-gray-100 p-4 rounded-xl mb-6">
-                <p className="text-sm text-gray-600 mb-2">Link Quiz:</p>
-                <div className="flex items-center gap-2">
-                  <input type="text" value={shareLink} readOnly className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                  <button onClick={handleCopyShareLink} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition text-sm">Copy</button>
+              <p className="text-sm text-gray-600 mb-4">Salin link di bawah ini dan bagikan ke teman-temanmu untuk mengerjakan quiz ini!</p>
+              
+              {/* Warning jika masih localhost */}
+              {window.location.hostname === 'localhost' && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-orange-800">
+                    ⚠️ <span className="font-semibold">Perhatian:</span> Anda sedang di mode development. Link ini menggunakan URL production. Pastikan aplikasi sudah di-deploy dan update URL production di kode.
+                  </p>
                 </div>
+              )}
+              
+              <div className="bg-blue-50 p-4 rounded-xl mb-6 border border-blue-200">
+                <p className="text-sm font-semibold text-blue-900 mb-2">🔗 Link Quiz:</p>
+                <div className="flex items-center gap-2">
+                  <input type="text" value={shareLink} readOnly className="flex-1 px-3 py-2 bg-white border border-blue-300 rounded-lg text-sm font-mono text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <button onClick={handleCopyShareLink} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition text-sm shadow-md hover:shadow-lg">
+                    <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copy
+                  </button>
+                </div>
+                
+                {/* QR Code section - optional */}
+                <div className="mt-4 pt-4 border-t border-blue-200">
+                  <button 
+                    onClick={() => window.open(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(shareLink)}`, '_blank')}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                    </svg>
+                    Generate QR Code untuk link ini
+                  </button>
+                </div>
+              </div>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-6">
+                <p className="text-xs text-yellow-800">
+                  💡 <span className="font-semibold">Tips:</span> Siapa pun yang memiliki link ini dapat mengakses dan mengerjakan quiz. Bagikan melalui WhatsApp, Email, atau media sosial!
+                </p>
               </div>
               <div className="flex gap-3">
                 <button onClick={() => setShowShareModal(false)} className="flex-1 px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-xl transition">Tutup</button>

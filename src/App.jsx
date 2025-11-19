@@ -20,6 +20,8 @@ import WaitingRoomPage from './pages/WaitingRoomPage'
 import QuizResultsPage from './pages/QuizResultsPage'
 import EditQuizPage from './pages/EditQuizPage'
 import TakeQuizPage from './pages/TakeQuizPage'
+import AdminSupportPage from './pages/AdminSupportPage'
+import AdminUsersPage from './pages/AdminUsersPage'
 
 function App() {
   return (
@@ -59,6 +61,10 @@ function App() {
         <Route path="/help" element={<HelpPage />} />
         <Route path="/leaderboard/:quizId" element={<LeaderboardPage />} />
         <Route path="/quiz-review/:quizId" element={<QuizReviewPage />} />
+
+        {/* Admin Routes */}
+        <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/support" element={<AdminSupportPage />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

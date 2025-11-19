@@ -402,7 +402,7 @@ const TakeQuizPage = () => {
 
                 <div className="flex gap-4">
                   <button
-                    onClick={() => navigate('/belajar-mandiri')}
+                    onClick={() => navigate('/schedule')}
                     className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl transition shadow-md"
                   >
                     📚 Lihat Review

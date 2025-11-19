@@ -29,9 +29,9 @@ const DashboardLayout = ({ children }) => {
   const location = useLocation()
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-sky-400 via-blue-500 to-blue-600">
+    <div className="h-screen flex bg-gradient-to-br from-sky-400 via-blue-500 to-blue-600 overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-24 min-h-screen bg-white/90 border-r border-blue-200 flex flex-col items-center pt-5 shadow-lg z-10">
+      <aside className="w-24 h-screen bg-white/90 border-r border-blue-200 flex flex-col items-center pt-5 shadow-lg z-10 flex-shrink-0">
         {menuItems.map(item => (
           <motion.button
             key={item.name}
@@ -52,7 +52,7 @@ const DashboardLayout = ({ children }) => {
         ))}
       </aside>
       {/* Main content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-y-auto">
         {children}
       </div>
     </div>
