@@ -36,7 +36,7 @@ export const gameService = {
 
   // Next question
   nextQuestion: async (gameId) => {
-    const response = await api.post(`/games/${gameId}/next`);
+    const response = await api.post(`/games/${gameId}/next-question`);
     return response.data;
   },
 

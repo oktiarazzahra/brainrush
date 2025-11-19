@@ -1,36 +1,65 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { gameService } from '../services/gameService'
 
 const WaitingRoomPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { quiz, code, quizId } = location.state || {}
+  const { gameId, PIN, quiz, quizTitle, totalQuestions } = location.state || {}
 
-  const [players, setPlayers] = useState([
-    { id: 1, name: 'John Doe', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John' },
-    { id: 2, name: 'Jane Smith', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jane' },
-    { id: 3, name: 'Bob Wilson', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bob' },
-    { id: 4, name: 'Alice Brown', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alice' }
-  ])
+  const [players, setPlayers] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!quiz || !code) {
+    if (!gameId || !PIN) {
       navigate('/my-quizzes')
+      return
     }
-  }, [quiz, code, navigate])
+    
+    // Initial load
+    fetchGameData()
+    
+    // Poll every 2 seconds for new players
+    const interval = setInterval(fetchGameData, 2000)
+    return () => clearInterval(interval)
+  }, [gameId, PIN, navigate])
 
-  const handleStartQuiz = () => {
-    console.log('Starting quiz with players:', players)
-    alert('Quiz akan dimulai! (Fitur ini akan dikembangkan)')
+  const fetchGameData = async () => {
+    try {
+      const response = await gameService.getGame(gameId)
+      const gameData = response.data.game
+      setPlayers(gameData.players || [])
+      setLoading(false)
+    } catch (error) {
+      console.error('Error fetching game data:', error)
+      setLoading(false)
+    }
+  }
+
+  const handleStartQuiz = async () => {
+    if (players.length === 0) {
+      alert('Tidak ada pemain yang join!')
+      return
+    }
+    
+    try {
+      await gameService.startGame(gameId)
+      alert('Quiz dimulai! (Fitur gameplay akan dikembangkan)')
+      // TODO: Navigate to actual game play page
+      // navigate('/play-quiz', { state: { gameId, PIN } })
+    } catch (error) {
+      console.error('Error starting game:', error)
+      alert('Gagal memulai quiz. Coba lagi.')
+    }
   }
 
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(code)
-    alert('Kode berhasil dicopy!')
+    navigator.clipboard.writeText(PIN)
+    alert('PIN berhasil dicopy!')
   }
 
-  if (!quiz) return null
+  if (!gameId || !PIN) return null
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 p-6">
@@ -48,10 +77,10 @@ const WaitingRoomPage = () => {
             >
               ← Back
             </button>
-            <div className="text-center">
-              <h1 className="text-2xl font-bold text-white mb-1 drop-shadow-lg">{quiz.title}</h1>
-              <p className="text-white/80 text-sm font-medium">{quiz.questions} Soal • Brain Rush Live</p>
-            </div>
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-white mb-1 drop-shadow-lg">{quizTitle || quiz?.title}</h1>
+            <p className="text-white/80 text-sm font-medium">{totalQuestions || quiz?.questions?.length || 0} Soal • Brain Rush Live</p>
+          </div>
             <div className="w-24"></div>
           </div>
         </motion.div>
@@ -73,7 +102,7 @@ const WaitingRoomPage = () => {
               </div>
               <div className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-purple-600 rounded-xl p-6 mb-4 overflow-hidden shadow-xl">
                 <div className="absolute inset-0 bg-white/10 animate-pulse"></div>
-                <p className="relative text-white text-center text-4xl font-black tracking-[0.3em]">{code}</p>
+                <p className="relative text-white text-center text-4xl font-black tracking-[0.3em]">{PIN}</p>
               </div>
               <button
                 onClick={handleCopyCode}
@@ -104,11 +133,11 @@ const WaitingRoomPage = () => {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between bg-gray-50 rounded-lg p-2.5">
                   <span className="text-gray-600 font-medium">Jumlah Soal</span>
-                  <span className="font-bold text-gray-800 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs">{quiz.questions}</span>
+                  <span className="font-bold text-gray-800 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs">{totalQuestions || quiz?.questions?.length || 0}</span>
                 </div>
                 <div className="flex items-center justify-between bg-gray-50 rounded-lg p-2.5">
                   <span className="text-gray-600 font-medium">Pembuat</span>
-                  <span className="font-bold text-gray-800 text-xs">{quiz.author || 'Brain Rush'}</span>
+                  <span className="font-bold text-gray-800 text-xs">{quiz?.author || quiz?.createdBy?.name || 'Brain Rush'}</span>
                 </div>
                 <div className="flex items-center justify-between bg-green-50 rounded-lg p-2.5">
                   <span className="text-green-700 font-medium">Status</span>
@@ -160,35 +189,43 @@ const WaitingRoomPage = () => {
                 </div>
               </div>
 
-              {players.length > 0 ? (
+              {loading ? (
+                <div className="text-center py-20">
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading...</p>
+                </div>
+              ) : players.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-[520px] overflow-y-auto pr-2">
-                  {players.map((player, index) => (
-                    <motion.div
-                      key={player.id}
-                      initial={{ scale: 0, opacity: 0, y: 20 }}
-                      animate={{ scale: 1, opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.08, type: "spring" }}
-                      whileHover={{ scale: 1.05, y: -5 }}
-                      className="bg-gradient-to-br from-blue-50 via-white to-blue-50 rounded-xl p-4 text-center shadow-md hover:shadow-xl transition-all duration-300 border border-blue-100"
-                    >
-                      <div className="relative inline-block mb-2">
-                        <img
-                          src={player.avatar}
-                          alt={player.name}
-                          className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-blue-400 to-purple-500 p-1 shadow-lg"
-                        />
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
-                      </div>
-                      <p className="font-bold text-gray-800 text-sm truncate">{player.name}</p>
-                      <p className="text-xs text-gray-500 font-medium mt-1">Pemain #{index + 1}</p>
-                    </motion.div>
-                  ))}
+                  {players.map((player, index) => {
+                    const avatarEmoji = player.avatar || '🤖'
+                    const playerName = player.playerName || player.name || 'Player'
+                    
+                    return (
+                      <motion.div
+                        key={player._id || player.userId || index}
+                        initial={{ scale: 0, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.08, type: "spring" }}
+                        whileHover={{ scale: 1.05, y: -5 }}
+                        className="bg-gradient-to-br from-blue-50 via-white to-blue-50 rounded-xl p-4 text-center shadow-md hover:shadow-xl transition-all duration-300 border border-blue-100"
+                      >
+                        <div className="relative inline-block mb-2">
+                          <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-3xl shadow-lg">
+                            {avatarEmoji}
+                          </div>
+                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
+                        </div>
+                        <p className="font-bold text-gray-800 text-sm truncate">{playerName}</p>
+                        <p className="text-xs text-gray-500 font-medium mt-1">Pemain #{index + 1}</p>
+                      </motion.div>
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-20">
                   <div className="text-6xl mb-4 animate-bounce">🎮</div>
                   <p className="text-xl font-bold text-gray-800 mb-2">Belum ada peserta</p>
-                  <p className="text-gray-600 text-sm">Bagikan kode <span className="font-bold text-blue-600">{code}</span> untuk memulai</p>
+                  <p className="text-gray-600 text-sm">Bagikan PIN <span className="font-bold text-blue-600">{PIN}</span> untuk memulai</p>
                 </div>
               )}
             </motion.div>

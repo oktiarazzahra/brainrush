@@ -1,34 +1,70 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import Footer from '../components/Footer'
 import AvatarSelector from '../components/AvatarSelector'
 import NameInput from '../components/NameInput'
 import Button from '../components/Button'
+import { gameService } from '../services/gameService'
 
 const JoinGamePage = ({ onBack, onJoinNow }) => {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { pin, fromDashboard } = location.state || {}
+  
   const [selectedAvatar, setSelectedAvatar] = useState(0)
   const [playerName, setPlayerName] = useState('')
+  const [loading, setLoading] = useState(false)
 
   // Avatar options dengan emoji dan warna
  const avatars = [
   { emoji: '🍓', color: 'bg-pink-500', name: 'Strawberry' },
   { emoji: '🤖', color: 'bg-blue-500', name: 'Robot' },
   { emoji: '👽', color: 'bg-purple-500', name: 'Alien' },
-  { emoji: '🤖', color: 'bg-yellow-500', name: 'Bot' },
+  { emoji: '🦄', color: 'bg-yellow-500', name: 'Unicorn' },
   { emoji: '🐺', color: 'bg-gray-700', name: 'Wolf' },
   { emoji: '🐸', color: 'bg-green-500', name: 'Frog' }
 ]
 
 
-  const handleJoinNow = () => {
-    if (playerName.trim()) {
-      onJoinNow && onJoinNow({
-        avatar: avatars[selectedAvatar],
-        name: playerName
-      })
-    } else {
+  const handleJoinNow = async () => {
+    if (!playerName.trim()) {
       alert('Please enter your name!')
+      return
+    }
+    
+    if (!pin) {
+      alert('PIN tidak ditemukan!')
+      return
+    }
+    
+    setLoading(true)
+    try {
+      const avatarData = avatars[selectedAvatar]
+      const response = await gameService.joinGame(pin, playerName.trim(), avatarData.emoji)
+      
+      // Navigate to player waiting room
+      navigate('/playerwaitingroom', {
+        state: {
+          gameId: response.data.game.id,
+          pin: pin,
+          playerName: playerName.trim(),
+          avatar: avatarData,
+          fromDashboard: fromDashboard
+        }
+      })
+    } catch (error) {
+      console.error('Error joining game:', error)
+      alert(error.response?.data?.message || 'Gagal join game. PIN mungkin salah atau game sudah dimulai.')
+      setLoading(false)
+    }
+  }
+  
+  const handleBackClick = () => {
+    if (onBack) {
+      onBack()
+    } else {
+      navigate(fromDashboard ? '/dashboard' : '/')
     }
   }
 
@@ -92,20 +128,21 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
           transition={{ duration: 0.8, delay: 1.2 }}
         >
           <Button
-            onClick={onBack}
+            onClick={handleBackClick}
             variant="outline"
             className="flex-1"
+            disabled={loading}
           >
             Back
           </Button>
           
           <Button
             onClick={handleJoinNow}
-            disabled={!playerName.trim()}
+            disabled={!playerName.trim() || loading}
             variant="primary"
             className="flex-1"
           >
-            Join Now
+            {loading ? 'Joining...' : 'Join Now'}
           </Button>
         </motion.div>
 

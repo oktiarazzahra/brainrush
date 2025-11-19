@@ -13,7 +13,7 @@ const HomePage = ({ onJoin }) => {
     if (pin.trim()) {
       console.log('PIN validated:', pin)
       navigate(`/join`, { state: { pin } })
-      onJoin(pin)
+      if (onJoin) onJoin(pin)
     } else {
       alert('Please enter a PIN first!')
     }

@@ -95,11 +95,10 @@ const DashboardPage = () => {
       alert("Please insert a valid PIN!")
       return
     }
-    navigate('/playerwaitingroom', {
+    // Navigate to join page untuk pilih avatar dan nama
+    navigate('/join', {
       state: {
         pin: pinInput.trim(),
-        playerName: "Guest",
-        avatar: { emoji: "🤖", color: "bg-blue-500" },
         fromDashboard: true
       }
     })

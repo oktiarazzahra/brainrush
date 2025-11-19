@@ -23,14 +23,19 @@ const BelajarMandiriPage = () => {
   const fetchLearningHistory = async () => {
     try {
       setLoading(true)
+      console.log('🔄 Fetching learning history...')
+      
       const [historyResponse, statsResponse] = await Promise.all([
         learningService.getLearningHistory(),
         learningService.getLearningStats()
       ])
 
+      console.log('✅ Learning history response:', historyResponse)
+      console.log('✅ Stats response:', statsResponse)
+
       const bgColors = ['from-blue-200 to-blue-400', 'from-green-200 to-green-400', 'from-purple-200 to-purple-400', 'from-pink-200 to-pink-400']
 
-      // Format completed history data for UI
+      // Format completed quiz history - akan tampil di section "Quiz Selesai"
       const formattedQuizzes = historyResponse.data.history.map((item, index) => {
         return {
           id: item.id,
@@ -46,7 +51,7 @@ const BelajarMandiriPage = () => {
         }
       })
 
-      // Format in-progress quizzes
+      // Format in-progress quizzes - quiz yang belum selesai dikerjakan, akan tampil dengan tombol "Continue"
       const formattedInProgress = (historyResponse.data.inProgress || []).map((item, index) => {
         return {
           id: item.id,
@@ -62,13 +67,17 @@ const BelajarMandiriPage = () => {
         }
       })
 
+      console.log('📊 Formatted completed quizzes:', formattedQuizzes.length)
+      console.log('⏳ Formatted in-progress quizzes:', formattedInProgress.length)
+      
       setScheduledQuizzes(formattedQuizzes)
       setInProgressQuizzes(formattedInProgress)
       setStats(statsResponse.data.stats)
       setLoading(false)
     } catch (err) {
-      console.error('Error fetching learning history:', err)
-      setError('Gagal memuat riwayat belajar')
+      console.error('❌ Error fetching learning history:', err)
+      console.error('Error details:', err.message)
+      setError(`Gagal memuat riwayat belajar: ${err.message}`)
       setLoading(false)
     }
   }

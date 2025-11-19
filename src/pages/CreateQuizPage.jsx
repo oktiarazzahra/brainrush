@@ -289,7 +289,7 @@ const CreateQuizPage = () => {
       const formattedQuestions = questions.map((q) => {
         let questionData = {
           question: q.question,
-          timeLimit: q.useTime ? q.duration : null,
+          timeLimit: timerMode === 'per-question' ? (q.useTime ? q.duration : null) : null,
           questionType: q.type === 'Pilihan Ganda'
             ? q.multi ? 'multiple-answer' : 'multiple-choice'
             : q.type === 'Isian' ? 'short-answer' : 'true-false'

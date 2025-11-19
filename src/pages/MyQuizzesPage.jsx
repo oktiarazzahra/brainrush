@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import DashboardLayout from '../components/DashboardLayout'
 import { quizService } from '../services/quizService'
+import { gameService } from '../services/gameService'
 
 
 const MyQuizzesPage = () => {
@@ -53,18 +54,31 @@ const MyQuizzesPage = () => {
   }
 
 
-  const generateLiveCode = () => Math.floor(100000 + Math.random() * 900000).toString()
-  
   const handleEdit = quizId => { 
     navigate(`/edit-quiz/${quizId}`)
     setOpenMenuId(null)
   }
   
-  const handleBuatLive = quizId => { 
-    const code = generateLiveCode()
-    const quiz = quizzes.find(q => (q.id || q._id) === quizId)
-    if (quiz) navigate('/waiting-room', { state: { quiz, code, quizId } })
-    setOpenMenuId(null)
+  const handleBuatLive = async quizId => {
+    try {
+      setOpenMenuId(null)
+      const response = await gameService.createGame(quizId)
+      const gameData = response.data.game
+      const quiz = quizzes.find(q => (q.id || q._id) === quizId)
+      
+      navigate('/waiting-room', { 
+        state: { 
+          gameId: gameData.id,
+          PIN: gameData.PIN,
+          quiz: quiz,
+          quizTitle: gameData.quizTitle,
+          totalQuestions: gameData.totalQuestions
+        } 
+      })
+    } catch (error) {
+      console.error('Error creating live game:', error)
+      alert('Gagal membuat live game. Coba lagi.')
+    }
   }
   
   const handleAkses = (quizId, isPublic) => { 

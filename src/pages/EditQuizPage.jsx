@@ -58,9 +58,11 @@ const EditQuizPage = () => {
       try {
         setLoading(true)
         const quiz = await quizService.getQuizById(id)
+        const quizTimerMode = quiz.timerMode || 'per-question'
+        
         setQuizTitle(quiz.title || '')
         setQuizCategory(quiz.category || 'Bahasa')
-        setTimerMode(quiz.timerMode || 'per-question')
+        setTimerMode(quizTimerMode)
         setTotalTime(quiz.totalTime ? Math.round(quiz.totalTime / 60) : 30)
 
         if (quiz.questions && quiz.questions.length > 0) {
@@ -89,7 +91,8 @@ const EditQuizPage = () => {
               let trueFalseAnswer = null
               let acceptedAnswers = []
               let multi = false
-              let useTime = q.timeLimit !== null && q.timeLimit !== undefined
+              // Jika mode adalah 'total-time', ignore timeLimit per soal
+              let useTime = quizTimerMode === 'per-question' && q.timeLimit !== null && q.timeLimit !== undefined
 
               // SET DATA BERDASARKAN TYPE
               if (type === 'Pilihan Ganda') {
@@ -387,7 +390,7 @@ const EditQuizPage = () => {
       const formattedQuestions = questions.map((q) => {
         let questionData = {
           question: q.question,
-          timeLimit: q.useTime ? q.duration : null,
+          timeLimit: timerMode === 'per-question' ? (q.useTime ? q.duration : null) : null,
           questionType: q.type === 'Pilihan Ganda'
             ? q.multi ? 'multiple-answer' : 'multiple-choice'
             : q.type === 'Isian' ? 'short-answer' : 'true-false'

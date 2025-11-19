@@ -56,7 +56,8 @@ function App() {
         <Route path="/quiz-results/:quizId" element={<QuizResultsPage />} />
 
         {/* Additional Routes */}
-        <Route path="/schedule" element={<BelajarMandiriPage />} />
+        <Route path="/belajar-mandiri" element={<BelajarMandiriPage />} />
+        <Route path="/schedule" element={<BelajarMandiriPage />} /> {/* Legacy route - redirect ke yang sama */}
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/help" element={<HelpPage />} />
         <Route path="/leaderboard/:quizId" element={<LeaderboardPage />} />

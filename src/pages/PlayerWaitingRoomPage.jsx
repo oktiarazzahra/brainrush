@@ -1,51 +1,69 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { gameService } from '../services/gameService'
 
 
 const PlayerWaitingRoomPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { pin, playerName, avatar, fromDashboard } = location.state || {}
+  const { gameId, pin, playerName, avatar, fromDashboard } = location.state || {}
 
-
-  // Simulasi daftar pemain yang join (termasuk diri sendiri)
-  const [players, setPlayers] = useState([
-    { id: 1, name: playerName || 'Kamu', avatar: avatar?.emoji || '👽', color: avatar?.color || 'bg-blue-500' }
-  ])
-
-
-  // Simulasi: dalam 2 detik, 2 player lain join
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setPlayers(prev => [
-        ...prev,
-        { id: 2, name: 'Ani', avatar: '🐸', color: 'bg-green-500' },
-        { id: 3, name: 'Budi', avatar: '🍓', color: 'bg-pink-500' }
-      ])
-    }, 2000)
-    return () => clearTimeout(timer)
-  }, [])
-
-
-  // Simulasi perubahan status: setelah 10 detik quiz dimulai
-  const [quizStarted, setQuizStarted] = useState(false)
-  useEffect(() => {
-    const timer = setTimeout(() => setQuizStarted(true), 10000)
-    return () => clearTimeout(timer)
-  }, [])
-
+  const [players, setPlayers] = useState([])
+  const [gameStatus, setGameStatus] = useState('waiting')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (quizStarted) {
-      navigate('/play', { state: { pin, playerName, avatar } })
+    if (!gameId || !pin) {
+      navigate('/')
+      return
     }
-  }, [quizStarted, navigate, pin, playerName, avatar])
+    
+    // Initial load
+    fetchGameData()
+    
+    // Poll every 2 seconds for updates
+    const interval = setInterval(fetchGameData, 2000)
+    return () => clearInterval(interval)
+  }, [gameId, pin, navigate])
 
+  const fetchGameData = async () => {
+    try {
+      const response = await gameService.getGame(gameId)
+      const gameData = response.data.game
+      
+      // Update players list
+      const playersList = gameData.players.map(p => ({
+        id: p._id || p.userId,
+        name: p.playerName || p.name,
+        avatar: p.avatar || '🤖',
+        color: 'bg-blue-500'
+      }))
+      setPlayers(playersList)
+      
+      // Update game status
+      setGameStatus(gameData.gameStatus)
+      setLoading(false)
+      
+      // If game started, navigate to play page
+      if (gameData.gameStatus === 'running') {
+        // TODO: Navigate to actual game play page
+        alert('Quiz dimulai! (Fitur gameplay akan dikembangkan)')
+        // navigate('/play', { state: { gameId, pin, playerName, avatar } })
+      }
+    } catch (error) {
+      console.error('Error fetching game data:', error)
+      setLoading(false)
+    }
+  }
 
-  // Tombol keluar - SELALU KE HOME
+  // Tombol keluar - kembali ke home atau dashboard
   const handleExit = () => {
-    navigate('/')
+    if (fromDashboard) {
+      navigate('/dashboard')
+    } else {
+      navigate('/')
+    }
   }
 
 
@@ -77,9 +95,9 @@ const PlayerWaitingRoomPage = () => {
             className="bg-white rounded-3xl shadow-2xl p-8"
           >
             <h2 className="text-3xl font-bold text-gray-800 text-center mb-6">
-              {quizStarted ? 'Quiz Dimulai!' : 'Menunggu Host Memulai Quiz...'}
+              {gameStatus === 'running' ? 'Quiz Dimulai!' : 'Menunggu Host Memulai Quiz...'}
             </h2>
-            {!quizStarted && (
+            {gameStatus !== 'running' && (
               <div className="flex justify-center mb-8">
                 <motion.div
                   animate={{ rotate: 360 }}
@@ -92,26 +110,38 @@ const PlayerWaitingRoomPage = () => {
 
             <div className="mb-8">
               <h3 className="text-xl font-bold text-gray-700 mb-4">Players ({players.length})</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {players.map((player) => (
-                  <motion.div
-                    key={player.id}
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="bg-gray-100 rounded-xl p-4 flex flex-col items-center"
-                  >
-                    <div className={`${player.color} w-16 h-16 rounded-full flex items-center justify-center text-3xl mb-2 shadow-lg`}>
-                      {player.avatar}
-                    </div>
-                    <p className="font-bold text-gray-800">{player.name}</p>
-                  </motion.div>
-                ))}
-              </div>
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600 mx-auto"></div>
+                  <p className="text-gray-600 mt-4">Loading players...</p>
+                </div>
+              ) : players.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {players.map((player, index) => (
+                    <motion.div
+                      key={player.id}
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="bg-gray-100 rounded-xl p-4 flex flex-col items-center"
+                    >
+                      <div className={`${player.color} w-16 h-16 rounded-full flex items-center justify-center text-3xl mb-2 shadow-lg`}>
+                        {player.avatar}
+                      </div>
+                      <p className="font-bold text-gray-800 truncate max-w-full px-2">{player.name}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>Waiting for players to join...</p>
+                </div>
+              )}
             </div>
 
 
             <div className="text-center text-gray-600">
-              {quizStarted ? (
+              {gameStatus === 'running' ? (
                 <p className="text-lg font-semibold">Quiz sedang dimulai ...</p>
               ) : (
                 <>
