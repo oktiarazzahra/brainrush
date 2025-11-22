@@ -8,6 +8,10 @@ const AdminSupportPage = () => {
   const [loading, setLoading] = useState(true)
   const [selectedTicket, setSelectedTicket] = useState(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [showReplyModal, setShowReplyModal] = useState(false)
+  const [replyMessage, setReplyMessage] = useState('')
+  const [replySubject, setReplySubject] = useState('')
+  const [sendingReply, setSendingReply] = useState(false)
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterCategory, setFilterCategory] = useState('all')
   const [stats, setStats] = useState({
@@ -85,6 +89,43 @@ const AdminSupportPage = () => {
   const closeDetailModal = () => {
     setSelectedTicket(null)
     setShowDetailModal(false)
+  }
+
+  const openReplyModal = (ticket) => {
+    setSelectedTicket(ticket)
+    setReplySubject(`Re: ${ticket.subject}`)
+    setReplyMessage('')
+    setShowReplyModal(true)
+  }
+
+  const closeReplyModal = () => {
+    setShowReplyModal(false)
+    setReplyMessage('')
+    setReplySubject('')
+    setSendingReply(false)
+  }
+
+  const handleSendReply = async () => {
+    if (!replyMessage.trim()) {
+      alert('Pesan balasan tidak boleh kosong!')
+      return
+    }
+
+    try {
+      setSendingReply(true)
+      await supportService.replyTicket(selectedTicket._id, {
+        subject: replySubject,
+        message: replyMessage
+      })
+      alert('✅ Balasan berhasil dikirim via email!')
+      closeReplyModal()
+      closeDetailModal()
+    } catch (error) {
+      console.error('Error sending reply:', error)
+      alert('❌ Gagal mengirim balasan: ' + (error.response?.data?.message || error.message))
+    } finally {
+      setSendingReply(false)
+    }
   }
 
   const categoryNames = {
@@ -381,17 +422,143 @@ const AdminSupportPage = () => {
 
               {/* Action Buttons */}
               <div className="flex gap-3">
-                <a
-                  href={`mailto:${selectedTicket.email}?subject=Re: ${selectedTicket.subject}`}
-                  className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition text-center"
+                <button
+                  onClick={() => openReplyModal(selectedTicket)}
+                  className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition flex items-center justify-center gap-2"
                 >
-                  📧 Balas via Email
-                </a>
+                  <span>📨</span>
+                  Kirim Balasan Email
+                </button>
                 <button
                   onClick={closeDetailModal}
                   className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-xl transition"
                 >
                   Tutup
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Reply Modal - Nodemailer */}
+      <AnimatePresence>
+        {showReplyModal && selectedTicket && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+            onClick={closeReplyModal}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl p-8 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                    📨 Kirim Balasan via Nodemailer
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    Ke: <span className="font-semibold">{selectedTicket.email}</span>
+                  </p>
+                </div>
+                <button
+                  onClick={closeReplyModal}
+                  disabled={sendingReply}
+                  className="text-gray-400 hover:text-gray-600 transition"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Original Ticket Info */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6 border-l-4 border-gray-400">
+                <p className="text-xs text-gray-600 font-semibold mb-1">Laporan Original:</p>
+                <p className="text-sm font-bold text-gray-800 mb-2">{selectedTicket.subject}</p>
+                <p className="text-xs text-gray-600 line-clamp-2">{selectedTicket.description}</p>
+              </div>
+
+              {/* Reply Form */}
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Subject Email
+                  </label>
+                  <input
+                    type="text"
+                    value={replySubject}
+                    onChange={(e) => setReplySubject(e.target.value)}
+                    placeholder="Re: ..."
+                    disabled={sendingReply}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 disabled:bg-gray-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Pesan Balasan
+                  </label>
+                  <textarea
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
+                    placeholder="Tulis balasan untuk user..."
+                    rows={10}
+                    disabled={sendingReply}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 resize-none disabled:bg-gray-100"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {replyMessage.length} karakter
+                  </p>
+                </div>
+
+                {/* Info Box */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-blue-600 text-lg">ℹ️</span>
+                    <div className="text-xs text-blue-800">
+                      <p className="font-semibold mb-1">Email akan dikirim via Nodemailer</p>
+                      <p>Pastikan konfigurasi SMTP sudah benar di backend (.env file)</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSendReply}
+                  disabled={sendingReply || !replyMessage.trim()}
+                  className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold rounded-xl transition flex items-center justify-center gap-2"
+                >
+                  {sendingReply ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Mengirim...
+                    </>
+                  ) : (
+                    <>
+                      <span>📨</span>
+                      Kirim Email
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={closeReplyModal}
+                  disabled={sendingReply}
+                  className="px-6 py-3 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 text-gray-800 font-bold rounded-xl transition"
+                >
+                  Batal
                 </button>
               </div>
             </motion.div>

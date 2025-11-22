@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { gameService } from '../services/gameService'
+import socketService from '../services/socketService'
 
 const WaitingRoomPage = () => {
   const navigate = useNavigate()
@@ -20,9 +21,26 @@ const WaitingRoomPage = () => {
     // Initial load
     fetchGameData()
     
-    // Poll every 2 seconds for new players
-    const interval = setInterval(fetchGameData, 2000)
-    return () => clearInterval(interval)
+    // Connect to WebSocket
+    socketService.connect()
+    socketService.joinGame(gameId, 'Host', 'host')
+    
+    // Listen for player joined events
+    socketService.onPlayerJoined(({ playerName, totalPlayers }) => {
+      console.log(`👤 ${playerName} joined! Total: ${totalPlayers}`)
+      fetchGameData() // Refresh player list
+    })
+    
+    // Listen for player left events
+    socketService.onPlayerLeft(({ playerName, totalPlayers }) => {
+      console.log(`👋 ${playerName} left! Total: ${totalPlayers}`)
+      fetchGameData() // Refresh player list
+    })
+    
+    return () => {
+      socketService.leaveGame(gameId, 'Host')
+      socketService.removeAllListeners()
+    }
   }, [gameId, PIN, navigate])
 
   const fetchGameData = async () => {
@@ -45,6 +63,10 @@ const WaitingRoomPage = () => {
     
     try {
       await gameService.startGame(gameId)
+      
+      // Emit WebSocket event to all players
+      socketService.startGame(gameId)
+      
       alert('Quiz dimulai! (Fitur gameplay akan dikembangkan)')
       // TODO: Navigate to actual game play page
       // navigate('/play-quiz', { state: { gameId, PIN } })

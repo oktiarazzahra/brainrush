@@ -22,11 +22,20 @@ const MyQuizzesPage = () => {
   const [quizzes, setQuizzes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [hostHistory, setHostHistory] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [selectedHistory, setSelectedHistory] = useState(null)
 
 
   useEffect(() => {
     fetchMyQuizzes()
   }, [])
+
+  useEffect(() => {
+    if (activeTab === 'History') {
+      fetchHostHistory()
+    }
+  }, [activeTab])
 
 
   const fetchMyQuizzes = async () => {
@@ -44,12 +53,26 @@ const MyQuizzesPage = () => {
     }
   }
 
+  const fetchHostHistory = async () => {
+    try {
+      setHistoryLoading(true)
+      const response = await gameService.getUserHistory()
+      // Filter only host games for MyQuizzes History tab
+      const hostGames = response.data.history.filter(game => game.role === 'host')
+      console.log('✅ Host history loaded:', hostGames)
+      setHostHistory(hostGames)
+    } catch (err) {
+      console.error('❌ Error loading host history:', err)
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
 
   const getQuizzesByTab = () => {
-    if (!quizzes.length) return []
     if (activeTab === 'Draft') return quizzes.filter(q => q.isDraft || q.status === 'draft')
     if (activeTab === 'My Quiz') return quizzes.filter(q => q.isPublished || q.status === 'published')
-    if (activeTab === 'History') return quizzes.filter(q => q.hasHistory || q.totalPlays > 0)
+    if (activeTab === 'History') return hostHistory
     return []
   }
 
@@ -286,15 +309,16 @@ const MyQuizzesPage = () => {
   }
 
 
-  const renderMenuItems = quiz => {
-    const quizId = quiz.id || quiz._id
+  const renderMenuItems = item => {
+    const quizId = item.id || item._id
+    const quizTitle = item.quizTitle || item.title
     
     if (activeTab === 'Draft') return (
       <>
         <button onClick={e => { e.stopPropagation(); handleEdit(quizId) }} className="w-full px-3 py-2 text-left hover:bg-gray-100 transition">Edit</button>
-        <button onClick={e => { e.stopPropagation(); handlePublish(quizId, quiz.title) }} className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600">Publish</button>
+        <button onClick={e => { e.stopPropagation(); handlePublish(quizId, quizTitle) }} className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600">Publish</button>
         <button onClick={e => { e.stopPropagation(); handleTambahCover(quizId) }} className="w-full px-3 py-2 text-left hover:bg-purple-50 text-purple-600">Tambah Cover</button>
-        <button onClick={e => { e.stopPropagation(); handleDelete(quizId, quiz.title) }} className="w-full px-3 py-2 text-left hover:bg-red-50 text-red-600">Delete</button>
+        <button onClick={e => { e.stopPropagation(); handleDelete(quizId, quizTitle) }} className="w-full px-3 py-2 text-left hover:bg-red-50 text-red-600">Delete</button>
       </>
     )
     
@@ -303,15 +327,14 @@ const MyQuizzesPage = () => {
         <button onClick={e => { e.stopPropagation(); handleBuatLive(quizId) }} className="w-full px-3 py-2 text-left hover:bg-blue-50 text-blue-600">Buat Live</button>
         <button onClick={e => { e.stopPropagation(); handleShare(quizId) }} className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600">Bagikan Quiz</button>
         <button onClick={e => { e.stopPropagation(); handleTambahCover(quizId) }} className="w-full px-3 py-2 text-left hover:bg-purple-50 text-purple-600">Tambah Cover</button>
-        <button onClick={e => { e.stopPropagation(); handleUnpublish(quizId, quiz.title) }} className="w-full px-3 py-2 text-left hover:bg-orange-50 text-orange-600">Unpublish</button>
+        <button onClick={e => { e.stopPropagation(); handleUnpublish(quizId, quizTitle) }} className="w-full px-3 py-2 text-left hover:bg-orange-50 text-orange-600">Unpublish</button>
       </>
     )
     
     if (activeTab === 'History') return (
       <>
         <button onClick={e => { e.stopPropagation(); handleLihatHasil(quizId) }} className="w-full px-3 py-2 text-left hover:bg-gray-100 transition">Lihat Hasil</button>
-        <button onClick={e => { e.stopPropagation(); handleShare(quizId) }} className="w-full px-3 py-2 text-left hover:bg-gray-100 transition">Share</button>
-        <button onClick={e => { e.stopPropagation(); handleDelete(quizId, quiz.title) }} className="w-full px-3 py-2 text-left hover:bg-red-50 text-red-600">Delete</button>
+        <button onClick={e => { e.stopPropagation(); setSelectedHistory(item) }} className="w-full px-3 py-2 text-left hover:bg-blue-50 text-blue-600">Lihat Detail</button>
       </>
     )
   }
@@ -346,17 +369,30 @@ const MyQuizzesPage = () => {
 
           {!loading && !error && (
             <>
-              <div className="flex items-center gap-3 mb-6">
-                {getQuizzesByTab().length > 0 && (
-                  <div className="inline-block bg-sky-400 text-white font-bold px-4 py-1 rounded-full text-sm">{getQuizzesByTab().length} Quiz</div>
-                )}
-              </div>
+              {(activeTab === 'History' && historyLoading) ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  <p className="ml-4 text-lg text-blue-800">Memuat history...</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 mb-6">
+                    {getQuizzesByTab().length > 0 && (
+                      <div className="inline-block bg-sky-400 text-white font-bold px-4 py-1 rounded-full text-sm">
+                        {getQuizzesByTab().length} {activeTab === 'History' ? 'Game History sebagai Host' : 'Quiz'}
+                      </div>
+                    )}
+                  </div>
 
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {getQuizzesByTab().map((quiz, index) => {
-                  const quizId = quiz.id || quiz._id
-                  const isDraft = quiz.isDraft || quiz.status === 'draft'
+                {getQuizzesByTab().map((item, index) => {
+                  // For History tab, use different data structure
+                  const isHistory = activeTab === 'History'
+                  const quizId = isHistory ? item.id : (item.id || item._id)
+                  const isDraft = !isHistory && (item.isDraft || item.status === 'draft')
+                  const quizTitle = isHistory ? item.quizTitle : item.title
+                  const coverImage = isHistory ? item.coverImage : item.coverImage
                   
                   return (
                     <motion.div
@@ -378,8 +414,13 @@ const MyQuizzesPage = () => {
                       {isDraft && (
                         <div className="absolute top-3 left-3 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10">DRAFT</div>
                       )}
-                      {(quiz.isPublished || quiz.status === 'published') && (
+                      {!isHistory && (item.isPublished || item.status === 'published') && (
                         <div className="absolute top-3 left-3 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10">PUBLISHED</div>
+                      )}
+                      {isHistory && (
+                        <div className="absolute top-3 left-3 bg-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10 flex items-center gap-1">
+                          👑 HOST
+                        </div>
                       )}
                       <button onClick={e => { e.stopPropagation(); toggleMenu(quizId) }} className="absolute top-3 right-3 bg-white/90 hover:bg-white rounded-full p-1.5 shadow-md z-10 transition">
                         <svg className="w-4 h-4 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
@@ -397,29 +438,33 @@ const MyQuizzesPage = () => {
                             style={{ minWidth: '200px' }} 
                             onClick={e => e.stopPropagation()}
                           >
-                            {renderMenuItems(quiz)}
+                            {renderMenuItems(item)}
                           </motion.div>
                         )}
                       </AnimatePresence>
                       
                       <div 
                         className={`h-36 flex items-center justify-center overflow-hidden ${
-                          quiz.coverImage ? 'bg-gray-100' : 'bg-gradient-to-r from-blue-200 to-blue-300'
+                          coverImage ? 'bg-gray-100' : 'bg-gradient-to-r from-blue-200 to-blue-300'
                         }`} 
                         onClick={() => {
                           if (isDraft && activeTab === 'Draft') {
                             return;
                           }
-                          activeTab === 'History' ? handleLihatHasil(quizId) : handleEdit(quizId)
+                          if (activeTab === 'History') {
+                            setSelectedHistory(item)
+                          } else {
+                            handleEdit(quizId)
+                          }
                         }}
                       >
-                        {quiz.coverImage ? (
+                        {coverImage ? (
                           <img 
-                            src={quiz.coverImage} 
-                            alt={quiz.title} 
+                            src={coverImage} 
+                            alt={quizTitle} 
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              console.error('❌ Image load error:', quiz.coverImage)
+                              console.error('❌ Image load error:', coverImage)
                               e.target.parentElement.classList.add('bg-gradient-to-r', 'from-blue-200', 'to-blue-300')
                               e.target.style.display = 'none'
                             }}
@@ -429,12 +474,29 @@ const MyQuizzesPage = () => {
 
 
                       <div className="p-5">
-                        <h3 className="font-bold text-lg text-gray-800 mb-2 line-clamp-2">{quiz.title}</h3>
-                        <p className="text-sm text-gray-600 mb-1">{quiz.author || quiz.creator?.name || 'Brain_Rush'}</p>
+                        <h3 className="font-bold text-lg text-gray-800 mb-2 line-clamp-2">{quizTitle}</h3>
+                        <p className="text-sm text-gray-600 mb-1">
+                          {isHistory 
+                            ? new Date(item.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                            : (item.author || item.creator?.name || 'Brain_Rush')
+                          }
+                        </p>
                         <div className="flex items-center justify-between">
-                          <p className="text-sm text-gray-500 font-semibold">{quiz.questions?.length || quiz.questionCount || 0} Soal</p>
-                          {quiz.played && <p className="text-xs text-gray-400">{quiz.played}</p>}
-                          {quiz.totalPlayers && <p className="text-xs text-blue-600 font-semibold">{quiz.totalPlayers} pemain</p>}
+                          {isHistory ? (
+                            <>
+                              <p className="text-sm text-blue-600 font-semibold">{item.players} pemain</p>
+                              <div className="flex flex-col items-end">
+                                <p className="text-xs text-gray-500">Top: {item.topScore}</p>
+                                <p className="text-xs text-gray-500">Avg: {item.avgScore}</p>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-sm text-gray-500 font-semibold">{item.questions?.length || item.questionCount || 0} Soal</p>
+                              {item.played && <p className="text-xs text-gray-400">{item.played}</p>}
+                              {item.totalPlayers && <p className="text-xs text-blue-600 font-semibold">{item.totalPlayers} pemain</p>}
+                            </>
+                          )}
                         </div>
                       </div>
                     </motion.div>
@@ -472,17 +534,19 @@ const MyQuizzesPage = () => {
               )}
 
 
-              {activeTab !== 'Draft' && getQuizzesByTab().length === 0 && (
-                <div className="flex flex-col items-center justify-center mt-24">
-                  <span className="font-bold text-xl text-sky-600 mb-2">
-                    {activeTab === 'My Quiz' ? 'Belum ada kuis yang dipublish.' : 'Belum ada history quiz.'}
-                  </span>
-                  <span className="text-base text-sky-400">
-                    {activeTab === 'My Quiz'
-                      ? 'Publish kuis dari Draft untuk muncul di sini'
-                      : 'History quiz yang pernah dimainkan akan muncul di sini'}
-                  </span>
-                </div>
+                  {activeTab !== 'Draft' && getQuizzesByTab().length === 0 && (
+                    <div className="flex flex-col items-center justify-center mt-24">
+                      <span className="font-bold text-xl text-sky-600 mb-2">
+                        {activeTab === 'My Quiz' ? 'Belum ada kuis yang dipublish.' : 'Belum ada history quiz sebagai Host.'}
+                      </span>
+                      <span className="text-base text-sky-400">
+                        {activeTab === 'My Quiz'
+                          ? 'Publish kuis dari Draft untuk muncul di sini'
+                          : 'Riwayat quiz yang pernah kamu hosting akan muncul di sini'}
+                      </span>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
@@ -728,6 +792,106 @@ const MyQuizzesPage = () => {
                   className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-bold rounded-xl transition"
                 >
                   Simpan Cover
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL HISTORY DETAIL */}
+      <AnimatePresence>
+        {selectedHistory && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedHistory(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl p-8 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-bold text-gray-800">{selectedHistory.quizTitle}</h2>
+                <button
+                  onClick={() => setSelectedHistory(null)}
+                  className="text-gray-500 hover:text-gray-700 transition"
+                >
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Host Badge */}
+              <div className="mb-4 text-center">
+                <span className="inline-block px-4 py-2 rounded-full font-bold bg-purple-100 text-purple-800">
+                  👑 Kamu sebagai Host
+                </span>
+              </div>
+
+              {/* Statistik Detail */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-green-50 rounded-lg p-4 text-center">
+                  <p className="text-green-600 font-bold text-3xl">{selectedHistory.topScore}</p>
+                  <p className="text-gray-600 text-sm">Skor Tertinggi</p>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-4 text-center">
+                  <p className="text-blue-600 font-bold text-3xl">{selectedHistory.avgScore}</p>
+                  <p className="text-gray-600 text-sm">Rata-rata Skor</p>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-4 text-center">
+                  <p className="text-purple-600 font-bold text-2xl">{selectedHistory.players}</p>
+                  <p className="text-gray-600 text-sm">Total Pemain</p>
+                </div>
+                <div className="bg-orange-50 rounded-lg p-4 text-center">
+                  <p className="text-orange-600 font-bold text-2xl">{selectedHistory.duration}</p>
+                  <p className="text-gray-600 text-sm">Durasi</p>
+                </div>
+              </div>
+
+              {/* Info Tambahan */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-600">Kategori:</span>
+                  <span className="font-semibold text-gray-800">{selectedHistory.category}</span>
+                </div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-600">Waktu Main:</span>
+                  <span className="font-semibold text-gray-800">
+                    {new Date(selectedHistory.date).toLocaleString('id-ID', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-600">PIN Game:</span>
+                  <span className="font-semibold text-gray-800">{selectedHistory.PIN}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => handleLihatHasil(selectedHistory.id)}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition"
+                >
+                  Lihat Detail Hasil
+                </button>
+                <button 
+                  onClick={() => setSelectedHistory(null)}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 rounded-lg transition"
+                >
+                  Tutup
                 </button>
               </div>
             </motion.div>

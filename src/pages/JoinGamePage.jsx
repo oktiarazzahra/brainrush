@@ -55,7 +55,8 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
       })
     } catch (error) {
       console.error('Error joining game:', error)
-      alert(error.response?.data?.message || 'Gagal join game. PIN mungkin salah atau game sudah dimulai.')
+      const errorMessage = error.response?.data?.message || 'Gagal join game. Silakan coba lagi.'
+      alert(errorMessage)
       setLoading(false)
     }
   }

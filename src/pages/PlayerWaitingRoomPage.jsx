@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { gameService } from '../services/gameService'
+import socketService from '../services/socketService'
 
 
 const PlayerWaitingRoomPage = () => {
@@ -22,9 +23,38 @@ const PlayerWaitingRoomPage = () => {
     // Initial load
     fetchGameData()
     
-    // Poll every 2 seconds for updates
-    const interval = setInterval(fetchGameData, 2000)
-    return () => clearInterval(interval)
+    // Connect to WebSocket
+    socketService.connect()
+    socketService.joinGame(gameId, playerName, 'player')
+    
+    // Listen for real-time events
+    socketService.onPlayerJoined(({ playerName: newPlayer, totalPlayers }) => {
+      console.log(`👤 ${newPlayer} joined! Total: ${totalPlayers}`)
+      fetchGameData() // Refresh player list
+    })
+    
+    socketService.onPlayerLeft(({ playerName: leftPlayer, totalPlayers }) => {
+      console.log(`👋 ${leftPlayer} left! Total: ${totalPlayers}`)
+      fetchGameData() // Refresh player list
+    })
+    
+    socketService.onGameStarted(() => {
+      console.log('🎮 Game started!')
+      setGameStatus('running')
+      alert('Quiz dimulai! (Fitur gameplay akan dikembangkan)')
+      // TODO: Navigate to actual game play page
+      // navigate('/play', { state: { gameId, pin, playerName, avatar } })
+    })
+    
+    socketService.onHostDisconnected(() => {
+      alert('Host terputus! Game dibatalkan.')
+      handleExit()
+    })
+    
+    return () => {
+      socketService.leaveGame(gameId, playerName)
+      socketService.removeAllListeners()
+    }
   }, [gameId, pin, navigate])
 
   const fetchGameData = async () => {
@@ -44,13 +74,6 @@ const PlayerWaitingRoomPage = () => {
       // Update game status
       setGameStatus(gameData.gameStatus)
       setLoading(false)
-      
-      // If game started, navigate to play page
-      if (gameData.gameStatus === 'running') {
-        // TODO: Navigate to actual game play page
-        alert('Quiz dimulai! (Fitur gameplay akan dikembangkan)')
-        // navigate('/play', { state: { gameId, pin, playerName, avatar } })
-      }
     } catch (error) {
       console.error('Error fetching game data:', error)
       setLoading(false)

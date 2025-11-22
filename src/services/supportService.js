@@ -61,5 +61,19 @@ export const supportService = {
       console.error('Update ticket error:', error);
       throw error.response?.data || { message: 'Gagal update ticket' };
     }
+  },
+
+  // Reply to ticket via Nodemailer (admin only)
+  replyTicket: async (ticketId, replyData) => {
+    try {
+      const response = await api.post(`/support/tickets/${ticketId}/reply`, {
+        subject: replyData.subject,
+        message: replyData.message
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Reply ticket error:', error);
+      throw error.response?.data || { message: 'Gagal mengirim balasan' };
+    }
   }
 };

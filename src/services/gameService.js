@@ -50,5 +50,11 @@ export const gameService = {
   getLeaderboard: async (gameId) => {
     const response = await api.get(`/games/${gameId}/leaderboard`);
     return response.data;
+  },
+
+  // Get user's game history
+  getUserHistory: async () => {
+    const response = await api.get('/games/history/user');
+    return response.data;
   }
 };
