@@ -5,15 +5,23 @@ const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 class SocketService {
   constructor() {
     this.socket = null;
+    this.eventListeners = new Map(); // Track listeners to prevent duplicates
   }
 
   connect() {
-    if (!this.socket) {
+    if (!this.socket || !this.socket.connected) {
       this.socket = io(SOCKET_URL, {
-        transports: ['websocket', 'polling'],
+        transports: ['websocket'], // Only use websocket, faster than polling
+        upgrade: false, // Don't upgrade from polling
         reconnection: true,
         reconnectionAttempts: 5,
-        reconnectionDelay: 1000
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 10000,
+        autoConnect: true,
+        // Performance optimizations
+        forceNew: false, // Reuse existing connection
+        multiplex: true, // Share connection for multiple namespaces
       });
 
       this.socket.on('connect', () => {
@@ -26,6 +34,10 @@ class SocketService {
 
       this.socket.on('connect_error', (error) => {
         console.error('❌ WebSocket connection error:', error);
+      });
+
+      this.socket.on('reconnect', (attemptNumber) => {
+        console.log('🔄 WebSocket reconnected after', attemptNumber, 'attempts');
       });
     }
     return this.socket;
@@ -100,52 +112,93 @@ class SocketService {
     }
   }
 
-  // Event listeners
+  // Event listeners with duplicate prevention
   onPlayerJoined(callback) {
     if (this.socket) {
-      this.socket.on('player-joined', callback);
+      const eventName = 'player-joined';
+      // Remove existing listener if any
+      if (this.eventListeners.has(eventName)) {
+        this.socket.off(eventName, this.eventListeners.get(eventName));
+      }
+      this.socket.on(eventName, callback);
+      this.eventListeners.set(eventName, callback);
     }
   }
 
   onPlayerLeft(callback) {
     if (this.socket) {
-      this.socket.on('player-left', callback);
+      const eventName = 'player-left';
+      if (this.eventListeners.has(eventName)) {
+        this.socket.off(eventName, this.eventListeners.get(eventName));
+      }
+      this.socket.on(eventName, callback);
+      this.eventListeners.set(eventName, callback);
     }
   }
 
   onGameStarted(callback) {
     if (this.socket) {
-      this.socket.on('game-started', callback);
+      const eventName = 'game-started';
+      if (this.eventListeners.has(eventName)) {
+        this.socket.off(eventName, this.eventListeners.get(eventName));
+      }
+      this.socket.on(eventName, callback);
+      this.eventListeners.set(eventName, callback);
     }
   }
 
   onQuestionChanged(callback) {
     if (this.socket) {
-      this.socket.on('question-changed', callback);
+      const eventName = 'question-changed';
+      if (this.eventListeners.has(eventName)) {
+        this.socket.off(eventName, this.eventListeners.get(eventName));
+      }
+      this.socket.on(eventName, callback);
+      this.eventListeners.set(eventName, callback);
     }
   }
 
   onAnswerSubmitted(callback) {
     if (this.socket) {
-      this.socket.on('answer-submitted', callback);
+      const eventName = 'answer-submitted';
+      if (this.eventListeners.has(eventName)) {
+        this.socket.off(eventName, this.eventListeners.get(eventName));
+      }
+      this.socket.on(eventName, callback);
+      this.eventListeners.set(eventName, callback);
     }
   }
 
   onGameEnded(callback) {
     if (this.socket) {
-      this.socket.on('game-ended', callback);
+      const eventName = 'game-ended';
+      if (this.eventListeners.has(eventName)) {
+        this.socket.off(eventName, this.eventListeners.get(eventName));
+      }
+      this.socket.on(eventName, callback);
+      this.eventListeners.set(eventName, callback);
     }
   }
 
   onLeaderboardUpdated(callback) {
     if (this.socket) {
-      this.socket.on('leaderboard-updated', callback);
+      const eventName = 'leaderboard-updated';
+      if (this.eventListeners.has(eventName)) {
+        this.socket.off(eventName, this.eventListeners.get(eventName));
+      }
+      this.socket.on(eventName, callback);
+      this.eventListeners.set(eventName, callback);
     }
   }
 
   onHostDisconnected(callback) {
     if (this.socket) {
-      this.socket.on('host-disconnected', callback);
+      const eventName = 'host-disconnected';
+      if (this.eventListeners.has(eventName)) {
+        this.socket.off(eventName, this.eventListeners.get(eventName));
+      }
+      this.socket.on(eventName, callback);
+      this.eventListeners.set(eventName, callback);
     }
   }
 
@@ -159,6 +212,7 @@ class SocketService {
   removeAllListeners() {
     if (this.socket) {
       this.socket.removeAllListeners();
+      this.eventListeners.clear(); // Clear tracked listeners
     }
   }
 

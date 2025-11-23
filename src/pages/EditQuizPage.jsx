@@ -354,7 +354,7 @@ const EditQuizPage = () => {
 
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i]
-      if (!q.text.trim()) {
+      if (!q.question || !q.question.trim()) {
         alert(`Soal ${i + 1}: Pertanyaan harus diisi!`)
         return
       }
@@ -390,7 +390,7 @@ const EditQuizPage = () => {
       const formattedQuestions = questions.map((q) => {
         let questionData = {
           question: q.question,
-          timeLimit: timerMode === 'per-question' ? (q.useTime ? q.duration : null) : null,
+          timeLimit: timerMode === 'per-question' ? q.duration : null,
           questionType: q.type === 'Pilihan Ganda'
             ? q.multi ? 'multiple-answer' : 'multiple-choice'
             : q.type === 'Isian' ? 'short-answer' : 'true-false'
@@ -511,7 +511,16 @@ const EditQuizPage = () => {
                   <label className="block text-sm font-bold text-gray-700 mb-2">Mode Timer</label>
                   <select
                     value={timerMode}
-                    onChange={(e) => setTimerMode(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setTimerMode(val)
+                      
+                      // Auto-set useTime based on timer mode
+                      if (val === 'per-question') {
+                        // When switching to per-question, enable time for all questions
+                        setQuestions(prev => prev.map(q => ({ ...q, useTime: true, duration: q.duration || 30 })))
+                      }
+                    }}
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-white font-semibold focus:outline-none focus:border-blue-500"
                   >
                     <option value="none">Tanpa Batas Waktu</option>
@@ -568,29 +577,21 @@ const EditQuizPage = () => {
                 <>
                   <div className="flex items-center gap-2">
                     <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={q.useTime}
-                        onChange={(e) => updateQuestion('useTime', e.target.checked)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm font-semibold text-gray-700">Pakai Waktu</span>
+                      <span className="text-sm font-semibold text-gray-700">Durasi Soal:</span>
                     </label>
                   </div>
 
-                  {q.useTime && (
-                    <select
-                      value={q.duration}
-                      onChange={(e) => updateQuestion('duration', parseInt(e.target.value))}
-                      className="px-4 py-2 border-2 border-gray-300 rounded-lg bg-gray-100 font-semibold"
-                    >
-                      {[5, 10, 15, 20, 30, 45, 60].map((t) => (
-                        <option key={t} value={t}>
-                          {t} detik
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                  <select
+                    value={q.duration}
+                    onChange={(e) => updateQuestion('duration', parseInt(e.target.value))}
+                    className="px-4 py-2 border-2 border-gray-300 rounded-lg bg-gray-100 font-semibold"
+                  >
+                    {[5, 10, 15, 20, 30, 45, 60].map((t) => (
+                      <option key={t} value={t}>
+                        {t} detik
+                      </option>
+                    ))}
+                  </select>
                 </>
               )}
 

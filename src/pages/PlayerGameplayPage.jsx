@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { gameService } from '../services/gameService'
@@ -24,6 +24,10 @@ const PlayerGameplayPage = () => {
   const [timeLeft, setTimeLeft] = useState(30)
   const [timerActive, setTimerActive] = useState(false)
   const [timerEndTime, setTimerEndTime] = useState(null) // Absolute end time for accuracy
+  const [quizCompleted, setQuizCompleted] = useState(false) // Track if player finished all questions
+  
+  // Use ref to track if timer has been initialized for current question
+  const timerInitialized = useRef(false)
 
   useEffect(() => {
     if (!gameId || !pin || !playerName) {
@@ -40,15 +44,24 @@ const PlayerGameplayPage = () => {
     // Listen for question changes
     socketService.onQuestionChanged(({ questionIndex }) => {
       console.log(`➡️ Moving to question ${questionIndex}`)
-      setCurrentQuestionIndex(questionIndex)
-      setHasAnswered(false)
-      setSelectedAnswer(null)
-      setIsCorrect(null)
-      setFeedback('')
-      setWaitingForNext(false)
-      setShowLeaderboard(false)
-      setTimerActive(false)
-      // Load game data will be triggered by useEffect when currentQuestionIndex changes
+      
+      // Only reset state if actually moving to a different question
+      setCurrentQuestionIndex(prevIndex => {
+        if (prevIndex !== questionIndex) {
+          // Moving to new question - reset all state including timer
+          setHasAnswered(false)
+          setSelectedAnswer(null)
+          setIsCorrect(null)
+          setFeedback('')
+          setWaitingForNext(false)
+          setShowLeaderboard(false)
+          setTimerActive(false)
+          setTimerEndTime(null) // Reset timer for new question
+          timerInitialized.current = false // Allow timer to be initialized for new question
+        }
+        // If same question (resync), don't reset - loadGameData will restore answered state
+        return questionIndex
+      })
     })
 
     // Listen for game ended
@@ -65,14 +78,14 @@ const PlayerGameplayPage = () => {
       }, 2000)
     })
 
-    // Listen for leaderboard updates
-    socketService.onLeaderboardUpdated(({ leaderboard }) => {
-      setLeaderboard(leaderboard)
-      setShowLeaderboard(true)
-      setTimeout(() => {
-        setShowLeaderboard(false)
-      }, 5000)
-    })
+    // Listen for leaderboard updates (disabled - only show at end)
+    // socketService.onLeaderboardUpdated(({ leaderboard }) => {
+    //   setLeaderboard(leaderboard)
+    //   setShowLeaderboard(true)
+    //   setTimeout(() => {
+    //     setShowLeaderboard(false)
+    //   }, 5000)
+    // })
 
     return () => {
       socketService.leaveGame(gameId, playerName)
@@ -120,62 +133,6 @@ const PlayerGameplayPage = () => {
       const currentQ = game.quiz.questions[currentQuestionIndex]
       setCurrentQuestion(currentQ)
       
-      // Handle different timer modes
-      const timerMode = game.quiz.timerMode || 'per-question'
-      
-      if (timerMode === 'total-time') {
-        // Total time mode: countdown from quiz total time
-        const totalTimeLimit = game.quiz.totalTime || 1800 // Default 30 minutes
-        
-        if (game.startedAt) {
-          const startTime = new Date(game.startedAt).getTime()
-          const endTime = startTime + (totalTimeLimit * 1000)
-          setTimerEndTime(endTime)
-          
-          const now = Date.now()
-          const remaining = Math.ceil((endTime - now) / 1000)
-          setTimeLeft(Math.max(0, remaining))
-          setTimerActive(true)
-          
-          console.log('⏱️ Total-time mode:', { totalTimeLimit, remaining })
-        } else {
-          const endTime = Date.now() + (totalTimeLimit * 1000)
-          setTimerEndTime(endTime)
-          setTimeLeft(totalTimeLimit)
-          setTimerActive(true)
-        }
-      } else if (timerMode === 'per-question') {
-        // Per-question mode: use question time limit
-        const questionTimeLimit = currentQ?.timeLimit
-        
-        if (questionTimeLimit && game.questionStartedAt) {
-          const startTime = new Date(game.questionStartedAt).getTime()
-          const endTime = startTime + (questionTimeLimit * 1000)
-          setTimerEndTime(endTime)
-          
-          const now = Date.now()
-          const remaining = Math.ceil((endTime - now) / 1000)
-          setTimeLeft(Math.max(0, remaining))
-          setTimerActive(true)
-          
-          console.log('⏱️ Per-question mode:', { questionTimeLimit, remaining })
-        } else if (questionTimeLimit) {
-          const endTime = Date.now() + (questionTimeLimit * 1000)
-          setTimerEndTime(endTime)
-          setTimeLeft(questionTimeLimit)
-          setTimerActive(true)
-        } else {
-          setTimeLeft(0)
-          setTimerActive(false)
-          setTimerEndTime(null)
-        }
-      } else {
-        // No timer mode
-        setTimeLeft(0)
-        setTimerActive(false)
-        setTimerEndTime(null)
-      }
-
       // Get my current score and check if already answered current question
       const me = game.players.find(p => p.playerName === playerName)
       if (me) {
@@ -205,6 +162,67 @@ const PlayerGameplayPage = () => {
           setWaitingForNext(true)
           setTimerActive(false)
           setFeedback(savedAnswer?.isCorrect ? 'Benar! 🎉' : 'Salah 😢')
+        } else {
+          // Player hasn't answered - setup timer only once per question
+          if (!timerInitialized.current) {
+            const timerMode = game.quiz.timerMode || 'per-question'
+            
+            if (timerMode === 'total-time') {
+              // Total time mode: countdown from quiz total time
+              const totalTimeLimit = game.quiz.totalTime || 1800 // Default 30 minutes
+              
+              if (game.startedAt) {
+                const startTime = new Date(game.startedAt).getTime()
+                const endTime = startTime + (totalTimeLimit * 1000)
+                setTimerEndTime(endTime)
+                
+                const now = Date.now()
+                const remaining = Math.ceil((endTime - now) / 1000)
+                setTimeLeft(Math.max(0, remaining))
+                setTimerActive(true)
+                
+                console.log('⏱️ Total-time mode:', { totalTimeLimit, remaining })
+              } else {
+                const endTime = Date.now() + (totalTimeLimit * 1000)
+                setTimerEndTime(endTime)
+                setTimeLeft(totalTimeLimit)
+                setTimerActive(true)
+              }
+              timerInitialized.current = true
+            } else if (timerMode === 'per-question') {
+              // Per-question mode: use question time limit
+              const questionTimeLimit = currentQ?.timeLimit
+              
+              if (questionTimeLimit && game.questionStartedAt) {
+                const startTime = new Date(game.questionStartedAt).getTime()
+                const endTime = startTime + (questionTimeLimit * 1000)
+                setTimerEndTime(endTime)
+                
+                const now = Date.now()
+                const remaining = Math.ceil((endTime - now) / 1000)
+                setTimeLeft(Math.max(0, remaining))
+                setTimerActive(true)
+                
+                console.log('⏱️ Per-question mode:', { questionTimeLimit, remaining })
+                timerInitialized.current = true
+              } else if (questionTimeLimit) {
+                const endTime = Date.now() + (questionTimeLimit * 1000)
+                setTimerEndTime(endTime)
+                setTimeLeft(questionTimeLimit)
+                setTimerActive(true)
+                timerInitialized.current = true
+              } else {
+                setTimeLeft(0)
+                setTimerActive(false)
+                setTimerEndTime(null)
+              }
+            } else {
+              // No timer mode
+              setTimeLeft(0)
+              setTimerActive(false)
+              setTimerEndTime(null)
+            }
+          }
         }
       }
 
@@ -284,11 +302,23 @@ const PlayerGameplayPage = () => {
       }
 
       setWaitingForNext(true)
+      
+      // Check if this is the last question
+      const totalQuestions = gameData?.quiz?.questions?.length || 0
+      if (currentQuestionIndex === totalQuestions - 1) {
+        setQuizCompleted(true)
+      }
     } catch (error) {
       console.error('Error submitting answer:', error)
       const errorMessage = error.response?.data?.message || '❌ Error submitting answer'
       setFeedback(errorMessage)
       setWaitingForNext(true)
+      
+      // Check if this is the last question even on error
+      const totalQuestions = gameData?.quiz?.questions?.length || 0
+      if (currentQuestionIndex === totalQuestions - 1) {
+        setQuizCompleted(true)
+      }
     }
   }
 
@@ -340,69 +370,49 @@ const PlayerGameplayPage = () => {
       {/* Main Content */}
       <div className="max-w-4xl mx-auto p-6">
         <AnimatePresence mode="wait">
-          {showLeaderboard ? (
-            <motion.div
-              key="leaderboard"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-white rounded-3xl shadow-2xl p-8"
-            >
-              <h2 className="text-4xl font-bold text-center text-gray-800 mb-8">
-                🏆 Leaderboard
-              </h2>
-
-              <div className="space-y-3">
-                {leaderboard.map((player, index) => {
-                  // Handle avatar as object or string
-                  const avatarDisplay = typeof player.avatar === 'object' && player.avatar?.emoji 
-                    ? player.avatar.emoji 
-                    : (player.avatar || '👤')
-                  
-                  return (
-                  <motion.div
-                    key={index}
-                    initial={{ x: -50, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: index * 0.1 }}
-                    className={`flex items-center gap-4 p-4 rounded-xl ${
-                      player.playerName === playerName
-                        ? 'bg-blue-100 border-2 border-blue-500'
-                        : index === 0
-                        ? 'bg-yellow-100 border-2 border-yellow-400'
-                        : index === 1
-                        ? 'bg-gray-100 border-2 border-gray-400'
-                        : index === 2
-                        ? 'bg-orange-100 border-2 border-orange-400'
-                        : 'bg-gray-50'
-                    }`}
-                  >
-                    <div className="text-2xl font-bold w-10 text-center">
-                      {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                    </div>
-                    <div className="text-2xl">{avatarDisplay}</div>
-                    <div className="flex-1">
-                      <div className="font-bold text-lg text-gray-800">
-                        {player.playerName}
-                        {player.playerName === playerName && (
-                          <span className="ml-2 text-blue-600">(You)</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-2xl font-bold text-blue-600">{player.score}</div>
-                  </motion.div>
-                  )
-                })}
+          <motion.div
+            key="question"
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+            className="bg-white rounded-3xl shadow-2xl p-8"
+          >
+            {quizCompleted ? (
+              /* Quiz Completed - Waiting for game to end */
+              <div className="text-center py-12">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                  className="text-8xl mb-6"
+                >
+                  🎉
+                </motion.div>
+                <h2 className="text-4xl font-bold text-gray-800 mb-4">
+                  Quiz Selesai!
+                </h2>
+                <p className="text-xl text-gray-600 mb-6">
+                  Anda telah menyelesaikan semua soal
+                </p>
+                <div className="bg-blue-100 border-2 border-blue-400 rounded-xl p-6 mb-6">
+                  <div className="text-6xl font-bold text-blue-600 mb-2">
+                    {myScore}
+                  </div>
+                  <div className="text-lg text-gray-700">
+                    Skor Akhir Anda
+                  </div>
+                </div>
+                <div className="text-gray-500 mb-4">
+                  Menunggu pemain lain menyelesaikan quiz...
+                </div>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                  className="w-12 h-12 border-4 border-blue-400 border-t-transparent rounded-full mx-auto"
+                />
               </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="question"
-              initial={{ y: 50, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -50, opacity: 0 }}
-              className="bg-white rounded-3xl shadow-2xl p-8"
-            >
+            ) : (
+              <>
               {/* Question */}
               <div className="mb-8">
                 <div className="flex items-center justify-between mb-4">
@@ -671,8 +681,9 @@ const PlayerGameplayPage = () => {
                     : 'Select an answer'}
                 </button>
               )}
-            </motion.div>
-          )}
+              </>
+            )}
+          </motion.div>
         </AnimatePresence>
       </div>
     </div>

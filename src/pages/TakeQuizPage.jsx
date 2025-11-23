@@ -768,11 +768,6 @@ const TakeQuizPage = () => {
                   placeholder="Ketik jawaban kamu..."
                   className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl text-base focus:outline-none focus:border-blue-500 shadow-md"
                 />
-                {currentQ.acceptedAnswers && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    💡 Jawaban yang diterima: {currentQ.acceptedAnswers.join(', ')}
-                  </p>
-                )}
               </div>
             )}
 
