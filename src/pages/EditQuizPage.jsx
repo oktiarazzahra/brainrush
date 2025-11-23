@@ -360,18 +360,18 @@ const EditQuizPage = () => {
       }
 
       if (q.type === 'Pilihan Ganda') {
-        const emptyOptions = q.options.filter((opt) => !opt.trim())
+        const emptyOptions = q.options ? q.options.filter((opt) => !opt || !opt.trim()) : []
         if (emptyOptions.length > 0) {
           alert(`Soal ${i + 1}: Semua pilihan jawaban harus diisi!`)
           return
         }
-        const hasCorrect = q.correct.some((c) => c)
+        const hasCorrect = q.correct && q.correct.some((c) => c)
         if (!hasCorrect) {
           alert(`Soal ${i + 1}: Pilih minimal satu jawaban yang benar!`)
           return
         }
       } else if (q.type === 'Isian') {
-        const hasAccepted = q.acceptedAnswers && q.acceptedAnswers.length > 0 && q.acceptedAnswers.some((a) => a.trim())
+        const hasAccepted = q.acceptedAnswers && q.acceptedAnswers.length > 0 && q.acceptedAnswers.some((a) => a && a.trim())
         if (!hasAccepted) {
           alert(`Soal ${i + 1}: Tambahkan minimal satu jawaban!`)
           return

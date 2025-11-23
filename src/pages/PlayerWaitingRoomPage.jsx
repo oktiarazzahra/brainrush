@@ -41,9 +41,16 @@ const PlayerWaitingRoomPage = () => {
     socketService.onGameStarted(() => {
       console.log('🎮 Game started!')
       setGameStatus('running')
-      alert('Quiz dimulai! (Fitur gameplay akan dikembangkan)')
-      // TODO: Navigate to actual game play page
-      // navigate('/play', { state: { gameId, pin, playerName, avatar } })
+      
+      // Navigate to player gameplay page
+      navigate('/player-gameplay', { 
+        state: { 
+          gameId, 
+          pin, 
+          playerName, 
+          avatar 
+        } 
+      })
     })
     
     socketService.onHostDisconnected(() => {
@@ -63,12 +70,18 @@ const PlayerWaitingRoomPage = () => {
       const gameData = response.data.game
       
       // Update players list
-      const playersList = gameData.players.map(p => ({
-        id: p._id || p.userId,
-        name: p.playerName || p.name,
-        avatar: p.avatar || '🤖',
-        color: 'bg-blue-500'
-      }))
+      const playersList = gameData.players.map(p => {
+        const avatarEmoji = typeof p.avatar === 'object' && p.avatar?.emoji 
+          ? p.avatar.emoji 
+          : (p.avatar || '🤖')
+
+        return {
+          id: p._id || p.userId,
+          name: p.playerName || p.name,
+          avatar: avatarEmoji,
+          color: 'bg-blue-500'
+        }
+      })
       setPlayers(playersList)
       
       // Update game status

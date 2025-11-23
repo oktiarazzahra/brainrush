@@ -26,11 +26,8 @@ export const gameService = {
   },
 
   // Submit answer
-  submitAnswer: async (gameId, questionId, answer) => {
-    const response = await api.post(`/games/${gameId}/answer`, {
-      questionId,
-      answer
-    });
+  submitAnswer: async (gameId, data) => {
+    const response = await api.post(`/games/${gameId}/answer`, data);
     return response.data;
   },
 

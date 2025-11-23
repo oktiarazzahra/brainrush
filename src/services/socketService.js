@@ -71,14 +71,15 @@ class SocketService {
   }
 
   // Submit answer
-  submitAnswer(gameId, playerName, questionId, isCorrect, score) {
+  submitAnswer(gameId, playerName, questionId, isCorrect, score, timeSpent = null) {
     if (this.socket) {
       this.socket.emit('submit-answer', { 
         gameId, 
         playerName, 
         questionId, 
         isCorrect, 
-        score 
+        score,
+        timeSpent
       });
       console.log(`✅ Answer submitted by ${playerName}`);
     }

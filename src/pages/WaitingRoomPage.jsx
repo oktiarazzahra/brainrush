@@ -67,9 +67,16 @@ const WaitingRoomPage = () => {
       // Emit WebSocket event to all players
       socketService.startGame(gameId)
       
-      alert('Quiz dimulai! (Fitur gameplay akan dikembangkan)')
-      // TODO: Navigate to actual game play page
-      // navigate('/play-quiz', { state: { gameId, PIN } })
+      // Navigate to live gameplay page
+      navigate('/live-gameplay', { 
+        state: { 
+          gameId, 
+          PIN, 
+          quiz,
+          quizTitle,
+          totalQuestions
+        } 
+      })
     } catch (error) {
       console.error('Error starting game:', error)
       alert('Gagal memulai quiz. Coba lagi.')
@@ -219,7 +226,9 @@ const WaitingRoomPage = () => {
               ) : players.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-[520px] overflow-y-auto pr-2">
                   {players.map((player, index) => {
-                    const avatarEmoji = player.avatar || '🤖'
+                    const avatarEmoji = typeof player.avatar === 'object' && player.avatar?.emoji 
+                      ? player.avatar.emoji 
+                      : (player.avatar || '🤖')
                     const playerName = player.playerName || player.name || 'Player'
                     
                     return (

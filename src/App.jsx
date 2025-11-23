@@ -22,6 +22,8 @@ import EditQuizPage from './pages/EditQuizPage'
 import TakeQuizPage from './pages/TakeQuizPage'
 import AdminSupportPage from './pages/AdminSupportPage'
 import AdminUsersPage from './pages/AdminUsersPage'
+import LiveGameplayPage from './pages/LiveGameplayPage'
+import PlayerGameplayPage from './pages/PlayerGameplayPage'
 
 function App() {
   return (
@@ -49,8 +51,12 @@ function App() {
         <Route path="/edit-quiz/:id" element={<EditQuizPage />} />
         <Route path="/take-quiz/:quizId" element={<TakeQuizPage />} />
 
-        {/* Waiting Room Route */}
+        {/* Waiting Room Routes */}
         <Route path="/waiting-room" element={<WaitingRoomPage />} />
+
+        {/* Live Game Routes */}
+        <Route path="/live-gameplay" element={<LiveGameplayPage />} />
+        <Route path="/player-gameplay" element={<PlayerGameplayPage />} />
 
         {/* Quiz Results Route */}
         <Route path="/quiz-results/:quizId" element={<QuizResultsPage />} />

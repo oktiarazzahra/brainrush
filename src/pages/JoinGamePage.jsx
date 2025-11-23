@@ -41,7 +41,7 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
     setLoading(true)
     try {
       const avatarData = avatars[selectedAvatar]
-      const response = await gameService.joinGame(pin, playerName.trim(), avatarData.emoji)
+      const response = await gameService.joinGame(pin, playerName.trim(), avatarData)
       
       // Navigate to player waiting room
       navigate('/playerwaitingroom', {

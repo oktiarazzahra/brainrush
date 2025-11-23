@@ -177,6 +177,12 @@ const TakeQuizPage = () => {
     // Use system time to calculate remaining time accurately
     const timer = setInterval(() => {
       const now = Date.now()
+      
+      if (!timerEndTime) {
+        console.warn('⚠️ timerEndTime not set')
+        return
+      }
+      
       const remainingMs = timerEndTime - now
       const remainingSec = Math.ceil(remainingMs / 1000)
       
@@ -187,9 +193,11 @@ const TakeQuizPage = () => {
         
         if (timerMode === 'total-time') {
           // Total time mode - auto submit immediately
+          console.log('⏰ Total time expired - auto submitting')
           calculateScoreAndSubmit()
         } else {
           // Per question mode - auto advance
+          console.log('⏰ Question time expired - auto advancing')
           handleTimeUp()
         }
       } else {
@@ -488,11 +496,16 @@ const TakeQuizPage = () => {
       
       // Reset timer based on mode
       if (timerMode === 'per-question') {
+        // Per-question mode: reset timer for next question
         const nextQuestionTime = questions[currentQuestion + 1].timeLimit
         setTimeLeft(nextQuestionTime)
         setTimerEndTime(Date.now() + (nextQuestionTime * 1000)) // Update end time
+        console.log('⏱️ Next question timer:', nextQuestionTime, 'seconds')
+      } else if (timerMode === 'total-time') {
+        // Total-time mode: timer keeps counting down (don't update timerEndTime)
+        console.log('⏱️ Total-time mode: continuing countdown')
       }
-      // For total-time mode, timer keeps counting down
+      // For 'none' mode, no timer updates needed
       
       setQuestionStartTime(Date.now())
     } else {
@@ -637,6 +650,23 @@ const TakeQuizPage = () => {
 
             {/* Question Box */}
             <div className="mb-6">
+              {/* Question Type Badge */}
+              <div className="flex items-center justify-between mb-4">
+                <span className="bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-semibold">
+                  {(() => {
+                    const type = currentQ.type;
+                    if (type === 'Pilihan Ganda' && currentQ.multi) return 'Multiple Answer';
+                    if (type === 'Pilihan Ganda') return 'Multiple Choice';
+                    if (type === 'Benar Salah') return 'True/False';
+                    if (type === 'Isian') return 'Fill in the Blank';
+                    return type;
+                  })()}
+                </span>
+                <span className="text-gray-500 text-sm font-semibold">
+                  Soal {currentQuestion + 1} dari {questions.length}
+                </span>
+              </div>
+              
               <div className="bg-gray-100 text-center text-lg font-semibold px-6 py-4 rounded-xl shadow-md text-gray-800">
                 {currentQ.question}
               </div>
@@ -755,10 +785,6 @@ const TakeQuizPage = () => {
               >
                 ← Sebelumnya
               </button>
-
-              <span className="text-gray-700 font-bold">
-                Soal {currentQuestion + 1} dari {questions.length}
-              </span>
 
               {currentAnswer !== undefined ? (
                 <button
