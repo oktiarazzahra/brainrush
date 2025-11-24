@@ -344,13 +344,10 @@ const TakeQuizPage = () => {
       [currentQuestion]: timeSpent
     }))
 
-    // PENTING: Jika belum dijawab, set jawaban sebagai null (tidak dijawab)
+    // PENTING: Jika belum dijawab, jangan set jawaban sama sekali
+    // Biarkan undefined agar di kalkulasi skor dianggap salah
     if (answers[currentQuestion] === undefined) {
-      setAnswers(prev => ({
-        ...prev,
-        [currentQuestion]: null // Tandai sebagai "tidak dijawab" karena waktu habis
-      }))
-      console.log('⏰ Time up - Question', currentQuestion + 1, 'marked as unanswered (null)')
+      console.log('⏰ Time up - Question', currentQuestion + 1, 'remains unanswered (undefined) - will be counted as wrong')
     }
 
     // Auto advance to next question or finish
@@ -458,11 +455,18 @@ const TakeQuizPage = () => {
         console.log('Single choice:', { correctIndex, userIndex, isCorrect })
       } else if (q.type === 'Benar Salah') {
         // True/False - handle both string and boolean
-        const correctBool = q.correctAnswer === true || q.correctAnswer === 'true'
-        const userBool = userAnswer === true || userAnswer === 'true'
-        isCorrect = correctBool === userBool
-        formattedAnswer = userAnswer
-        console.log('True/False:', { correct: q.correctAnswer, user: userAnswer, correctBool, userBool, isCorrect })
+        // PENTING: Jika tidak dijawab (null/undefined), otomatis salah
+        if (userAnswer === null || userAnswer === undefined) {
+          isCorrect = false
+          formattedAnswer = null
+          console.log('True/False: Tidak dijawab - otomatis salah')
+        } else {
+          const correctBool = q.correctAnswer === true || q.correctAnswer === 'true'
+          const userBool = userAnswer === true || userAnswer === 'true'
+          isCorrect = correctBool === userBool
+          formattedAnswer = userAnswer
+          console.log('True/False:', { correct: q.correctAnswer, user: userAnswer, correctBool, userBool, isCorrect })
+        }
       } else if (q.type === 'Isian') {
         // Short answer - case insensitive
         if (userAnswer && q.acceptedAnswers && q.acceptedAnswers.length > 0) {
@@ -974,7 +978,7 @@ const TakeQuizPage = () => {
                 Soal {currentQuestion + 1} dari {questions.length}
               </div>
 
-              {currentAnswer !== undefined ? (
+              {(currentAnswer !== undefined && currentAnswer !== null) ? (
                 <button
                   onClick={handleNext}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl transition shadow-md"
@@ -986,7 +990,7 @@ const TakeQuizPage = () => {
                   disabled
                   className="bg-gray-400 text-gray-600 font-bold px-8 py-3 rounded-xl cursor-not-allowed opacity-50"
                 >
-                  Jawab dulu untuk lanjut
+                  {currentAnswer === null ? 'Tidak Dijawab (Waktu Habis)' : 'Jawab dulu untuk lanjut'}
                 </button>
               )}
             </div>
