@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { gameService } from '../services/gameService'
 
 const QuizResultsPage = () => {
   const navigate = useNavigate()
   const { quizId } = useParams()
   const location = useLocation()
-  const { results, quiz, isHost, playerName } = location.state || {}
+  const { results: stateResults, quiz: stateQuiz, isHost, playerName } = location.state || {}
   
   const [selectedPlayer, setSelectedPlayer] = useState(null)
   const [activeTab, setActiveTab] = useState('ranking')
@@ -17,10 +18,83 @@ const QuizResultsPage = () => {
     totalPlayers: 0,
     averageScore: 0
   })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
+    // If no results in state, fetch from backend
+    if (!stateResults && quizId) {
+      fetchGameResults()
+    } else if (stateResults) {
+      processResults(stateResults, stateQuiz)
+    }
+  }, [quizId, stateResults, stateQuiz])
+
+  const fetchGameResults = async () => {
+    try {
+      setLoading(true)
+      console.log('📥 Fetching game results for:', quizId)
+      
+      const response = await gameService.getGameResults(quizId)
+      console.log('✅ Game results:', response)
+      
+      const gameHistory = response.data.results
+      processGameHistory(gameHistory)
+      
+      setLoading(false)
+    } catch (err) {
+      console.error('❌ Error fetching game results:', err)
+      setError('Gagal memuat hasil quiz')
+      setLoading(false)
+    }
+  }
+
+  const processGameHistory = (gameHistory) => {
+    // Process data from GameHistory model
+    const processedPlayers = (gameHistory.playerResults || []).map((player, index) => {
+      const answers = player.answers || []
+      const correctCount = answers.filter(a => a.isCorrect).length
+      
+      return {
+        id: player.userId || index,
+        name: player.playerName,
+        avatar: player.avatar || '👤',
+        score: player.score || 0,
+        rank: player.rank || index + 1,
+        totalQuestions: answers.length,
+        correctAnswers: correctCount,
+        answers: answers.map((ans, i) => ({
+          questionNum: i + 1,
+          question: ans.question || `Question ${i + 1}`,
+          userAnswer: Array.isArray(ans.userAnswer) ? ans.userAnswer.join(', ') : ans.userAnswer || 'No answer',
+          correctAnswer: Array.isArray(ans.correctAnswer) 
+            ? ans.correctAnswer.join(', ') 
+            : ans.correctAnswer || 'N/A',
+          isCorrect: ans.isCorrect
+        }))
+      }
+    })
+
+    // Sort by rank or score
+    const sortedPlayers = processedPlayers.sort((a, b) => a.rank - b.rank || b.score - a.score)
+    
+    setPlayersData(sortedPlayers)
+
+    // Calculate quiz info
+    const totalScore = sortedPlayers.reduce((sum, p) => sum + p.score, 0)
+    setQuizInfo({
+      title: gameHistory.quizId?.title || 'Quiz Results',
+      totalQuestions: sortedPlayers[0]?.totalQuestions || 0,
+      totalPlayers: gameHistory.totalPlayers || sortedPlayers.length,
+      averageScore: sortedPlayers.length > 0 
+        ? Math.round(totalScore / sortedPlayers.length) 
+        : 0
+    })
+  }
+
+  const processResults = (results, quiz) => {
     if (results && results.players) {
-      // Process player data from results
+      // Process player data from results (live game end)
       const processedPlayers = results.players.map((player, index) => {
         const answers = player.answers || []
         const correctCount = answers.filter(a => a.isCorrect).length
@@ -66,13 +140,24 @@ const QuizResultsPage = () => {
           : 0
       })
     }
-  }, [results, quiz])
+  }
 
-  if (!results) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-100 via-blue-300 to-blue-200 flex items-center justify-center">
         <div className="bg-white rounded-2xl p-8 shadow-lg text-center">
-          <p className="text-gray-600 mb-4">No results data available</p>
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent mb-4"></div>
+          <p className="text-gray-600">Loading results...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || (!stateResults && !playersData.length && !loading)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-100 via-blue-300 to-blue-200 flex items-center justify-center">
+        <div className="bg-white rounded-2xl p-8 shadow-lg text-center">
+          <p className="text-gray-600 mb-4">{error || 'No results data available'}</p>
           <button
             onClick={() => navigate('/my-quizzes')}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition"

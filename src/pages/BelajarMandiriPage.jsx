@@ -44,7 +44,7 @@ const BelajarMandiriPage = () => {
           questions: 0, // Will be populated when viewing details
           score: item.percentage,
           date: new Date(item.completedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-          image: null,
+          image: item.coverImage || null,
           bgColor: bgColors[index % bgColors.length],
           timeSpent: '-',
           isCompleted: true
@@ -60,7 +60,7 @@ const BelajarMandiriPage = () => {
           category: item.category,
           currentQuestionIndex: item.currentQuestionIndex,
           totalQuestions: item.totalQuestions,
-          image: null,
+          image: item.coverImage || null,
           bgColor: bgColors[index % bgColors.length],
           lastUpdated: new Date(item.lastUpdated).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
           isCompleted: false

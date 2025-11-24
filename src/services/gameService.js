@@ -53,5 +53,11 @@ export const gameService = {
   getUserHistory: async () => {
     const response = await api.get('/games/history/user');
     return response.data;
+  },
+
+  // Get game results
+  getGameResults: async (gameId) => {
+    const response = await api.get(`/games/${gameId}/results`);
+    return response.data;
   }
 };
