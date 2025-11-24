@@ -306,7 +306,10 @@ const PlayerGameplayPage = () => {
       // Check if this is the last question
       const totalQuestions = gameData?.quiz?.questions?.length || 0
       if (currentQuestionIndex === totalQuestions - 1) {
-        setQuizCompleted(true)
+        // Delay showing "Quiz Selesai" to let user see the feedback first
+        setTimeout(() => {
+          setQuizCompleted(true)
+        }, 3000) // 3 second delay to show feedback
       }
     } catch (error) {
       console.error('Error submitting answer:', error)
@@ -317,7 +320,10 @@ const PlayerGameplayPage = () => {
       // Check if this is the last question even on error
       const totalQuestions = gameData?.quiz?.questions?.length || 0
       if (currentQuestionIndex === totalQuestions - 1) {
-        setQuizCompleted(true)
+        // Delay showing "Quiz Selesai" even on error
+        setTimeout(() => {
+          setQuizCompleted(true)
+        }, 3000)
       }
     }
   }

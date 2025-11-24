@@ -85,11 +85,41 @@ const MyQuizzesPage = () => {
   const handleBuatLive = async quizId => {
     try {
       setOpenMenuId(null)
+      
+      // Validasi: Cek quiz type dan timer mode
+      const quiz = quizzes.find(q => (q.id || q._id) === quizId)
+      
+      if (!quiz) {
+        alert('Quiz tidak ditemukan!')
+        return
+      }
+      
+      // Peringatan jika quiz bukan tipe 'live'
+      if (quiz.quizType === 'schedule') {
+        const confirmProceed = window.confirm(
+          '⚠️ PERINGATAN!\n\n' +
+          'Quiz ini bertipe "Jadwal/Belajar Mandiri", bukan "Live Quiz".\n\n' +
+          'Untuk pengalaman Live Quiz terbaik, sebaiknya gunakan quiz bertipe "Live Quiz" dengan Timer Per Soal.\n\n' +
+          'Tetap lanjutkan buat Live Game?'
+        )
+        if (!confirmProceed) return
+      }
+      
+      // Peringatan jika timer bukan per-question
+      if (quiz.timerMode !== 'per-question') {
+        const confirmProceed = window.confirm(
+          '⚠️ PERINGATAN TIMER!\n\n' +
+          `Quiz ini menggunakan timer mode: "${quiz.timerMode === 'none' ? 'Tanpa Batas Waktu' : 'Total Waktu Kuis'}"\n\n` +
+          'Live Quiz sebaiknya menggunakan "Timer Per Soal" untuk kompetisi yang lebih adil dan menarik.\n\n' +
+          'Tetap lanjutkan?'
+        )
+        if (!confirmProceed) return
+      }
+      
       console.log('🎮 Creating live game for quiz:', quizId)
       const response = await gameService.createGame(quizId)
       console.log('✅ Game created successfully:', response)
       const gameData = response.data.game
-      const quiz = quizzes.find(q => (q.id || q._id) === quizId)
       
       navigate('/waiting-room', { 
         state: { 
@@ -475,6 +505,40 @@ const MyQuizzesPage = () => {
 
                       <div className="p-5">
                         <h3 className="font-bold text-lg text-gray-800 mb-2 line-clamp-2">{quizTitle}</h3>
+                        
+                        {/* Quiz Type & Timer Mode Badges */}
+                        {!isHistory && (
+                          <div className="flex gap-2 mb-2 flex-wrap">
+                            {/* Quiz Type Badge */}
+                            {item.quizType === 'live' ? (
+                              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-semibold">
+                                🎮 Live Quiz
+                              </span>
+                            ) : (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
+                                📚 Jadwal
+                              </span>
+                            )}
+                            
+                            {/* Timer Mode Badge */}
+                            {item.timerMode === 'per-question' && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
+                                ⏱️ Per Soal
+                              </span>
+                            )}
+                            {item.timerMode === 'total-time' && (
+                              <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-semibold">
+                                ⏰ Total Waktu
+                              </span>
+                            )}
+                            {item.timerMode === 'none' && (
+                              <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full font-semibold">
+                                ∞ Tanpa Timer
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        
                         <p className="text-sm text-gray-600 mb-1">
                           {isHistory 
                             ? new Date(item.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
