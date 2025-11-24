@@ -354,7 +354,10 @@ const MyQuizzesPage = () => {
     
     if (activeTab === 'My Quiz') return (
       <>
-        <button onClick={e => { e.stopPropagation(); handleBuatLive(quizId) }} className="w-full px-3 py-2 text-left hover:bg-blue-50 text-blue-600">Buat Live</button>
+        {/* Tombol Buat Live hanya untuk quiz dengan quizType === 'live' */}
+        {item.quizType === 'live' && (
+          <button onClick={e => { e.stopPropagation(); handleBuatLive(quizId) }} className="w-full px-3 py-2 text-left hover:bg-blue-50 text-blue-600">Buat Live</button>
+        )}
         <button onClick={e => { e.stopPropagation(); handleShare(quizId) }} className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600">Bagikan Quiz</button>
         <button onClick={e => { e.stopPropagation(); handleTambahCover(quizId) }} className="w-full px-3 py-2 text-left hover:bg-purple-50 text-purple-600">Tambah Cover</button>
         <button onClick={e => { e.stopPropagation(); handleUnpublish(quizId, quizTitle) }} className="w-full px-3 py-2 text-left hover:bg-orange-50 text-orange-600">Unpublish</button>
