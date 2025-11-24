@@ -114,7 +114,7 @@ export const learningService = {
   },
 
   // Save progress for incomplete quiz
-  saveProgress: async (quizId, currentQuestionIndex, answers, totalQuestions, timeLeft = null, timerMode = 'per-question', totalTimeSpent = 0) => {
+  saveProgress: async (quizId, currentQuestionIndex, answers, totalQuestions, timeLeft = null, timerMode = 'per-question', totalTimeSpent = 0, quizEndTime = null) => {
     try {
       const response = await fetch(`${API_URL}/learning/save-progress`, {
         method: 'POST',
@@ -130,6 +130,7 @@ export const learningService = {
           timeLeft,
           timerMode,
           totalTimeSpent,
+          quizEndTime,
         }),
       });
 

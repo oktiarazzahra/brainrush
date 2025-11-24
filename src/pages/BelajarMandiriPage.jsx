@@ -414,27 +414,46 @@ const BelajarMandiriPage = () => {
                   >
                     {/* Tab Soal */}
                     <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-                      {quizQuestions.map((_, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setCurrentQuestion(index)}
-                          className={`min-w-[60px] h-12 rounded-lg font-bold text-lg transition shadow-md ${
-                            currentQuestion === index
-                              ? 'bg-blue-600 text-white scale-110'
-                              : quizQuestions[index].isCorrect
-                              ? 'bg-green-400 text-green-900'
-                              : 'bg-red-300 text-red-900'
-                          }`}
-                        >
-                          {index + 1}
-                        </button>
-                      ))}
+                      {quizQuestions.map((_, index) => {
+                        const q = quizQuestions[index]
+                        // Cek apakah tidak dijawab: null, undefined, string kosong, atau array kosong
+                        const isNotAnswered = q.userAnswers[0] === null || 
+                                            q.userAnswers[0] === undefined || 
+                                            q.userAnswers[0] === '' ||
+                                            (Array.isArray(q.userAnswers) && q.userAnswers.length === 0)
+                        
+                        return (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentQuestion(index)}
+                            className={`min-w-[60px] h-12 rounded-lg font-bold text-lg transition shadow-md ${
+                              currentQuestion === index
+                                ? 'bg-blue-600 text-white scale-110'
+                                : q.isCorrect
+                                ? 'bg-green-400 text-green-900'
+                                : isNotAnswered
+                                ? 'bg-gray-300 text-gray-600'
+                                : 'bg-red-300 text-red-900'
+                            }`}
+                          >
+                            {index + 1}
+                          </button>
+                        )
+                      })}
                     </div>
                     {/* Status */}
                     <div className={`inline-block px-5 py-2 rounded-full font-bold mb-5 ${
-                      currentQ.isCorrect ? 'bg-green-400 text-green-900' : 'bg-red-400 text-red-900'
+                      currentQ.isCorrect 
+                        ? 'bg-green-400 text-green-900' 
+                        : (currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '' || (Array.isArray(currentQ.userAnswers) && currentQ.userAnswers.length === 0))
+                        ? 'bg-gray-300 text-gray-700'
+                        : 'bg-red-400 text-red-900'
                     }`}>
-                      {currentQ.isCorrect ? '✓ Jawaban Benar' : '✗ Jawaban Salah'}
+                      {currentQ.isCorrect 
+                        ? '✓ Jawaban Benar' 
+                        : (currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '' || (Array.isArray(currentQ.userAnswers) && currentQ.userAnswers.length === 0))
+                        ? '○ Tidak Dijawab'
+                        : '✗ Jawaban Salah'}
                     </div>
                     {/* Question Box */}
                     <div className="mb-5">
@@ -458,6 +477,13 @@ const BelajarMandiriPage = () => {
                     {/* Options Grid - Hanya untuk Pilihan Ganda */}
                     {currentQ.options && currentQ.options.length > 0 ? (
                       <>
+                        {/* Indikator jika tidak dijawab */}
+                        {(currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '' || currentQ.userAnswers.length === 0) && (
+                          <div className="mb-4 bg-gray-100 border-2 border-gray-400 rounded-xl p-4 text-center">
+                            <p className="text-gray-600 font-bold">⚪ Soal ini tidak dijawab (waktu habis atau keluar)</p>
+                          </div>
+                        )}
+                        
                         <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-8">
                           {currentQ.options.map((option, i) => {
                             const isCorrect = currentQ.correctAnswers.includes(i)
@@ -520,23 +546,36 @@ const BelajarMandiriPage = () => {
                                     : currentQ.correctAnswers || '-')}
                           </p>
                         </div>
-                        <div className={`rounded-xl p-6 border-2 ${currentQ.isCorrect ? 'bg-green-50 border-green-600' : 'bg-red-50 border-red-600'}`}>
+                        <div className={`rounded-xl p-6 border-2 ${
+                          currentQ.isCorrect 
+                            ? 'bg-green-50 border-green-600' 
+                            : (currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '')
+                            ? 'bg-gray-100 border-gray-400'
+                            : 'bg-red-50 border-red-600'
+                        }`}>
                           <p className="text-sm text-gray-600 font-semibold mb-2">
-                            {currentQ.isCorrect ? '✅' : '❌'} Jawaban Anda:
+                            {currentQ.isCorrect 
+                              ? '✅' 
+                              : (currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '')
+                              ? '○'
+                              : '❌'} Jawaban Anda:
                           </p>
-                          <p className={`text-xl font-bold ${currentQ.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-                            {typeof currentQ.userAnswers[0] === 'boolean' 
+                          <p className={`text-xl font-bold ${
+                            currentQ.isCorrect 
+                              ? 'text-green-700' 
+                              : (currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '')
+                              ? 'text-gray-500'
+                              : 'text-red-700'
+                          }`}>
+                            {(currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '')
+                              ? 'Tidak Dijawab (Waktu Habis)'
+                              : typeof currentQ.userAnswers[0] === 'boolean' 
                               ? (currentQ.userAnswers[0] ? 'Benar' : 'Salah')
-                              : currentQ.userAnswers[0] || '-'}
+                              : currentQ.userAnswers[0]}
                           </p>
                         </div>
                       </div>
                     )}
-                    {/* Explanation */}
-                    <div className="bg-blue-50 border-l-4 border-blue-600 rounded-r-lg p-5 mb-6">
-                      <h4 className="font-bold text-blue-900 mb-2">💡 Pembahasan:</h4>
-                      <p className="text-gray-800">{currentQ.explanation}</p>
-                    </div>
                     {/* Navigation */}
                     <div className="flex items-center justify-between pt-4 border-t-2 border-gray-200">
                       <button

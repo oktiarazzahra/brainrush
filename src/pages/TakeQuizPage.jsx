@@ -83,22 +83,21 @@ const TakeQuizPage = () => {
           questionCount: formattedQuestions.length
         })
         
+        // Don't set timer yet - wait until we check for saved progress first
+        let initialEndTime = null
+        
         if (mode === 'total-time') {
-          // Total time mode - use quiz total time
+          // Total time mode - calculate end time
           const totalTime = quizData.totalTime && quizData.totalTime > 0 
             ? quizData.totalTime 
             : (formattedQuestions.length * 30) // Default 30s per question
           console.log('⏱️ Total Time Mode - Setting timer to:', totalTime, 'seconds')
           setTotalQuizTime(totalTime)
-          setTimeLeft(totalTime)
-          setTimerEndTime(Date.now() + (totalTime * 1000)) // Set absolute end time
-        } else {
+          initialEndTime = Date.now() + (totalTime * 1000)
+        } else if (formattedQuestions.length > 0) {
           // Per question mode - use first question's time limit
-          if (formattedQuestions.length > 0) {
-            const questionTime = formattedQuestions[0].timeLimit
-            setTimeLeft(questionTime)
-            setTimerEndTime(Date.now() + (questionTime * 1000)) // Set absolute end time
-          }
+          const questionTime = formattedQuestions[0].timeLimit
+          initialEndTime = Date.now() + (questionTime * 1000)
         }
         
         setQuestionStartTime(Date.now())
@@ -112,7 +111,6 @@ const TakeQuizPage = () => {
             
             // Restore progress
             setProgressId(progress.id)
-            setCurrentQuestion(progress.currentQuestionIndex)
             
             // Restore answers
             const restoredAnswers = {}
@@ -124,24 +122,122 @@ const TakeQuizPage = () => {
             })
             setAnswers(restoredAnswers)
             
-            // Restore timer state
-            if (progress.timeLeft !== null && progress.timeLeft !== undefined) {
-              setTimeLeft(progress.timeLeft)
-              setTimerEndTime(Date.now() + (progress.timeLeft * 1000)) // Recalculate end time
-              console.log('⏱️ Restored timer:', progress.timeLeft, 'seconds')
+            // PENTING: Tentukan soal mana yang harus dikerjakan sekarang
+            // Cari soal pertama yang BELUM dijawab (tidak ada di restoredAnswers)
+            let targetQuestion = progress.currentQuestionIndex
+            const answeredQuestions = Object.keys(restoredAnswers).length
+            
+            // Jika jumlah jawaban < jumlah soal, cari soal pertama yang tidak ada jawabannya
+            if (answeredQuestions < formattedQuestions.length) {
+              for (let i = 0; i < formattedQuestions.length; i++) {
+                if (!(i in restoredAnswers)) {
+                  // Soal ini belum pernah dikerjakan (bahkan belum time up)
+                  targetQuestion = i
+                  break
+                }
+              }
+            } else {
+              // Semua soal sudah dikerjakan (dijawab atau time up)
+              targetQuestion = formattedQuestions.length - 1
             }
+            
+            // Jika semua soal sudah dijawab/dikerjakan, berarti quiz selesai
+            if (answeredQuestions >= formattedQuestions.length) {
+              console.log('✅ All questions processed - finishing quiz')
+              // Auto submit
+              setCurrentQuestion(formattedQuestions.length - 1)
+            } else {
+              setCurrentQuestion(targetQuestion)
+              console.log(`📌 Restored to question ${targetQuestion + 1} (${answeredQuestions}/${formattedQuestions.length} questions processed)`)
+            }
+            
+            // Restore timer state - IKUTI JAM LAPTOP (system time)
+            if (progress.quizEndTime) {
+              // Gunakan absolute end time yang tersimpan
+              const endTime = new Date(progress.quizEndTime).getTime()
+              const now = Date.now()
+              const remainingMs = endTime - now
+              const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000))
+              
+              setTimerEndTime(endTime)
+              setTimeLeft(remainingSeconds)
+              
+              const startTime = new Date(progress.startedAt).getTime()
+              const elapsedSeconds = Math.floor((now - startTime) / 1000)
+              setTotalTimeSpent(elapsedSeconds)
+              
+              console.log('⏱️ Timer restored from absolute end time:', {
+                endTime: new Date(endTime).toISOString(),
+                now: new Date(now).toISOString(),
+                remainingSeconds,
+                mode
+              })
+            } else if (progress.startedAt && mode === 'total-time') {
+              // FALLBACK: Hitung dari startedAt jika quizEndTime tidak ada
+              const startTime = new Date(progress.startedAt).getTime()
+              const now = Date.now()
+              const totalTime = quizData.totalTime || (formattedQuestions.length * 30)
+              const endTime = startTime + (totalTime * 1000)
+              const remainingMs = endTime - now
+              const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000))
+              
+              setTimerEndTime(endTime)
+              setTimeLeft(remainingSeconds)
+              setTotalTimeSpent(Math.floor((now - startTime) / 1000))
+              
+              console.log('⏱️ Timer calculated from startedAt:', {
+                startTime: new Date(startTime).toISOString(),
+                endTime: new Date(endTime).toISOString(),
+                remainingSeconds
+              })
+            } else if (mode === 'per-question') {
+              // Per-question mode: gunakan timeLeft tersimpan atau set timer baru
+              if (progress.timeLeft && targetQuestion === progress.currentQuestionIndex) {
+                // Restore timer HANYA jika masih di soal yang sama
+                setTimeLeft(progress.timeLeft)
+                setTimerEndTime(Date.now() + (progress.timeLeft * 1000))
+                console.log('⏱️ Per-question mode restored:', progress.timeLeft, 'seconds')
+              } else {
+                // Set timer baru untuk soal ini
+                const questionTime = formattedQuestions[targetQuestion]?.timeLimit || 30
+                const newEndTime = Date.now() + (questionTime * 1000)
+                setTimeLeft(questionTime)
+                setTimerEndTime(newEndTime)
+                setHasUnsavedProgress(true)
+                console.log('⏱️ New timer for question', targetQuestion + 1, ':', questionTime, 'seconds')
+              }
+              
+              if (progress.totalTimeSpent) {
+                setTotalTimeSpent(progress.totalTimeSpent)
+              }
+            }
+            
             if (progress.totalTimeSpent) {
               setTotalTimeSpent(progress.totalTimeSpent)
             }
             
-            // Show notification
-            const timeLeftMin = Math.floor(progress.timeLeft / 60)
-            const timeLeftSec = progress.timeLeft % 60
-            const timeMsg = progress.timeLeft ? ` (Waktu tersisa: ${timeLeftMin}:${timeLeftSec.toString().padStart(2, '0')})` : ''
-            alert(`Melanjutkan dari soal ${progress.currentQuestionIndex + 1} dari ${progress.totalQuestions}${timeMsg}`)
+            // No notification - langsung lanjut otomatis
+            console.log('✅ Progress restored - continuing from question', progress.currentQuestionIndex + 1, 'of', progress.totalQuestions)
+          } else {
+            // No saved progress - set initial timer
+            if (initialEndTime) {
+              setTimerEndTime(initialEndTime)
+              const remainingSeconds = Math.ceil((initialEndTime - Date.now()) / 1000)
+              setTimeLeft(remainingSeconds)
+              setHasUnsavedProgress(true) // Mark as unsaved to trigger auto-save
+              console.log('⏱️ New quiz - timer set to', remainingSeconds, 'seconds, endTime:', new Date(initialEndTime).toISOString())
+            }
           }
         } catch (err) {
           console.log('No saved progress found or error loading:', err)
+          // Set initial timer if no progress found
+          if (initialEndTime) {
+            setTimerEndTime(initialEndTime)
+            const remainingSeconds = Math.ceil((initialEndTime - Date.now()) / 1000)
+            setTimeLeft(remainingSeconds)
+            setHasUnsavedProgress(true) // Mark as unsaved to trigger auto-save
+            console.log('⏱️ New quiz (error fallback) - timer set to', remainingSeconds, 'seconds, endTime:', new Date(initialEndTime).toISOString())
+          }
         }
         
         setLoading(false)
@@ -226,12 +322,12 @@ const TakeQuizPage = () => {
 
   // Save progress before page unload (browser close/reload)
   useEffect(() => {
-    const handleBeforeUnload = (e) => {
+    const handleBeforeUnload = () => {
       if (hasUnsavedProgress && !quizFinished) {
+        // Simpan progress untuk semua mode
+        // Note: Untuk timer mode, quiz akan auto-submit saat timeLeft = 0
+        // atau saat user klik tombol "Keluar" secara manual
         saveCurrentProgress()
-        e.preventDefault()
-        e.returnValue = 'Progress akan disimpan. Yakin ingin keluar?'
-        return e.returnValue
       }
     }
 
@@ -248,13 +344,25 @@ const TakeQuizPage = () => {
       [currentQuestion]: timeSpent
     }))
 
+    // PENTING: Jika belum dijawab, set jawaban sebagai null (tidak dijawab)
+    if (answers[currentQuestion] === undefined) {
+      setAnswers(prev => ({
+        ...prev,
+        [currentQuestion]: null // Tandai sebagai "tidak dijawab" karena waktu habis
+      }))
+      console.log('⏰ Time up - Question', currentQuestion + 1, 'marked as unanswered (null)')
+    }
+
     // Auto advance to next question or finish
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1)
       const nextQuestionTime = questions[currentQuestion + 1].timeLimit
+      const newEndTime = Date.now() + (nextQuestionTime * 1000)
       setTimeLeft(nextQuestionTime)
-      setTimerEndTime(Date.now() + (nextQuestionTime * 1000)) // Update end time
+      setTimerEndTime(newEndTime)
+      setHasUnsavedProgress(true) // Mark untuk trigger auto-save dengan endTime baru
       setQuestionStartTime(Date.now())
+      console.log('⏰ Time up - moved to next question, newEndTime:', new Date(newEndTime).toISOString())
     } else {
       // Last question - auto submit
       calculateScoreAndSubmit()
@@ -422,14 +530,30 @@ const TakeQuizPage = () => {
         timeSpent: 0
       }))
       
+      // PENTING: Simpan index soal yang SEDANG dikerjakan
+      // Gunakan currentQuestion karena itu yang sedang aktif
+      const questionIndexToSave = currentQuestion
+      
+      console.log('💾 Saving progress with:', {
+        quizId,
+        currentQuestion: questionIndexToSave,
+        processedCount: Object.keys(answers).length,
+        totalQuestions: questions.length,
+        timeLeft,
+        timerMode,
+        totalTimeSpent,
+        timerEndTime: timerEndTime ? new Date(timerEndTime).toISOString() : null
+      })
+      
       const response = await learningService.saveProgress(
         quizId,
-        currentQuestion,
+        questionIndexToSave, // Simpan index soal yang sedang dikerjakan
         answersArray,
         questions.length,
         timeLeft,
         timerMode,
-        totalTimeSpent
+        totalTimeSpent,
+        timerEndTime // Kirim absolute end time ke backend
       )
       
       if (response.data && response.data.progressId) {
@@ -437,7 +561,7 @@ const TakeQuizPage = () => {
       }
       
       setHasUnsavedProgress(false)
-      console.log('💾 Progress saved with timer:', timeLeft, 'seconds left')
+      console.log('✅ Progress saved successfully - will restore to question', questionIndexToSave + 1)
     } catch (error) {
       console.error('Failed to save progress:', error)
     }
@@ -494,13 +618,15 @@ const TakeQuizPage = () => {
       
       setCurrentQuestion(currentQuestion + 1)
       
-      // Reset timer based on mode
+      // Reset timer based on mode - PENTING: waktu soal sebelumnya HABIS, tidak bisa balik
       if (timerMode === 'per-question') {
-        // Per-question mode: reset timer for next question
+        // Per-question mode: MULAI TIMER BARU untuk soal berikutnya
         const nextQuestionTime = questions[currentQuestion + 1].timeLimit
+        const newEndTime = Date.now() + (nextQuestionTime * 1000)
         setTimeLeft(nextQuestionTime)
-        setTimerEndTime(Date.now() + (nextQuestionTime * 1000)) // Update end time
-        console.log('⏱️ Next question timer:', nextQuestionTime, 'seconds')
+        setTimerEndTime(newEndTime)
+        setHasUnsavedProgress(true) // Mark untuk trigger auto-save dengan endTime baru
+        console.log('⏱️ Next question - TIMER BARU:', nextQuestionTime, 'seconds (soal sebelumnya sudah tidak bisa diakses)')
       } else if (timerMode === 'total-time') {
         // Total-time mode: timer keeps counting down (don't update timerEndTime)
         console.log('⏱️ Total-time mode: continuing countdown')
@@ -588,8 +714,9 @@ const TakeQuizPage = () => {
             <p className="text-blue-800 text-sm">Soal {currentQuestion + 1} dari {questions.length}</p>
           </div>
           
-          {/* Timer Display */}
-          <div className="flex items-center gap-4">
+          {/* Right side - Timer & Actions */}
+          <div className="flex items-center gap-3">
+            {/* Timer Display */}
             {timerMode !== 'none' && (
               <div className={`px-6 py-3 rounded-xl font-bold text-xl shadow-lg transition-all ${
                 timeLeft <= 5 
@@ -608,20 +735,47 @@ const TakeQuizPage = () => {
               </div>
             )}
             
+            {/* Exit Button - Responsive with tooltip */}
             <button
               onClick={async () => {
-                // Save progress before leaving
-                if (hasUnsavedProgress && Object.keys(answers).length > 0) {
-                  const shouldSave = window.confirm('Simpan progress sebelum keluar?')
-                  if (shouldSave) {
-                    await saveCurrentProgress()
+                if (timerMode === 'none') {
+                  // Tanpa timer: Simpan progress dan keluar
+                  await saveCurrentProgress()
+                  navigate('/belajar-mandiri')
+                } else {
+                  // Dengan timer: Tandai soal yang belum dijawab sebagai null, lalu submit
+                  // Fill semua soal yang belum dijawab dengan null
+                  const completeAnswers = { ...answers }
+                  for (let i = 0; i < questions.length; i++) {
+                    if (!(i in completeAnswers)) {
+                      completeAnswers[i] = null // Soal belum dijawab
+                    }
                   }
+                  setAnswers(completeAnswers)
+                  
+                  // Tunggu state update, lalu submit
+                  setTimeout(async () => {
+                    await calculateScoreAndSubmit()
+                    navigate('/belajar-mandiri')
+                  }, 100)
                 }
-                navigate('/dashboard')
               }}
-              className="bg-white/40 hover:bg-white/60 text-blue-900 px-5 py-2 rounded-lg transition font-semibold"
+              className="group relative bg-red-500 hover:bg-red-600 text-white font-bold px-4 py-3 rounded-xl transition-all shadow-lg hover:shadow-xl hover:scale-105"
+              title={timerMode === 'none' ? 'Simpan & Keluar' : 'Submit & Keluar'}
             >
-              ← Kembali
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🚪</span>
+                <span className="hidden sm:inline">Keluar</span>
+              </div>
+              {/* Tooltip */}
+              <div className="absolute -bottom-14 right-0 bg-gray-900 text-white text-xs px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 shadow-xl">
+                <div className="font-semibold mb-0.5">
+                  {timerMode === 'none' ? '💾 Progress Tersimpan' : '📤 Quiz Disubmit'}
+                </div>
+                <div className="text-gray-300 text-[10px]">
+                  {timerMode === 'none' ? 'Bisa dilanjutkan nanti' : 'Masuk ke riwayat'}
+                </div>
+              </div>
             </button>
           </div>
         </div>
@@ -631,21 +785,64 @@ const TakeQuizPage = () => {
           <div className="bg-white rounded-2xl p-8 max-w-4xl mx-auto shadow-xl">
             {/* Question Tabs */}
             <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
-              {questions.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentQuestion(index)}
-                  className={`min-w-[60px] h-12 rounded-lg font-bold text-lg transition shadow-md ${
-                    currentQuestion === index
-                      ? 'bg-blue-600 text-white scale-110'
-                      : answers[index] !== undefined
-                      ? 'bg-green-400 text-green-900'
-                      : 'bg-gray-300 text-gray-800 hover:bg-gray-400'
-                  }`}
-                >
-                  {index + 1}
-                </button>
-              ))}
+              {questions.map((_, index) => {
+                // Cek status soal
+                const isProcessed = index in answers // Sudah dikerjakan (dijawab atau time up)
+                const userAnswer = answers[index]
+                const isAnswered = userAnswer !== null && userAnswer !== undefined // Dijawab dengan benar
+                const isTimeUp = userAnswer === null // Waktu habis, tidak dijawab
+                const isCurrent = currentQuestion === index
+                const isPast = index < currentQuestion // Soal yang sudah lewat
+                
+                // LOCK LOGIC: Hanya untuk per-question mode
+                const isLocked = timerMode === 'per-question' 
+                  ? (!isProcessed && !isCurrent && index > currentQuestion) // Per-question: lock soal selanjutnya yang belum dikerjakan
+                  : false // Total-time & none: semua soal bisa diklik
+                
+                const canClick = timerMode === 'per-question' 
+                  ? false // Per-question: tidak bisa klik tab, harus Next
+                  : !isLocked // Total-time & none: bisa klik semua soal
+                
+                return (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      if (canClick && !isCurrent) {
+                        setCurrentQuestion(index)
+                        // Update timer untuk per-question mode (tidak perlu karena sudah disabled)
+                        // Untuk total-time dan none, timer tetap jalan
+                      }
+                    }}
+                    disabled={!canClick}
+                    className={`min-w-[60px] h-12 rounded-lg font-bold text-lg transition shadow-md relative ${
+                      canClick && !isCurrent ? 'cursor-pointer hover:scale-105' : 'cursor-default'
+                    } ${
+                      isCurrent
+                        ? 'bg-blue-600 text-white scale-110'
+                        : isAnswered
+                        ? 'bg-green-400 text-green-900 opacity-80 hover:opacity-100'
+                        : isTimeUp
+                        ? 'bg-red-400 text-red-900 opacity-60'
+                        : isProcessed
+                        ? 'bg-gray-400 text-gray-900 opacity-60'
+                        : isLocked
+                        ? 'bg-gray-200 text-gray-400 opacity-50'
+                        : 'bg-gray-300 text-gray-800 hover:bg-gray-400'
+                    }`}
+                  >
+                    {index + 1}
+                    {isLocked && (
+                      <span className="absolute -top-1 -right-1 text-xs">🔒</span>
+                    )}
+                    {isAnswered && (
+                      <span className="absolute -top-1 -right-1 text-xs">✓</span>
+                    )}
+                    {isTimeUp && (
+                      <span className="absolute -top-1 -right-1 text-xs">✗</span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
 
             {/* Question Box */}
@@ -773,13 +970,9 @@ const TakeQuizPage = () => {
 
             {/* Navigation */}
             <div className="flex items-center justify-between pt-4 border-t-2 border-gray-200">
-              <button
-                onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
-                disabled={currentQuestion === 0}
-                className="bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 disabled:text-gray-400 text-gray-800 font-bold px-8 py-3 rounded-xl transition shadow-md"
-              >
-                ← Sebelumnya
-              </button>
+              <div className="text-gray-500 text-sm font-semibold">
+                Soal {currentQuestion + 1} dari {questions.length}
+              </div>
 
               {currentAnswer !== undefined ? (
                 <button
@@ -793,7 +986,7 @@ const TakeQuizPage = () => {
                   disabled
                   className="bg-gray-400 text-gray-600 font-bold px-8 py-3 rounded-xl cursor-not-allowed opacity-50"
                 >
-                  {currentQuestion < questions.length - 1 ? 'Selanjutnya →' : 'Selesai'}
+                  Jawab dulu untuk lanjut
                 </button>
               )}
             </div>
