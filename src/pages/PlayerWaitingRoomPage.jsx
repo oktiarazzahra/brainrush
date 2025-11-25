@@ -104,13 +104,13 @@ const PlayerWaitingRoomPage = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-blue-400 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-blue-200 via-cyan-100 to-sky-100 flex flex-col">
       {/* HEADER */}
-      <div className="bg-white/10 backdrop-blur-md p-6 border-b border-white/20">
+      <div className="bg-white/80 backdrop-blur-md p-6 border-b border-blue-200 shadow-sm">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white">Waiting Room</h1>
-            <p className="text-white/80 text-lg">PIN: <span className="font-mono font-bold">{pin || '------'}</span></p>
+            <h1 className="text-3xl font-bold text-gray-800">Waiting Room</h1>
+            <p className="text-gray-700 text-lg">PIN: <span className="font-mono font-bold text-blue-600">{pin || '------'}</span></p>
           </div>
           <button
             onClick={handleExit}
