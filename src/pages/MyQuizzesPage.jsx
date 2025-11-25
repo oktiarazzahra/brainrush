@@ -378,8 +378,8 @@ const MyQuizzesPage = () => {
       <div className="flex-1 flex flex-col">
         <div className="flex gap-0 px-8 mt-10">
           <button onClick={() => setActiveTab('Draft')} className={`font-semibold text-lg px-10 py-3 rounded-t-lg border-r border-gray-400 shadow-md transition ${activeTab === 'Draft' ? 'bg-gray-100 text-blue-900' : 'bg-gray-300 text-gray-600 hover:bg-gray-200'}`}>Draft</button>
-          <button onClick={() => setActiveTab('My Quiz')} className={`font-bold text-lg px-10 py-3 rounded-t-lg border-r border-gray-400 shadow-md transition ${activeTab === 'My Quiz' ? 'bg-gray-100 text-blue-900' : 'bg-gray-300 text-gray-600 hover:bg-gray-200'}`}>My Quiz</button>
-          <button onClick={() => setActiveTab('History')} className={`font-semibold text-lg px-10 py-3 rounded-t-lg shadow-md transition ${activeTab === 'History' ? 'bg-gray-100 text-blue-900' : 'bg-gray-300 text-gray-600 hover:bg-gray-200'}`}>History</button>
+          <button onClick={() => setActiveTab('My Quiz')} className={`font-bold text-lg px-10 py-3 rounded-t-lg border-r border-gray-400 shadow-md transition ${activeTab === 'My Quiz' ? 'bg-gray-100 text-blue-900' : 'bg-gray-300 text-gray-600 hover:bg-gray-200'}`}>Kuis Saya</button>
+          <button onClick={() => setActiveTab('History')} className={`font-semibold text-lg px-10 py-3 rounded-t-lg shadow-md transition ${activeTab === 'History' ? 'bg-gray-100 text-blue-900' : 'bg-gray-300 text-gray-600 hover:bg-gray-200'}`}>Riwayat Host</button>
         </div>
 
 

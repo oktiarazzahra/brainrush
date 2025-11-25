@@ -29,7 +29,7 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
 
   const handleJoinNow = async () => {
     if (!playerName.trim()) {
-      alert('Please enter your name!')
+      alert('Masukkan nama kamu dulu!')
       return
     }
     
@@ -81,7 +81,7 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
           transition={{ duration: 0.8 }}
         >
           <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg">
-            Join Game
+            Gabung Game
           </h1>
           <motion.p 
             className="text-xl text-white/80 font-medium"
@@ -89,7 +89,7 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.3 }}
           >
-            Choose your avatar and enter your name
+            Pilih avatar dan masukkan namamu
           </motion.p>
         </motion.div>
 
@@ -116,7 +116,7 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
           <NameInput
             value={playerName}
             onChange={setPlayerName}
-            placeholder="Enter your name"
+            placeholder="Masukkan nama kamu"
             maxLength={20}
           />
         </motion.div>
@@ -134,7 +134,7 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
             className="flex-1"
             disabled={loading}
           >
-            Back
+            Kembali
           </Button>
           
           <Button
@@ -143,7 +143,7 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
             variant="primary"
             className="flex-1"
           >
-            {loading ? 'Joining...' : 'Join Now'}
+            {loading ? 'Bergabung...' : 'Gabung Sekarang'}
           </Button>
         </motion.div>
 
@@ -154,7 +154,7 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 1.6 }}
         >
-          Choose an avatar that represents you and enter a fun name to join the quiz!
+          Pilih avatar yang mewakilkan dirimu dan masukkan nama unik untuk bergabung ke kuis!
         </motion.p>
       </main>
 

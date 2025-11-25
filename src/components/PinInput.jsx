@@ -27,7 +27,7 @@ const PinInput = ({ pin, onPinChange, onJoin }) => {
           onChange={handlePinChange}
           onFocus={() => setIsPinFocused(true)}
           onBlur={() => setIsPinFocused(false)}
-          placeholder="Enter PIN"
+          placeholder="Masukkan PIN"
           className={`w-full bg-slate-700 text-white text-xl font-semibold py-4 px-8 rounded-full shadow-lg border-2 transition-all duration-300 text-center tracking-wider placeholder-gray-400 focus:outline-none ${
             isPinFocused 
               ? 'border-yellow-400 bg-slate-600 shadow-yellow-400/20 shadow-2xl' 

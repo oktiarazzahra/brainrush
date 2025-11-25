@@ -92,7 +92,7 @@ const DashboardPage = () => {
   // Handle join langsung ke waiting room dari dashboard dengan PIN
   const handleJoinWithPIN = () => {
     if (!pinInput.trim()) {
-      alert("Please insert a valid PIN!")
+      alert("Masukkan PIN yang valid!")
       return
     }
     // Navigate to join page untuk pilih avatar dan nama
@@ -142,7 +142,7 @@ const DashboardPage = () => {
             <div className="flex items-center space-x-3">
               <input
                 type="text"
-                placeholder="Insert PIN"
+                placeholder="Masukkan PIN"
                 value={pinInput}
                 onChange={e => setPinInput(e.target.value)}
                 className="bg-white border-2 border-blue-300 rounded-full px-6 py-3 text-gray-800 placeholder-gray-500 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400 w-48 shadow-md"

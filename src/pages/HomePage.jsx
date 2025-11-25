@@ -15,7 +15,7 @@ const HomePage = ({ onJoin }) => {
       navigate(`/join`, { state: { pin } })
       if (onJoin) onJoin(pin)
     } else {
-      alert('Please enter a PIN first!')
+      alert('Masukkan PIN terlebih dahulu!')
     }
   }
 
@@ -55,7 +55,7 @@ const HomePage = ({ onJoin }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
           >
-            Let's play !
+            Ayo bermain!
           </motion.p>
         </motion.div>
 
@@ -66,7 +66,7 @@ const HomePage = ({ onJoin }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.8 }}
         >
-          Already have QUIZ?
+          Sudah Punya Kuis?
         </motion.p>
 
         {/* PIN Input Component */}
@@ -89,7 +89,7 @@ const HomePage = ({ onJoin }) => {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 1.4 }}
         >
-          Enter a 6-character PIN code to join an existing quiz
+          Masukkan kode PIN 6 karakter untuk bergabung
         </motion.p>
       </main>
 
