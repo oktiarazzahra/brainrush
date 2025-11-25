@@ -277,7 +277,7 @@ const LiveGameplayPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-blue-700 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-300 via-cyan-200 to-sky-200 flex items-center justify-center">
         <div className="text-white text-2xl">Loading game...</div>
       </div>
     )
@@ -285,7 +285,7 @@ const LiveGameplayPage = () => {
 
   if (gameEnded) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-blue-700 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-300 via-cyan-200 to-sky-200 flex items-center justify-center">
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -302,7 +302,7 @@ const LiveGameplayPage = () => {
   const currentQuestion = questions[currentQuestionIndex]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-blue-700">
+    <div className="min-h-screen bg-gradient-to-br from-blue-300 via-cyan-200 to-sky-200">
       {/* Reconnection Banner */}
       {isReconnecting && (
         <motion.div

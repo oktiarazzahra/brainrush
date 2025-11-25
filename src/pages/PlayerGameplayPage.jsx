@@ -330,14 +330,14 @@ const PlayerGameplayPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-300 via-cyan-200 to-sky-200 flex items-center justify-center">
         <div className="text-white text-2xl">Loading question...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600">
+    <div className="min-h-screen bg-gradient-to-br from-blue-300 via-cyan-200 to-sky-200">
       {/* Header */}
       <div className="bg-white/10 backdrop-blur-md border-b border-white/20 p-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
