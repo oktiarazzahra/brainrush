@@ -25,9 +25,12 @@ const PlayerGameplayPage = () => {
   const [timerActive, setTimerActive] = useState(false)
   const [timerEndTime, setTimerEndTime] = useState(null) // Absolute end time for accuracy
   const [quizCompleted, setQuizCompleted] = useState(false) // Track if player finished all questions
+  const [answerSaved, setAnswerSaved] = useState(false) // Track if answer is auto-saved
   
   // Use ref to track if timer has been initialized for current question
   const timerInitialized = useRef(false)
+  const autoSaveTimeoutRef = useRef(null) // For debouncing auto-save on text input
+  const selectedAnswerRef = useRef(null) // Keep track of latest answer for timer expiration
 
   useEffect(() => {
     if (!gameId || !pin || !playerName) {
@@ -51,12 +54,14 @@ const PlayerGameplayPage = () => {
           // Moving to new question - reset all state including timer
           setHasAnswered(false)
           setSelectedAnswer(null)
+          selectedAnswerRef.current = null // Reset ref
           setIsCorrect(null)
           setFeedback('')
           setWaitingForNext(false)
           setShowLeaderboard(false)
           setTimerActive(false)
           setTimerEndTime(null) // Reset timer for new question
+          setAnswerSaved(false) // Reset auto-save flag
           timerInitialized.current = false // Allow timer to be initialized for new question
         }
         // If same question (resync), don't reset - loadGameData will restore answered state
@@ -90,6 +95,9 @@ const PlayerGameplayPage = () => {
     return () => {
       socketService.leaveGame(gameId, playerName)
       socketService.removeAllListeners()
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
+      }
     }
   }, [gameId, pin, playerName, navigate])
 
@@ -102,7 +110,7 @@ const PlayerGameplayPage = () => {
 
   // Timer countdown with system time for accuracy
   useEffect(() => {
-    if (!timerActive || hasAnswered || !timerEndTime) return
+    if (!timerActive || !timerEndTime) return
 
     const timer = setInterval(() => {
       const now = Date.now()
@@ -110,22 +118,29 @@ const PlayerGameplayPage = () => {
       const remainingSec = Math.ceil(remainingMs / 1000)
 
       if (remainingSec <= 0) {
-        setTimeLeft(0)
-        clearInterval(timer)
-        // Time's up - auto submit
+        console.log('⏰ Timer reached 0, stopping timer');
+        setTimeLeft(0);
+        setTimerActive(false);
+        clearInterval(timer);
+        // Time's up - auto submit and show feedback
         if (!hasAnswered) {
-          handleSubmitAnswer()
+          console.log('⏰ Calling handleTimeExpire...');
+          handleTimeExpire();
+        } else {
+          console.log('⏰ Already answered, not calling handleTimeExpire');
         }
       } else {
-        setTimeLeft(remainingSec)
+        setTimeLeft(remainingSec);
       }
     }, 100) // Update every 100ms for smooth display
 
     return () => clearInterval(timer)
-  }, [timerActive, hasAnswered, timerEndTime])
+  }, [timerActive, timerEndTime])
 
   const loadGameData = async () => {
     try {
+      console.log('🔄 loadGameData called for questionIndex:', currentQuestionIndex);
+      
       const response = await gameService.getGame(gameId)
       const game = response.data.game
       setGameData(game)
@@ -152,18 +167,40 @@ const PlayerGameplayPage = () => {
           console.log('🔄 Player already answered this question:', {
             questionId: currentQuestionId,
             savedAnswer: savedAnswer?.answer,
-            isCorrect: savedAnswer?.isCorrect
+            isCorrect: savedAnswer?.isCorrect,
+            autoSaved: savedAnswer?.autoSaved
           })
           
           // Restore the saved answer and state
           setSelectedAnswer(savedAnswer?.answer)
-          setHasAnswered(true)
-          setIsCorrect(savedAnswer?.isCorrect)
-          setWaitingForNext(true)
-          setTimerActive(false)
-          setFeedback(savedAnswer?.isCorrect ? 'Benar! 🎉' : 'Salah 😢')
+          selectedAnswerRef.current = savedAnswer?.answer // Update ref
+          setAnswerSaved(true)
+          
+          // Check if it's a final submission or just auto-saved
+          if (savedAnswer?.answeredAt && !savedAnswer?.autoSaved) {
+            // Final submission - show results
+            setHasAnswered(true)
+            setIsCorrect(savedAnswer?.isCorrect)
+            setWaitingForNext(true)
+            setTimerActive(false)
+            setFeedback(savedAnswer?.isCorrect ? 'Benar! 🎉' : 'Salah 😢')
+          } else {
+            // Just auto-saved, timer should still be running
+            setHasAnswered(false)
+            setIsCorrect(null)
+            setWaitingForNext(false)
+            // Timer will be initialized below
+          }
         } else {
-          // Player hasn't answered - setup timer only once per question
+          // Player hasn't answered - reset state
+          setAnswerSaved(false)
+        }
+        
+        // Setup timer if not yet answered (final submission)
+        if (!alreadyAnswered || (alreadyAnswered && !me.answers.find(ans => 
+          ans.questionId?.toString() === currentQuestionId
+        )?.answeredAt)) {
+          // Player hasn't submitted final answer - setup timer only once per question
           if (!timerInitialized.current) {
             const timerMode = game.quiz.timerMode || 'per-question'
             
@@ -234,27 +271,159 @@ const PlayerGameplayPage = () => {
   }
 
   const handleAnswerSelect = (answer) => {
-    if (!hasAnswered) {
-      // Check if this is a multiple-answer question
-      const isMultipleAnswer = currentQuestion?.questionType === 'multiple-answer' ||
-                               Array.isArray(currentQuestion?.correctAnswer);
-      
-      if (isMultipleAnswer) {
-        // Toggle selection for multiple answers
-        setSelectedAnswer(prev => {
-          const prevArray = Array.isArray(prev) ? prev : [];
-          if (prevArray.includes(answer)) {
-            return prevArray.filter(a => a !== answer);
-          } else {
-            return [...prevArray, answer];
-          }
-        });
-      } else {
-        // Single selection
-        setSelectedAnswer(answer);
-      }
+    if (hasAnswered) return // Don't allow changing answer after time's up
+    
+    // Check if this is a multiple-answer question - ONLY check questionType
+    const isMultipleAnswer = currentQuestion?.questionType === 'multiple-answer';
+    
+    console.log('🔍 handleAnswerSelect:', {
+      answer,
+      questionType: currentQuestion?.questionType,
+      isMultipleAnswer,
+      currentSelectedAnswer: selectedAnswer
+    });
+    
+    if (isMultipleAnswer) {
+      // Toggle selection for multiple answers
+      setSelectedAnswer(prev => {
+        const prevArray = Array.isArray(prev) ? prev : [];
+        console.log('📝 Toggle multiple-answer:', { prevArray, answer });
+        if (prevArray.includes(answer)) {
+          const newAnswer = prevArray.filter(a => a !== answer);
+          console.log('➖ Removing:', answer, '→', newAnswer);
+          selectedAnswerRef.current = newAnswer; // Update ref
+          autoSaveAnswer(newAnswer); // Auto-save setiap perubahan
+          return newAnswer;
+        } else {
+          const newAnswer = [...prevArray, answer];
+          console.log('➕ Adding:', answer, '→', newAnswer);
+          selectedAnswerRef.current = newAnswer; // Update ref
+          autoSaveAnswer(newAnswer); // Auto-save setiap perubahan
+          return newAnswer;
+        }
+      });
+    } else {
+      // Single selection
+      console.log('📌 Single selection:', answer);
+      setSelectedAnswer(answer);
+      selectedAnswerRef.current = answer; // Update ref
+      autoSaveAnswer(answer); // Auto-save langsung
     }
   }
+
+  // Auto-save answer tanpa submit final (untuk isian, gunakan debounce)
+  const autoSaveAnswer = async (answer) => {
+    if (!currentQuestion) return;
+    
+    try {
+      const answerToSave = answer !== null && answer !== undefined ? answer : '';
+      console.log('💾 Auto-saving answer:', { answer: answerToSave, questionId: currentQuestion._id });
+      
+      // Simpan answer ke backend tapi belum hitung score
+      await gameService.saveAnswer(gameId, {
+        questionId: currentQuestion._id,
+        answer: answerToSave,
+        playerName
+      });
+      
+      setAnswerSaved(true);
+      console.log('✅ Answer auto-saved successfully');
+    } catch (error) {
+      console.error('❌ Error auto-saving answer:', error);
+    }
+  }
+
+  // For text input with debounce
+  const handleTextAnswerChange = (value) => {
+    setSelectedAnswer(value);
+    selectedAnswerRef.current = value; // Update ref
+    
+    // Clear previous timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    // Set new timeout for auto-save (500ms debounce)
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      autoSaveAnswer(value);
+    }, 500);
+  }
+
+  // Called when timer expires - submit whatever answer was auto-saved
+  const handleTimeExpire = async () => {
+    if (hasAnswered) {
+      console.log('⏰ Timer expired but already answered, skipping');
+      return;
+    }
+    
+    // Use ref value to get the latest answer (avoid stale closure)
+    const latestAnswer = selectedAnswerRef.current;
+    
+    console.log('⏰ TIME EXPIRED! Submitting answer:', {
+      selectedAnswer: latestAnswer,
+      selectedAnswerState: selectedAnswer, // For comparison
+      hasAnswered,
+      questionId: currentQuestion._id
+    });
+    
+    setHasAnswered(true);
+    setTimerActive(false);
+
+    try {
+      let answer = latestAnswer;
+      if (answer === null || answer === undefined) {
+        answer = ''; // Submit empty answer if no selection
+        console.log('⚠️ No answer selected, submitting empty');
+      }
+
+      console.log('📤 Submitting to backend:', {
+        gameId,
+        questionId: currentQuestion._id,
+        answer,
+        playerName
+      });
+
+      const response = await gameService.submitAnswer(gameId, {
+        questionId: currentQuestion._id,
+        answer,
+        playerName,
+        timeSpent: currentQuestion.timeLimit || 0
+      });
+
+      console.log('✅ Backend response:', response.data);
+
+      const result = response.data;
+      setMyScore(result.currentScore);
+      setIsCorrect(result.isCorrect);
+      setWaitingForNext(true);
+      
+      console.log('📡 Emitting socket event:', {
+        isCorrect: result.isCorrect,
+        currentScore: result.currentScore
+      });
+      
+      // Emit socket event
+      socketService.submitAnswer(
+        gameId,
+        playerName,
+        currentQuestion._id,
+        result.isCorrect,
+        result.currentScore,
+        result.timeSpent || 0
+      );
+      
+      // Show feedback
+      if (result.isCorrect) {
+        setFeedback(`🎉 Correct! +${result.points} points`);
+      } else {
+        setFeedback('Time\'s up! ⏰');
+      }
+    } catch (error) {
+      console.error('❌ Error submitting answer on time expire:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      setWaitingForNext(true);
+    }
+  };
 
   const handleSubmitAnswer = async () => {
     if (hasAnswered) return
@@ -291,13 +460,31 @@ const PlayerGameplayPage = () => {
         result.timeSpent
       )
 
-      // Show feedback
+      // Show feedback SETELAH waktu habis
       if (result.isCorrect) {
         setFeedback(`🎉 Correct! +${result.points} points`)
       } else {
-        const correctAnswerDisplay = Array.isArray(currentQuestion.correctAnswer)
-          ? currentQuestion.correctAnswer.join(', ')
-          : currentQuestion.correctAnswer
+        // Format correct answer untuk display
+        let correctAnswerDisplay = 'N/A';
+        const correctAns = currentQuestion?.correctAnswer;
+        const options = currentQuestion?.options;
+        
+        if (Array.isArray(correctAns)) {
+          // If array of indices, convert to option text
+          const answerTexts = correctAns.map(ans => {
+            if (typeof ans === 'number' && options && options[ans]) {
+              return options[ans];
+            }
+            return ans;
+          });
+          correctAnswerDisplay = answerTexts.join(', ');
+        } else if (typeof correctAns === 'number' && options && options[correctAns]) {
+          // If single index, convert to option text
+          correctAnswerDisplay = options[correctAns];
+        } else {
+          correctAnswerDisplay = String(correctAns || 'N/A');
+        }
+        
         setFeedback(`❌ Wrong! The correct answer is: ${correctAnswerDisplay}`)
       }
 
@@ -359,8 +546,8 @@ const PlayerGameplayPage = () => {
               </span>
             </div>
 
-            {/* Timer */}
-            {timerActive && !hasAnswered && (
+            {/* Timer - Show while timer is active, regardless of whether answer is selected */}
+            {timerActive && (
               <div
                 className={`text-2xl font-bold px-4 py-2 rounded-xl ${
                   timeLeft <= 5 ? 'bg-red-500 animate-pulse' : 'bg-white/20 backdrop-blur-sm'
@@ -462,9 +649,8 @@ const PlayerGameplayPage = () => {
                     currentQuestion?.questionType === 'multiple-choice' ||
                     currentQuestion?.questionType === 'multiple-answer') && 
                     currentQuestion?.options && currentQuestion.options.map((option, index) => {
-                      // Check if this is a multiple-answer question
-                      const isMultipleAnswer = currentQuestion?.questionType === 'multiple-answer' ||
-                                               Array.isArray(currentQuestion?.correctAnswer);
+                      // Check if this is a multiple-answer question - ONLY check questionType
+                      const isMultipleAnswer = currentQuestion?.questionType === 'multiple-answer';
                       const isSelected = isMultipleAnswer 
                         ? (Array.isArray(selectedAnswer) && selectedAnswer.includes(option))
                         : selectedAnswer === option;
@@ -563,18 +749,24 @@ const PlayerGameplayPage = () => {
                       <input
                         type="text"
                         value={selectedAnswer || ''}
-                        onChange={(e) => handleAnswerSelect(e.target.value)}
-                        disabled={hasAnswered}
+                        onChange={(e) => handleTextAnswerChange(e.target.value)}
                         placeholder="Type your answer here..."
                         className={`w-full p-6 rounded-xl border-2 transition-all text-lg ${
                           selectedAnswer
                             ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-200 bg-white'
-                        } ${hasAnswered ? 'cursor-not-allowed opacity-60' : ''}`}
+                        }`}
                       />
-                      <p className="text-sm text-gray-500 mt-2">
-                        💡 Hint: Type your answer exactly as it appears
-                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-sm text-gray-500">
+                          💡 Hint: Type your answer exactly as it appears
+                        </p>
+                        {answerSaved && !hasAnswered && (
+                          <p className="text-sm text-green-600 flex items-center gap-1">
+                            <span>✓</span> Auto-saved
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -671,21 +863,23 @@ const PlayerGameplayPage = () => {
                 </div>
               )}
 
-              {/* Submit Button */}
-              {!hasAnswered && (
-                <button
-                  onClick={handleSubmitAnswer}
-                  disabled={!selectedAnswer || (Array.isArray(selectedAnswer) && selectedAnswer.length === 0)}
-                  className={`w-full py-4 rounded-xl font-bold text-lg transition shadow-lg ${
-                    (selectedAnswer && (!Array.isArray(selectedAnswer) || selectedAnswer.length > 0))
-                      ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  {(selectedAnswer && (!Array.isArray(selectedAnswer) || selectedAnswer.length > 0)) 
-                    ? `Submit Answer ✓${Array.isArray(selectedAnswer) ? ` (${selectedAnswer.length} selected)` : ''}` 
-                    : 'Select an answer'}
-                </button>
+              {/* Auto-save indicator - No submit button needed */}
+              {!hasAnswered && answerSaved && (
+                <div className="bg-green-50 border-2 border-green-300 rounded-xl p-4 text-center">
+                  <p className="text-green-700 font-medium flex items-center justify-center gap-2">
+                    <span className="text-2xl">💾</span>
+                    <span>Your answer has been saved! Wait for the timer to complete.</span>
+                  </p>
+                </div>
+              )}
+              
+              {/* Waiting indicator when no answer selected */}
+              {!hasAnswered && !answerSaved && (
+                <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-4 text-center">
+                  <p className="text-blue-700 font-medium">
+                    Select or type your answer - it will be saved automatically
+                  </p>
+                </div>
               )}
               </>
             )}

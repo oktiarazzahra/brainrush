@@ -31,6 +31,12 @@ export const gameService = {
     return response.data;
   },
 
+  // Save answer (auto-save without final validation)
+  saveAnswer: async (gameId, data) => {
+    const response = await api.post(`/games/${gameId}/save-answer`, data);
+    return response.data;
+  },
+
   // Next question
   nextQuestion: async (gameId) => {
     const response = await api.post(`/games/${gameId}/next-question`);
