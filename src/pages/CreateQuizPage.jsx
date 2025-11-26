@@ -144,6 +144,11 @@ const CreateQuizPage = () => {
     } else {
       arr[idx].correct = arr[idx].correct.map((_, idx2) => idx2 === i)
     }
+    console.log('✅ Toggle correct:', {
+      option: i,
+      multi: arr[idx].multi,
+      correctArray: arr[idx].correct
+    });
     setQuestions(arr)
   }
 
@@ -293,18 +298,37 @@ const CreateQuizPage = () => {
           timeLimit: timerMode === 'per-question' ? q.duration : null,
           questionType: q.type === 'Pilihan Ganda'
             ? q.multi ? 'multiple-answer' : 'multiple-choice'
-            : q.type === 'Isian' ? 'short-answer' : 'true-false'
+            : q.type === 'Isian' ? 'short-answer' : 'true-false',
+          points: 1 // Default 1 point per question
         }
 
         if (q.type === 'Pilihan Ganda') {
           questionData.options = q.options
-          questionData.correctAnswer = q.multi
+          const correctIndices = q.multi
             ? q.correct.map((c, idx) => (c ? idx : -1)).filter((idx) => idx !== -1)
             : q.correct.findIndex((c) => c)
+          
+          console.log('💾 Saving Pilihan Ganda:', {
+            question: q.question?.substring(0, 30),
+            multi: q.multi,
+            correctArray: q.correct,
+            correctIndices,
+            finalCorrectAnswer: correctIndices >= 0 ? correctIndices : (q.multi ? [0] : 0)
+          });
+          
+          // Ensure correctAnswer always has a value
+          if (q.multi) {
+            questionData.correctAnswer = correctIndices.length > 0 ? correctIndices : [0]
+          } else {
+            questionData.correctAnswer = correctIndices >= 0 ? correctIndices : 0
+          }
         } else if (q.type === 'Isian') {
-          questionData.acceptedAnswers = q.acceptedAnswers.filter((a) => a.trim())
+          const filteredAnswers = q.acceptedAnswers.filter((a) => a.trim())
+          questionData.acceptedAnswers = filteredAnswers
+          // Set correctAnswer to first accepted answer
+          questionData.correctAnswer = filteredAnswers.length > 0 ? filteredAnswers[0] : ''
         } else if (q.type === 'Benar Salah') {
-          questionData.correctAnswer = q.trueFalseAnswer ? 'true' : 'false'
+          questionData.correctAnswer = q.trueFalseAnswer ? 'True' : 'False'
         }
 
         if (q.imagePreview) {
@@ -591,6 +615,7 @@ const CreateQuizPage = () => {
                       <input
                         type="text"
                         value={opt}
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                           e.stopPropagation()
                           updateOption(i, e.target.value)

@@ -31,6 +31,7 @@ const PlayerGameplayPage = () => {
   const timerInitialized = useRef(false)
   const autoSaveTimeoutRef = useRef(null) // For debouncing auto-save on text input
   const selectedAnswerRef = useRef(null) // Keep track of latest answer for timer expiration
+  const hasAnsweredRef = useRef(false) // Keep track of latest hasAnswered value for timer
 
   useEffect(() => {
     if (!gameId || !pin || !playerName) {
@@ -53,6 +54,7 @@ const PlayerGameplayPage = () => {
         if (prevIndex !== questionIndex) {
           // Moving to new question - reset all state including timer
           setHasAnswered(false)
+          hasAnsweredRef.current = false
           setSelectedAnswer(null)
           selectedAnswerRef.current = null // Reset ref
           setIsCorrect(null)
@@ -106,7 +108,7 @@ const PlayerGameplayPage = () => {
     if (gameId) {
       loadGameData()
     }
-  }, [currentQuestionIndex])
+  }, [currentQuestionIndex, gameId]) // ✅ Added gameId to dependencies
 
   // Timer countdown with system time for accuracy
   useEffect(() => {
@@ -123,7 +125,7 @@ const PlayerGameplayPage = () => {
         setTimerActive(false);
         clearInterval(timer);
         // Time's up - auto submit and show feedback
-        if (!hasAnswered) {
+        if (!hasAnsweredRef.current) {
           console.log('⏰ Calling handleTimeExpire...');
           handleTimeExpire();
         } else {
@@ -180,6 +182,7 @@ const PlayerGameplayPage = () => {
           if (savedAnswer?.answeredAt && !savedAnswer?.autoSaved) {
             // Final submission - show results
             setHasAnswered(true)
+            hasAnsweredRef.current = true
             setIsCorrect(savedAnswer?.isCorrect)
             setWaitingForNext(true)
             setTimerActive(false)
@@ -187,6 +190,7 @@ const PlayerGameplayPage = () => {
           } else {
             // Just auto-saved, timer should still be running
             setHasAnswered(false)
+            hasAnsweredRef.current = false
             setIsCorrect(null)
             setWaitingForNext(false)
             // Timer will be initialized below
@@ -351,7 +355,7 @@ const PlayerGameplayPage = () => {
 
   // Called when timer expires - submit whatever answer was auto-saved
   const handleTimeExpire = async () => {
-    if (hasAnswered) {
+    if (hasAnsweredRef.current) {
       console.log('⏰ Timer expired but already answered, skipping');
       return;
     }
@@ -362,11 +366,12 @@ const PlayerGameplayPage = () => {
     console.log('⏰ TIME EXPIRED! Submitting answer:', {
       selectedAnswer: latestAnswer,
       selectedAnswerState: selectedAnswer, // For comparison
-      hasAnswered,
+      hasAnswered: hasAnsweredRef.current,
       questionId: currentQuestion._id
     });
     
     setHasAnswered(true);
+    hasAnsweredRef.current = true;
     setTimerActive(false);
 
     try {
@@ -429,6 +434,7 @@ const PlayerGameplayPage = () => {
     if (hasAnswered) return
 
     setHasAnswered(true)
+    hasAnsweredRef.current = true
     setTimerActive(false)
 
     try {

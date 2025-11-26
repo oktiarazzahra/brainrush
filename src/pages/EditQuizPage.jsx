@@ -103,6 +103,14 @@ const EditQuizPage = () => {
                   options = q.options
                   correct = new Array(q.options.length).fill(false)
 
+                  console.log('📝 Loading Pilihan Ganda:', {
+                    question: q.question?.substring(0, 30),
+                    correctAnswer: q.correctAnswer,
+                    correctAnswerType: typeof q.correctAnswer,
+                    isArray: Array.isArray(q.correctAnswer),
+                    optionsLength: options.length
+                  });
+
                   if (Array.isArray(q.correctAnswer)) {
                     q.correctAnswer.forEach((idx) => {
                       if (idx >= 0 && idx < correct.length) {
@@ -116,6 +124,8 @@ const EditQuizPage = () => {
                     }
                     multi = false
                   }
+                  
+                  console.log('✅ Correct array after load:', correct, 'multi:', multi);
                 } else {
                   // Default jika ga ada options
                   options = ['', '', '', '']
@@ -125,7 +135,8 @@ const EditQuizPage = () => {
                 // BENAR SALAH - jangan set options!
                 options = []
                 correct = []
-                trueFalseAnswer = q.correctAnswer === 'true' || q.correctAnswer === true || q.correct === true
+                // Check for both 'True'/'False' (new format) and 'true'/'false' (old format)
+                trueFalseAnswer = q.correctAnswer === 'True' || q.correctAnswer === 'true' || q.correctAnswer === true || q.correct === true
                 acceptedAnswers = []
               } else if (type === 'Isian') {
                 options = []
@@ -396,18 +407,29 @@ const EditQuizPage = () => {
           timeLimit: timerMode === 'per-question' ? q.duration : null,
           questionType: q.type === 'Pilihan Ganda'
             ? q.multi ? 'multiple-answer' : 'multiple-choice'
-            : q.type === 'Isian' ? 'short-answer' : 'true-false'
+            : q.type === 'Isian' ? 'short-answer' : 'true-false',
+          points: 1 // Default 1 point per question
         }
 
         if (q.type === 'Pilihan Ganda') {
           questionData.options = q.options
-          questionData.correctAnswer = q.multi
+          const correctIndices = q.multi
             ? q.correct.map((c, idx) => (c ? idx : -1)).filter((idx) => idx !== -1)
             : q.correct.findIndex((c) => c)
+          
+          // Ensure correctAnswer always has a value
+          if (q.multi) {
+            questionData.correctAnswer = correctIndices.length > 0 ? correctIndices : [0]
+          } else {
+            questionData.correctAnswer = correctIndices >= 0 ? correctIndices : 0
+          }
         } else if (q.type === 'Isian') {
-          questionData.acceptedAnswers = q.acceptedAnswers.filter((a) => a.trim())
+          const filteredAnswers = q.acceptedAnswers.filter((a) => a.trim())
+          questionData.acceptedAnswers = filteredAnswers
+          // Set correctAnswer to first accepted answer
+          questionData.correctAnswer = filteredAnswers.length > 0 ? filteredAnswers[0] : ''
         } else if (q.type === 'Benar Salah') {
-          questionData.correctAnswer = q.trueFalseAnswer ? 'true' : 'false'
+          questionData.correctAnswer = q.trueFalseAnswer ? 'True' : 'False'
         }
 
         if (q.imagePreview) {
@@ -704,6 +726,7 @@ const EditQuizPage = () => {
                       <input
                         type="text"
                         value={opt}
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                           e.stopPropagation()
                           updateOption(i, e.target.value)
