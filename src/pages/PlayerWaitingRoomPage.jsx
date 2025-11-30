@@ -8,7 +8,7 @@ import socketService from '../services/socketService'
 const PlayerWaitingRoomPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { gameId, pin, playerName, avatar, fromDashboard } = location.state || {}
+  const { gameId, pin, playerName, avatar, fromDashboard, isGuest } = location.state || {}
 
   const [players, setPlayers] = useState([])
   const [gameStatus, setGameStatus] = useState('waiting')
@@ -48,7 +48,8 @@ const PlayerWaitingRoomPage = () => {
           gameId, 
           pin, 
           playerName, 
-          avatar 
+          avatar,
+          isGuest 
         } 
       })
     })
@@ -66,7 +67,11 @@ const PlayerWaitingRoomPage = () => {
 
   const fetchGameData = async () => {
     try {
-      const response = await gameService.getGame(gameId)
+      // Use guest service if player is guest, otherwise use regular service
+      const response = isGuest 
+        ? await gameService.getGameAsGuest(gameId)
+        : await gameService.getGame(gameId)
+      
       const gameData = response.data.game
       
       // Update players list

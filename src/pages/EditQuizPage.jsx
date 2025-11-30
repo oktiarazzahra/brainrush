@@ -105,27 +105,38 @@ const EditQuizPage = () => {
 
                   console.log('📝 Loading Pilihan Ganda:', {
                     question: q.question?.substring(0, 30),
+                    questionType: q.questionType,
                     correctAnswer: q.correctAnswer,
                     correctAnswerType: typeof q.correctAnswer,
                     isArray: Array.isArray(q.correctAnswer),
                     optionsLength: options.length
                   });
 
+                  // Detect multi based on questionType first, then correctAnswer
+                  if (q.questionType === 'multiple-answer') {
+                    multi = true
+                  } else if (q.questionType === 'multiple-choice') {
+                    multi = false
+                  } else if (Array.isArray(q.correctAnswer)) {
+                    multi = true
+                  } else {
+                    multi = false
+                  }
+
+                  // Set correct array based on correctAnswer
                   if (Array.isArray(q.correctAnswer)) {
                     q.correctAnswer.forEach((idx) => {
                       if (idx >= 0 && idx < correct.length) {
                         correct[idx] = true
                       }
                     })
-                    multi = true
-                  } else if (typeof q.correctAnswer === 'number') {
-                    if (q.correctAnswer >= 0 && q.correctAnswer < correct.length) {
+                  } else if (typeof q.correctAnswer === 'number' && q.correctAnswer >= 0) {
+                    if (q.correctAnswer < correct.length) {
                       correct[q.correctAnswer] = true
                     }
-                    multi = false
                   }
                   
-                  console.log('✅ Correct array after load:', correct, 'multi:', multi);
+                  console.log('✅ Correct array after load:', { correct, multi, questionType: q.questionType });
                 } else {
                   // Default jika ga ada options
                   options = ['', '', '', '']
@@ -413,15 +424,34 @@ const EditQuizPage = () => {
 
         if (q.type === 'Pilihan Ganda') {
           questionData.options = q.options
-          const correctIndices = q.multi
-            ? q.correct.map((c, idx) => (c ? idx : -1)).filter((idx) => idx !== -1)
-            : q.correct.findIndex((c) => c)
           
-          // Ensure correctAnswer always has a value
+          // Get correct answer indices
           if (q.multi) {
-            questionData.correctAnswer = correctIndices.length > 0 ? correctIndices : [0]
+            // Multiple answer - get all indices where correct is true
+            const correctIndices = q.correct
+              .map((c, idx) => (c ? idx : -1))
+              .filter((idx) => idx !== -1)
+            
+            console.log('💾 Saving Multiple Answer:', {
+              question: q.question?.substring(0, 30),
+              multi: q.multi,
+              correctArray: q.correct,
+              correctIndices
+            });
+            
+            questionData.correctAnswer = correctIndices
           } else {
-            questionData.correctAnswer = correctIndices >= 0 ? correctIndices : 0
+            // Single answer - get index of the first true value
+            const correctIndex = q.correct.findIndex((c) => c)
+            
+            console.log('💾 Saving Single Choice:', {
+              question: q.question?.substring(0, 30),
+              multi: q.multi,
+              correctArray: q.correct,
+              correctIndex
+            });
+            
+            questionData.correctAnswer = correctIndex
           }
         } else if (q.type === 'Isian') {
           const filteredAnswers = q.acceptedAnswers.filter((a) => a.trim())

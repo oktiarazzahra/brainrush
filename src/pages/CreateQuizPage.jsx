@@ -304,23 +304,34 @@ const CreateQuizPage = () => {
 
         if (q.type === 'Pilihan Ganda') {
           questionData.options = q.options
-          const correctIndices = q.multi
-            ? q.correct.map((c, idx) => (c ? idx : -1)).filter((idx) => idx !== -1)
-            : q.correct.findIndex((c) => c)
           
-          console.log('💾 Saving Pilihan Ganda:', {
-            question: q.question?.substring(0, 30),
-            multi: q.multi,
-            correctArray: q.correct,
-            correctIndices,
-            finalCorrectAnswer: correctIndices >= 0 ? correctIndices : (q.multi ? [0] : 0)
-          });
-          
-          // Ensure correctAnswer always has a value
+          // Get correct answer indices
           if (q.multi) {
-            questionData.correctAnswer = correctIndices.length > 0 ? correctIndices : [0]
+            // Multiple answer - get all indices where correct is true
+            const correctIndices = q.correct
+              .map((c, idx) => (c ? idx : -1))
+              .filter((idx) => idx !== -1)
+            
+            console.log('💾 Saving Multiple Answer:', {
+              question: q.question?.substring(0, 30),
+              multi: q.multi,
+              correctArray: q.correct,
+              correctIndices
+            });
+            
+            questionData.correctAnswer = correctIndices
           } else {
-            questionData.correctAnswer = correctIndices >= 0 ? correctIndices : 0
+            // Single answer - get index of the first true value
+            const correctIndex = q.correct.findIndex((c) => c)
+            
+            console.log('💾 Saving Single Choice:', {
+              question: q.question?.substring(0, 30),
+              multi: q.multi,
+              correctArray: q.correct,
+              correctIndex
+            });
+            
+            questionData.correctAnswer = correctIndex
           }
         } else if (q.type === 'Isian') {
           const filteredAnswers = q.acceptedAnswers.filter((a) => a.trim())

@@ -41,7 +41,16 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
     setLoading(true)
     try {
       const avatarData = avatars[selectedAvatar]
-      const response = await gameService.joinGame(pin, playerName.trim(), avatarData)
+      
+      // Use different service based on whether user is logged in or guest
+      let response;
+      if (fromDashboard) {
+        // Logged-in user from dashboard
+        response = await gameService.joinGame(pin, playerName.trim(), avatarData)
+      } else {
+        // Guest from homepage
+        response = await gameService.joinGameAsGuest(pin, playerName.trim(), avatarData)
+      }
       
       // Navigate to player waiting room
       navigate('/playerwaitingroom', {
@@ -50,7 +59,8 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
           pin: pin,
           playerName: playerName.trim(),
           avatar: avatarData,
-          fromDashboard: fromDashboard
+          fromDashboard: fromDashboard,
+          isGuest: response.data.player?.isGuest || false
         }
       })
     } catch (error) {

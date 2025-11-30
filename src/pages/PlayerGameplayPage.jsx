@@ -7,7 +7,7 @@ import socketService from '../services/socketService'
 const PlayerGameplayPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { gameId, pin, playerName, avatar } = location.state || {}
+  const { gameId, pin, playerName, avatar, isGuest } = location.state || {}
 
   const [currentQuestion, setCurrentQuestion] = useState(null)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
@@ -143,7 +143,11 @@ const PlayerGameplayPage = () => {
     try {
       console.log('🔄 loadGameData called for questionIndex:', currentQuestionIndex);
       
-      const response = await gameService.getGame(gameId)
+      // Use guest service if player is guest, otherwise use regular service
+      const response = isGuest 
+        ? await gameService.getGameAsGuest(gameId)
+        : await gameService.getGame(gameId)
+      
       const game = response.data.game
       setGameData(game)
 
@@ -277,12 +281,17 @@ const PlayerGameplayPage = () => {
   const handleAnswerSelect = (answer) => {
     if (hasAnswered) return // Don't allow changing answer after time's up
     
-    // Check if this is a multiple-answer question - ONLY check questionType
-    const isMultipleAnswer = currentQuestion?.questionType === 'multiple-answer';
+    // Check if this is a multiple-answer question
+    // Check both questionType and correctAnswer structure for robustness
+    const isMultipleAnswer = currentQuestion?.questionType === 'multiple-answer' || 
+                             (currentQuestion?.questionType === 'Pilihan Ganda' && 
+                              Array.isArray(currentQuestion?.correctAnswer));
     
     console.log('🔍 handleAnswerSelect:', {
       answer,
       questionType: currentQuestion?.questionType,
+      correctAnswerType: typeof currentQuestion?.correctAnswer,
+      isArray: Array.isArray(currentQuestion?.correctAnswer),
       isMultipleAnswer,
       currentSelectedAnswer: selectedAnswer
     });
@@ -324,11 +333,20 @@ const PlayerGameplayPage = () => {
       console.log('💾 Auto-saving answer:', { answer: answerToSave, questionId: currentQuestion._id });
       
       // Simpan answer ke backend tapi belum hitung score
-      await gameService.saveAnswer(gameId, {
-        questionId: currentQuestion._id,
-        answer: answerToSave,
-        playerName
-      });
+      // Use guest service if player is guest
+      if (isGuest) {
+        await gameService.saveAnswerAsGuest(gameId, {
+          questionId: currentQuestion._id,
+          answer: answerToSave,
+          playerName
+        });
+      } else {
+        await gameService.saveAnswer(gameId, {
+          questionId: currentQuestion._id,
+          answer: answerToSave,
+          playerName
+        });
+      }
       
       setAnswerSaved(true);
       console.log('✅ Answer auto-saved successfully');
@@ -388,12 +406,20 @@ const PlayerGameplayPage = () => {
         playerName
       });
 
-      const response = await gameService.submitAnswer(gameId, {
-        questionId: currentQuestion._id,
-        answer,
-        playerName,
-        timeSpent: currentQuestion.timeLimit || 0
-      });
+      // Use guest service if player is guest
+      const response = isGuest
+        ? await gameService.submitAnswerAsGuest(gameId, {
+            questionId: currentQuestion._id,
+            answer,
+            playerName,
+            timeSpent: currentQuestion.timeLimit || 0
+          })
+        : await gameService.submitAnswer(gameId, {
+            questionId: currentQuestion._id,
+            answer,
+            playerName,
+            timeSpent: currentQuestion.timeLimit || 0
+          });
 
       console.log('✅ Backend response:', response.data);
 
@@ -445,12 +471,20 @@ const PlayerGameplayPage = () => {
         : null
       
       // Submit to backend (let backend validate the answer)
-      const response = await gameService.submitAnswer(gameId, {
-        questionId: currentQuestion._id,
-        answer: selectedAnswer !== null ? selectedAnswer : '',
-        playerName,
-        timeSpent: timeSpentValue
-      })
+      // Use guest service if player is guest
+      const response = isGuest
+        ? await gameService.submitAnswerAsGuest(gameId, {
+            questionId: currentQuestion._id,
+            answer: selectedAnswer !== null ? selectedAnswer : '',
+            playerName,
+            timeSpent: timeSpentValue
+          })
+        : await gameService.submitAnswer(gameId, {
+            questionId: currentQuestion._id,
+            answer: selectedAnswer !== null ? selectedAnswer : '',
+            playerName,
+            timeSpent: timeSpentValue
+          })
 
       const result = response.data
       setIsCorrect(result.isCorrect)
@@ -655,8 +689,11 @@ const PlayerGameplayPage = () => {
                     currentQuestion?.questionType === 'multiple-choice' ||
                     currentQuestion?.questionType === 'multiple-answer') && 
                     currentQuestion?.options && currentQuestion.options.map((option, index) => {
-                      // Check if this is a multiple-answer question - ONLY check questionType
-                      const isMultipleAnswer = currentQuestion?.questionType === 'multiple-answer';
+                      // Check if this is a multiple-answer question
+                      // Check both questionType and correctAnswer structure for robustness
+                      const isMultipleAnswer = currentQuestion?.questionType === 'multiple-answer' ||
+                                               (currentQuestion?.questionType === 'Pilihan Ganda' && 
+                                                Array.isArray(currentQuestion?.correctAnswer));
                       const isSelected = isMultipleAnswer 
                         ? (Array.isArray(selectedAnswer) && selectedAnswer.includes(option))
                         : selectedAnswer === option;
