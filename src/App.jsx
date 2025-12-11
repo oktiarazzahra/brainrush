@@ -1,7 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import HomePage from './pages/HomePage'
 import JoinGamePage from './pages/JoinGamePage'
-import PlayerWaitingRoomPage from './pages/PlayerWaitingRoomPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
@@ -16,14 +15,13 @@ import HistoryPage from './pages/HistoryPage'
 import HelpPage from './pages/HelpPage'
 import LeaderboardPage from './pages/LeaderboardPage'
 import QuizReviewPage from './pages/QuizReviewPage'
-import WaitingRoomPage from './pages/WaitingRoomPage'
 import QuizResultsPage from './pages/QuizResultsPage'
 import EditQuizPage from './pages/EditQuizPage'
 import TakeQuizPage from './pages/TakeQuizPage'
 import AdminSupportPage from './pages/AdminSupportPage'
 import AdminUsersPage from './pages/AdminUsersPage'
-import LiveGameplayPage from './pages/LiveGameplayPage'
 import PlayerGameplayPage from './pages/PlayerGameplayPage'
+import PinMonitoringPage from './pages/PinMonitoringPage'
 
 function App() {
   return (
@@ -43,7 +41,6 @@ function App() {
 
         {/* Join Routes */}
         <Route path="/join" element={<JoinGamePageWrapper />} />
-        <Route path="/playerwaitingroom" element={<PlayerWaitingRoomPageWrapper />} />
 
         {/* Quiz Management Routes */}
         <Route path="/my-quizzes" element={<MyQuizzesPage />} />
@@ -51,12 +48,9 @@ function App() {
         <Route path="/edit-quiz/:id" element={<EditQuizPage />} />
         <Route path="/take-quiz/:quizId" element={<TakeQuizPage />} />
 
-        {/* Waiting Room Routes */}
-        <Route path="/waiting-room" element={<WaitingRoomPage />} />
-
         {/* Live Game Routes */}
-        <Route path="/live-gameplay" element={<LiveGameplayPage />} />
-        <Route path="/player-gameplay" element={<PlayerGameplayPage />} />
+        <Route path="/playergameplay" element={<PlayerGameplayPage />} />
+        <Route path="/pin-monitoring" element={<PinMonitoringPage />} />
 
         {/* Quiz Results Route */}
         <Route path="/quiz-results/:quizId" element={<QuizResultsPage />} />
@@ -89,30 +83,7 @@ const HomePageWrapper = () => {
 }
 
 const JoinGamePageWrapper = () => {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const pin = location.state?.pin || ''
-  
-  const handleBack = () => {
-    navigate('/dashboard')
-  }
-  
-  const handleJoinNow = ({ avatar, name }) => {
-    navigate('/playerwaitingroom', {
-      state: {
-        pin,
-        playerName: name,
-        avatar,
-        fromDashboard: true
-      }
-    })
-  }
-  
-  return <JoinGamePage onBack={handleBack} onJoinNow={handleJoinNow} />
-}
-
-const PlayerWaitingRoomPageWrapper = () => {
-  return <PlayerWaitingRoomPage />
+  return <JoinGamePage />
 }
 
 export default App

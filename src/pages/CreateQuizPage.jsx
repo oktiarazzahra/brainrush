@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { quizService } from '../services/quizService'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
 
 const compressImage = (file) => {
   return new Promise((resolve, reject) => {
@@ -37,9 +39,10 @@ const COLORS = ['bg-pink-200', 'bg-green-200', 'bg-yellow-100', 'bg-blue-200']
 
 const CreateQuizPage = () => {
   const navigate = useNavigate()
+  const { toast, showSuccess, showError, showWarning, hideToast } = useToast()
   const [quizTitle, setQuizTitle] = useState('')
   const [quizCategory, setQuizCategory] = useState('Bahasa')
-  const [quizType, setQuizType] = useState('schedule') // 'live' or 'schedule'
+  // Removed quizType - all quizzes support all question types and timer modes
   const [timerMode, setTimerMode] = useState('per-question')
   const [totalTime, setTotalTime] = useState(30)
   const [questions, setQuestions] = useState([
@@ -122,12 +125,12 @@ const CreateQuizPage = () => {
     
     // Pilihan Ganda harus selalu 4 opsi
     if (currentQuestion.type === 'Pilihan Ganda' && currentQuestion.options.length <= 4) {
-      alert('Pilihan Ganda harus memiliki 4 pilihan!')
+      showWarning('Pilihan Ganda harus memiliki 4 pilihan!')
       return
     }
     
     if (currentQuestion.options.length <= 2) {
-      alert('Minimal harus ada 2 pilihan!')
+      showWarning('Minimal harus ada 2 pilihan!')
       return
     }
     const arr = [...questions]
@@ -164,7 +167,7 @@ const CreateQuizPage = () => {
       arr[idx].imagePreview = compressedBase64
       setQuestions([...arr])
     } catch (error) {
-      alert('Error: ' + error.message)
+      showError('Error: ' + error.message)
     }
   }
 
@@ -198,7 +201,7 @@ const CreateQuizPage = () => {
 
   const deleteQuestion = (idx) => {
     if (questions.length === 1) {
-      alert('Minimal harus ada 1 soal!')
+      showWarning('Minimal harus ada 1 soal!')
       return
     }
     const arr = questions.filter((_, i) => i !== idx)
@@ -241,7 +244,7 @@ const CreateQuizPage = () => {
   const removeAcceptedAnswer = (i, idx = activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
     if (questions[idx].acceptedAnswers.length <= 1) {
-      alert('Minimal harus ada 1 jawaban!')
+      showWarning('Minimal harus ada 1 jawaban!')
       return
     }
     const arr = [...questions]
@@ -253,37 +256,37 @@ const CreateQuizPage = () => {
     e.preventDefault()
 
     if (!quizTitle.trim()) {
-      alert('Judul kuis harus diisi!')
+      showWarning('Judul kuis harus diisi!')
       return
     }
 
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i]
       if (!q.question.trim()) {
-        alert(`Soal ${i + 1}: Pertanyaan harus diisi!`)
+        showWarning(`Soal ${i + 1}: Pertanyaan harus diisi!`)
         return
       }
 
       if (q.type === 'Pilihan Ganda') {
         const emptyOptions = q.options.filter((opt) => !opt.trim())
         if (emptyOptions.length > 0) {
-          alert(`Soal ${i + 1}: Semua pilihan jawaban harus diisi!`)
+          showWarning(`Soal ${i + 1}: Semua pilihan jawaban harus diisi!`)
           return
         }
         const hasCorrect = q.correct.some((c) => c)
         if (!hasCorrect) {
-          alert(`Soal ${i + 1}: Pilih minimal satu jawaban yang benar!`)
+          showWarning(`Soal ${i + 1}: Pilih minimal satu jawaban yang benar!`)
           return
         }
       } else if (q.type === 'Isian') {
         const hasAccepted = q.acceptedAnswers && q.acceptedAnswers.length > 0 && q.acceptedAnswers.some((a) => a.trim())
         if (!hasAccepted) {
-          alert(`Soal ${i + 1}: Tambahkan minimal satu jawaban!`)
+          showWarning(`Soal ${i + 1}: Tambahkan minimal satu jawaban!`)
           return
         }
       } else if (q.type === 'Benar Salah') {
         if (q.trueFalseAnswer === null) {
-          alert(`Soal ${i + 1}: Pilih jawaban Benar atau Salah!`)
+          showWarning(`Soal ${i + 1}: Pilih jawaban Benar atau Salah!`)
           return
         }
       }
@@ -354,8 +357,7 @@ const CreateQuizPage = () => {
         title: quizTitle,
         description: `Kategori: ${quizCategory}`,
         category: quizCategory,
-        quizType: quizType, // 'live' or 'schedule'
-        timerMode: quizType === 'live' ? 'per-question' : timerMode, // Force per-question for live
+        timerMode: timerMode,
         totalTime: timerMode === 'total-time' ? totalTime * 60 : null,
         questions: formattedQuestions
       }
@@ -367,11 +369,11 @@ const CreateQuizPage = () => {
       })
 
       await quizService.createQuiz(quizData)
-      alert('Quiz berhasil disimpan! 🎉')
+      showSuccess('Quiz berhasil disimpan! 🎉')
       navigate('/my-quizzes')
     } catch (err) {
       console.error('Error:', err)
-      alert('Gagal menyimpan quiz. Coba lagi.\n' + (err.message || ''))
+      showError('Gagal menyimpan quiz. Coba lagi.\n' + (err.message || ''))
     } finally {
       setSaving(false)
     }
@@ -425,34 +427,12 @@ const CreateQuizPage = () => {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Tipe Kuis</label>
-                <select
-                  value={quizType}
-                  onChange={(e) => {
-                    const newType = e.target.value
-                    setQuizType(newType)
-                    // Live Quiz HARUS menggunakan timer per-question
-                    if (newType === 'live') {
-                      setTimerMode('per-question')
-                      setQuestions(prev => prev.map(q => ({ ...q, useTime: true, duration: q.duration || 30 })))
-                    }
-                  }}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-100 font-semibold focus:outline-none focus:border-blue-500"
-                >
-                  <option value="schedule">📚 Jadwal/Belajar Mandiri</option>
-                  <option value="live">🎮 Live Quiz</option>
-                </select>
-              </div>
             </div>
 
             {/* TIMER SETTINGS */}
             <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
               <h3 className="font-bold text-blue-900 mb-4 flex items-center gap-2">
                 <span className="text-xl">⏱️</span> Pengaturan Waktu
-                {quizType === 'live' && (
-                  <span className="text-xs bg-orange-500 text-white px-2 py-1 rounded-full">Live Quiz = Timer Per Soal</span>
-                )}
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -469,10 +449,7 @@ const CreateQuizPage = () => {
                         setQuestions(prev => prev.map(q => ({ ...q, useTime: true, duration: q.duration || 30 })))
                       }
                     }}
-                    disabled={quizType === 'live'}
-                    className={`w-full px-4 py-3 border-2 border-gray-300 rounded-lg font-semibold focus:outline-none focus:border-blue-500 ${
-                      quizType === 'live' ? 'bg-gray-200 cursor-not-allowed' : 'bg-white'
-                    }`}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-white font-semibold focus:outline-none focus:border-blue-500"
                   >
                     <option value="none">Tanpa Batas Waktu</option>
                     <option value="per-question">Timer Per Soal</option>
@@ -493,10 +470,9 @@ const CreateQuizPage = () => {
                 )}
               </div>
               <p className="text-sm text-gray-600 mt-3">
-                {quizType === 'live' && '🎮 Live Quiz hanya menggunakan Timer Per Soal untuk pengalaman kompetitif yang adil'}
-                {quizType !== 'live' && timerMode === 'none' && '✓ Siswa dapat mengerjakan tanpa batasan waktu'}
-                {quizType !== 'live' && timerMode === 'per-question' && '✓ Setiap soal memiliki timer terpisah sesuai durasi yang ditentukan'}
-                {quizType !== 'live' && timerMode === 'total-time' && '✓ Siswa memiliki waktu total untuk mengerjakan semua soal'}
+                {timerMode === 'none' && '✓ Siswa dapat mengerjakan tanpa batasan waktu'}
+                {timerMode === 'per-question' && '✓ Setiap soal memiliki timer terpisah sesuai durasi yang ditentukan'}
+                {timerMode === 'total-time' && '✓ Siswa memiliki waktu total untuk mengerjakan semua soal'}
               </p>
             </div>
 
@@ -787,6 +763,7 @@ const CreateQuizPage = () => {
           </div>
         </div>
       </div>
+      <Toast {...toast} onClose={hideToast} />
     </div>
   )
 }

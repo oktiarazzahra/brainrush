@@ -4,10 +4,14 @@ import { motion } from 'framer-motion'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import PinInput from '../components/PinInput'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
 
 const HomePage = ({ onJoin }) => {
   const [pin, setPin] = useState('')
   const navigate = useNavigate()
+  const { toast, showSuccess, showError, showWarning, hideToast } = useToast()
+
 
   const handleJoinClick = () => {
     if (pin.trim()) {
@@ -15,7 +19,7 @@ const HomePage = ({ onJoin }) => {
       navigate(`/join`, { state: { pin } })
       if (onJoin) onJoin(pin)
     } else {
-      alert('Masukkan PIN terlebih dahulu!')
+      showWarning('Masukkan PIN terlebih dahulu!')
     }
   }
 
@@ -94,6 +98,7 @@ const HomePage = ({ onJoin }) => {
       </main>
 
       <Footer />
+      <Toast {...toast} onClose={hideToast} />
     </div>
   )
 }

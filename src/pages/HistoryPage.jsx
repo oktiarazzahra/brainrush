@@ -199,36 +199,13 @@ const HistoryPage = () => {
                 </button>
               </div>
 
-              {/* Ranking Highlight */}
-              {selectedHistory.yourRank && (
-                <div className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-xl p-6 mb-6 text-center">
-                  <p className="text-white text-sm mb-2">Peringkat Kamu</p>
-                  <p className="text-white text-6xl font-bold">#{selectedHistory.yourRank}</p>
-                  <p className="text-white/80 text-sm mt-2">dari {selectedHistory.players} pemain</p>
-                  {selectedHistory.yourScore !== undefined && (
-                    <p className="text-white text-2xl font-bold mt-3">Skor: {selectedHistory.yourScore}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Statistik Detail */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-green-50 rounded-lg p-4 text-center">
-                  <p className="text-green-600 font-bold text-3xl">{selectedHistory.topScore}</p>
-                  <p className="text-gray-600 text-sm">Skor Tertinggi</p>
-                </div>
-                <div className="bg-blue-50 rounded-lg p-4 text-center">
-                  <p className="text-blue-600 font-bold text-3xl">{selectedHistory.avgScore}</p>
-                  <p className="text-gray-600 text-sm">Rata-rata</p>
-                </div>
-                <div className="bg-purple-50 rounded-lg p-4 text-center">
-                  <p className="text-purple-600 font-bold text-2xl">{selectedHistory.players}</p>
-                  <p className="text-gray-600 text-sm">Total Pemain</p>
-                </div>
-                <div className="bg-orange-50 rounded-lg p-4 text-center">
-                  <p className="text-orange-600 font-bold text-2xl">{selectedHistory.duration}</p>
-                  <p className="text-gray-600 text-sm">Durasi</p>
-                </div>
+              {/* Simple Participation Info */}
+              <div className="bg-gradient-to-r from-blue-400 to-cyan-500 rounded-xl p-6 mb-6 text-center">
+                <div className="text-5xl mb-3">✅</div>
+                <p className="text-white text-lg font-semibold mb-2">Telah Mengikuti Kuis Ini</p>
+                <p className="text-white/90 text-sm">
+                  {formatFullDate(selectedHistory.date)}
+                </p>
               </div>
 
               {/* Info Tambahan */}
@@ -238,24 +215,22 @@ const HistoryPage = () => {
                   <span className="font-semibold text-gray-800">{selectedHistory.category}</span>
                 </div>
                 <div className="flex justify-between mb-2">
-                  <span className="text-gray-600">Waktu Main:</span>
-                  <span className="font-semibold text-gray-800">{formatFullDate(selectedHistory.date)}</span>
-                </div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-gray-600">PIN Game:</span>
+                  <span className="text-gray-600">PIN Kuis:</span>
                   <span className="font-semibold text-gray-800">{selectedHistory.PIN}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Jumlah Soal:</span>
+                  <span className="font-semibold text-gray-800">{selectedHistory.totalQuestions || '-'} soal</span>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3">
-                <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition">
-                  Main Lagi
-                </button>
-                <button className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 rounded-lg transition">
-                  Bagikan
-                </button>
-              </div>
+              {/* Action Button */}
+              <button 
+                onClick={() => setSelectedHistory(null)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition"
+              >
+                Tutup
+              </button>
             </motion.div>
           </motion.div>
         )}

@@ -2,9 +2,13 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import AdminLayout from '../components/AdminLayout'
 import api from '../services/api'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
 
 const AdminUsersPage = () => {
   const [users, setUsers] = useState([])
+  const { toast, showSuccess, showError, showWarning, hideToast } = useToast()
+
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -29,7 +33,7 @@ const AdminUsersPage = () => {
       calculateStats(response.data.data.users)
     } catch (error) {
       console.error('Error fetching users:', error)
-      alert('Gagal memuat data pengguna')
+      showError('Gagal memuat data pengguna')
     } finally {
       setLoading(false)
     }
@@ -355,6 +359,7 @@ const AdminUsersPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <Toast {...toast} onClose={hideToast} />
     </AdminLayout>
   )
 }

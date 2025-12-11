@@ -2,10 +2,14 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import DashboardLayout from '../components/DashboardLayout'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
 
 const LeaderboardPage = () => {
   const navigate = useNavigate()
   const { quizId } = useParams()
+  const { toast, showSuccess, showError, showWarning, hideToast } = useToast()
+
 
   // Data dummy leaderboard
   const leaderboardData = [
@@ -250,7 +254,7 @@ const LeaderboardPage = () => {
           <div className="mt-8 text-center">
             <button
               onClick={() => {
-                alert('Leaderboard berhasil dicopy untuk dibagikan!')
+                showSuccess('Leaderboard berhasil dicopy untuk dibagikan!')
               }}
               className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold px-8 py-3 rounded-lg shadow-lg transition"
             >
@@ -259,6 +263,7 @@ const LeaderboardPage = () => {
           </div>
         </main>
       </div>
+      <Toast {...toast} onClose={hideToast} />
     </DashboardLayout>
   )
 }

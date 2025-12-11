@@ -3,9 +3,13 @@ import { useState } from 'react'
 import DashboardLayout from '../components/DashboardLayout'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supportService } from '../services/supportService'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
 
 const HelpPage = () => {
   const [activeCard, setActiveCard] = useState(null)
+  const { toast, showSuccess, showError, showWarning, hideToast } = useToast()
+
   const [showReportModal, setShowReportModal] = useState(false)
   const [reportForm, setReportForm] = useState({
     subject: '',
@@ -81,14 +85,14 @@ const HelpPage = () => {
     e.preventDefault()
     
     if (!reportForm.subject || !reportForm.description || !reportForm.email) {
-      alert('Mohon lengkapi semua field!')
+      showWarning('Mohon lengkapi semua field!')
       return
     }
 
     // Validasi email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(reportForm.email)) {
-      alert('Format email tidak valid!')
+      showWarning('Format email tidak valid!')
       return
     }
 
@@ -99,12 +103,7 @@ const HelpPage = () => {
       const response = await supportService.submitTicket(reportForm)
       
       // Tampilkan success message dengan ticket ID
-      alert(
-        `✅ Laporan berhasil dikirim!\n\n` +
-        `Ticket ID: ${response.data.ticketId}\n\n` +
-        `Tim kami akan segera meninjau laporan Anda dan menghubungi melalui email jika diperlukan.\n\n` +
-        `Terima kasih telah membantu meningkatkan Brain Rush!`
-      )
+      showSuccess(`✅ Laporan berhasil dikirim!\n\n` + `Ticket ID: ${response.data.ticketId}\n\n` + `Tim kami akan segera meninjau laporan Anda dan menghubungi melalui email jika diperlukan.\n\n` + `Terima kasih telah membantu meningkatkan Brain Rush!`)
       
       // Reset form dan tutup modal
       setReportForm({ subject: '', category: 'bug', description: '', email: '' })
@@ -112,10 +111,7 @@ const HelpPage = () => {
       
     } catch (error) {
       console.error('Submit ticket error:', error)
-      alert(
-        `❌ Gagal mengirim laporan\n\n` +
-        `${error.message || 'Terjadi kesalahan. Silakan coba lagi.'}`
-      )
+      showError(`❌ Gagal mengirim laporan\n\n` + `${error.message || 'Terjadi kesalahan. Silakan coba lagi.'}`)
     } finally {
       setSending(false)
     }
@@ -321,6 +317,7 @@ const HelpPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <Toast {...toast} onClose={hideToast} />
     </DashboardLayout>
   )
 }

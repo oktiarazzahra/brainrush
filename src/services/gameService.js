@@ -1,12 +1,12 @@
 import api from './api';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
 
 export const gameService = {
   // Create live game (generate PIN)
-  createGame: async (quizId) => {
-    const response = await api.post('/games', { quizId });
+  createGame: async (quizId, pinDurationHours = 8) => {
+    const response = await api.post('/games', { quizId, pinDurationHours });
     return response.data;
   },
 

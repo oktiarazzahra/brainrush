@@ -4,10 +4,16 @@ import { motion, AnimatePresence } from 'framer-motion'
 import DashboardLayout from '../components/DashboardLayout'
 import { quizService } from '../services/quizService'
 import { gameService } from '../services/gameService'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
+import ConfirmDialog from '../components/ConfirmDialog'
+import useConfirm from '../hooks/useConfirm'
 
 
 const MyQuizzesPage = () => {
   const navigate = useNavigate()
+  const { toast, showSuccess, showError, showWarning, hideToast } = useToast()
+  const { confirmDialog, showConfirm, hideConfirm } = useConfirm()
   const [activeTab, setActiveTab] = useState('Draft')
   const [openMenuId, setOpenMenuId] = useState(null)
   const [showAccessModal, setShowAccessModal] = useState(false)
@@ -25,10 +31,34 @@ const MyQuizzesPage = () => {
   const [hostHistory, setHostHistory] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [selectedHistory, setSelectedHistory] = useState(null)
+  const [showPinDurationModal, setShowPinDurationModal] = useState(false)
+  const [pinDuration, setPinDuration] = useState(8)
+  const [selectedQuizForPin, setSelectedQuizForPin] = useState(null)
+  const [showRunningQuizModal, setShowRunningQuizModal] = useState(false)
+  const [runningQuizData, setRunningQuizData] = useState(null)
+  const [runningQuizPlayers, setRunningQuizPlayers] = useState([])
+  const [runningQuizTimeLeft, setRunningQuizTimeLeft] = useState(0)
 
 
   useEffect(() => {
     fetchMyQuizzes()
+  }, [])
+
+  // Refresh data when page becomes visible (user returns from monitoring page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchMyQuizzes()
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', fetchMyQuizzes)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', fetchMyQuizzes)
+    }
   }, [])
 
   useEffect(() => {
@@ -43,8 +73,23 @@ const MyQuizzesPage = () => {
       setLoading(true)
       setError(null)
       const data = await quizService.getMyQuizzes()
-      console.log('✅ Quizzes loaded:', data.quizzes)
-      setQuizzes(data.quizzes || [])
+      console.log('✅ Quizzes loaded:', data)
+      
+      const quizzesList = data.quizzes || data.data || []
+      
+      // Debug: check for active PINs
+      quizzesList.forEach(quiz => {
+        if (quiz.activePIN) {
+          console.log('🔴 Found active PIN:', {
+            title: quiz.title,
+            PIN: quiz.activePIN,
+            expires: quiz.pinExpiresAt,
+            isExpired: quiz.pinExpiresAt ? new Date(quiz.pinExpiresAt) <= new Date() : 'N/A'
+          })
+        }
+      })
+      
+      setQuizzes(quizzesList)
     } catch (err) {
       console.error('❌ Error loading quizzes:', err)
       setError('Gagal memuat quiz. Coba lagi.')
@@ -83,58 +128,153 @@ const MyQuizzesPage = () => {
   }
   
   const handleBuatLive = async quizId => {
-    try {
-      setOpenMenuId(null)
-      
-      // Validasi: Cek quiz type dan timer mode
-      const quiz = quizzes.find(q => (q.id || q._id) === quizId)
-      
-      if (!quiz) {
-        alert('Quiz tidak ditemukan!')
-        return
-      }
-      
-      // Peringatan jika quiz bukan tipe 'live'
-      if (quiz.quizType === 'schedule') {
-        const confirmProceed = window.confirm(
-          '⚠️ PERINGATAN!\n\n' +
-          'Quiz ini bertipe "Jadwal/Belajar Mandiri", bukan "Live Quiz".\n\n' +
-          'Untuk pengalaman Live Quiz terbaik, sebaiknya gunakan quiz bertipe "Live Quiz" dengan Timer Per Soal.\n\n' +
-          'Tetap lanjutkan buat Live Game?'
-        )
-        if (!confirmProceed) return
-      }
-      
-      // Peringatan jika timer bukan per-question
-      if (quiz.timerMode !== 'per-question') {
-        const confirmProceed = window.confirm(
-          '⚠️ PERINGATAN TIMER!\n\n' +
-          `Quiz ini menggunakan timer mode: "${quiz.timerMode === 'none' ? 'Tanpa Batas Waktu' : 'Total Waktu Kuis'}"\n\n` +
-          'Live Quiz sebaiknya menggunakan "Timer Per Soal" untuk kompetisi yang lebih adil dan menarik.\n\n' +
-          'Tetap lanjutkan?'
-        )
-        if (!confirmProceed) return
-      }
-      
-      console.log('🎮 Creating live game for quiz:', quizId)
-      const response = await gameService.createGame(quizId)
-      console.log('✅ Game created successfully:', response)
-      const gameData = response.data.game
-      
-      navigate('/waiting-room', { 
-        state: { 
-          gameId: gameData.id,
-          PIN: gameData.PIN,
-          quiz: quiz,
-          quizTitle: gameData.quizTitle,
-          totalQuestions: gameData.totalQuestions
-        } 
-      })
-    } catch (error) {
-      console.error('❌ Error creating live game:', error)
-      console.error('Error details:', error.response?.data || error.message)
-      alert(`Gagal membuat live game: ${error.response?.data?.message || error.message}`)
+    setOpenMenuId(null)
+    
+    // Validasi: Cek quiz type dan timer mode
+    const quiz = quizzes.find(q => (q.id || q._id) === quizId)
+    
+    if (!quiz) {
+      showError('Quiz tidak ditemukan!')
+      return
     }
+    
+    // Tampilkan modal untuk set durasi PIN
+    setSelectedQuizForPin(quiz)
+    setShowPinDurationModal(true)
+  }
+
+  const handleLihatMonitoring = (quiz) => {
+    setOpenMenuId(null)
+    navigate('/pin-monitoring', {
+      state: {
+        gameId: quiz.activeGameId,
+        PIN: quiz.activePIN,
+        pinExpiresAt: quiz.pinExpiresAt,
+        quizTitle: quiz.title,
+        totalQuestions: quiz.questions?.length || 0
+      }
+    })
+  }
+
+  const handleBatalkanPIN = async (quiz) => {
+    setOpenMenuId(null)
+    
+    showConfirm({
+      title: '⚠️ Batalkan PIN Kuis?',
+      message: `PIN: ${quiz.activePIN}\n\nSemua hasil player yang sudah mengerjakan akan tersimpan di history. Apakah Anda yakin ingin membatalkan?`,
+      confirmText: 'Ya, Batalkan',
+      cancelText: 'Tidak',
+      confirmColor: 'red',
+      onConfirm: async () => {
+        try {
+          await gameService.endGame(quiz.activeGameId)
+          showSuccess('PIN berhasil dibatalkan!')
+          await fetchMyQuizzes()
+          setShowRunningQuizModal(false)
+        } catch (error) {
+          console.error('Error canceling PIN:', error)
+          showError('Gagal membatalkan PIN')
+        }
+      }
+    })
+  }
+
+  const handleOpenRunningQuiz = async (quiz) => {
+    setRunningQuizData(quiz)
+    setShowRunningQuizModal(true)
+    
+    // Fetch players
+    await fetchRunningQuizPlayers(quiz.activeGameId)
+    
+    // Start countdown
+    updateRunningQuizTimeLeft(quiz.pinExpiresAt)
+  }
+
+  const fetchRunningQuizPlayers = async (gameId) => {
+    try {
+      const response = await gameService.getGame(gameId)
+      setRunningQuizPlayers(response.data.game.players || [])
+    } catch (error) {
+      console.error('Error fetching players:', error)
+    }
+  }
+
+  const updateRunningQuizTimeLeft = (expiresAt) => {
+    const updateTime = () => {
+      const now = new Date()
+      const expiry = new Date(expiresAt)
+      const diffMs = expiry - now
+      
+      if (diffMs <= 0) {
+        setRunningQuizTimeLeft(0)
+        // Auto close modal and refresh when expired
+        setTimeout(() => {
+          setShowRunningQuizModal(false)
+          fetchMyQuizzes()
+          showSuccess('Kuis telah berakhir! Hasil tersimpan di History.')
+        }, 1000)
+      } else {
+        setRunningQuizTimeLeft(Math.floor(diffMs / 1000))
+      }
+    }
+    
+    updateTime()
+    const interval = setInterval(updateTime, 1000)
+    
+    // Cleanup interval when modal closes
+    return () => clearInterval(interval)
+  }
+
+  useEffect(() => {
+    if (showRunningQuizModal && runningQuizData) {
+      const cleanup = updateRunningQuizTimeLeft(runningQuizData.pinExpiresAt)
+      
+      // Refresh players every 5 seconds
+      const playersInterval = setInterval(() => {
+        fetchRunningQuizPlayers(runningQuizData.activeGameId)
+      }, 5000)
+      
+      return () => {
+        cleanup()
+        clearInterval(playersInterval)
+      }
+    }
+  }, [showRunningQuizModal, runningQuizData])
+
+  const formatTimeLeft = (seconds) => {
+    if (seconds <= 0) return '00:00:00'
+    
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+  
+  const handleCreateGameWithDuration = async () => {
+    const quiz = selectedQuizForPin
+    
+    // Function to create game
+    const createGame = async () => {
+      try {
+        console.log('🎮 Creating live game for quiz:', quiz._id || quiz.id, 'with duration:', pinDuration, 'hours')
+        const response = await gameService.createGame(quiz._id || quiz.id, pinDuration)
+        console.log('✅ Game created successfully:', response)
+        const gameData = response.data.game
+        
+        setShowPinDurationModal(false)
+        
+        // Refresh quiz list sekali saja
+        await fetchMyQuizzes()
+      } catch (error) {
+        console.error('❌ Error creating live game:', error)
+        console.error('Error details:', error.response?.data || error.message)
+        showError('Gagal membuat live game!')
+      }
+    }
+    
+    // Langsung buat game tanpa validasi - semua timer mode bisa pakai PIN
+    createGame()
   }
   
   const handleAkses = (quizId, isPublic) => { 
@@ -153,11 +293,11 @@ const MyQuizzesPage = () => {
       }
       
       await fetchMyQuizzes()
-      alert(`Akses quiz berhasil diubah ke ${selectedQuizAccess === 'public' ? 'Public' : 'Private'}!`)
+      showSuccess(`Akses quiz berhasil diubah ke ${selectedQuizAccess === 'public' ? 'Public' : 'Private'}!`)
       setShowAccessModal(false)
     } catch (error) {
       console.error('Error updating quiz access:', error)
-      alert('Gagal mengubah akses quiz. Coba lagi.')
+      showError('Gagal mengubah akses quiz. Coba lagi.')
     }
   }
   
@@ -174,13 +314,13 @@ const MyQuizzesPage = () => {
     if (file) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        alert('Hanya file gambar yang diperbolehkan!')
+        showWarning('Hanya file gambar yang diperbolehkan!')
         return
       }
       
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert('Ukuran file maksimal 5MB!')
+        showWarning('Ukuran file maksimal 5MB!')
         return
       }
       
@@ -208,7 +348,7 @@ const MyQuizzesPage = () => {
     const file = e.dataTransfer.files[0]
     if (file && file.type.startsWith('image/')) {
       if (file.size > 5 * 1024 * 1024) {
-        alert('Ukuran file maksimal 5MB!')
+        showWarning('Ukuran file maksimal 5MB!')
         return
       }
       
@@ -221,13 +361,13 @@ const MyQuizzesPage = () => {
       }
       reader.readAsDataURL(file)
     } else {
-      alert('Hanya file gambar yang diperbolehkan!')
+      showWarning('Hanya file gambar yang diperbolehkan!')
     }
   }
   
   const handleSaveCover = async () => {
     if (!coverPreview) {
-      alert('Pilih gambar dulu!');
+      showWarning('Pilih gambar dulu!');
       return;
     }
 
@@ -238,7 +378,7 @@ const MyQuizzesPage = () => {
       const quizData = { coverImage: coverPreview };
       await quizService.updateQuiz(selectedQuizForCover, quizData);
 
-      alert('Cover berhasil disimpan!');
+      showSuccess('Cover berhasil disimpan!');
       await fetchMyQuizzes();
       setShowCoverModal(false);
       setCoverPreview(null);
@@ -246,7 +386,7 @@ const MyQuizzesPage = () => {
       setSelectedQuizForCover(null);
     } catch (error) {
       console.error('❌ Upload cover error:', error);
-      alert('Gagal upload cover!');
+      showError('Gagal upload cover!');
     }
   }
 
@@ -254,60 +394,88 @@ const MyQuizzesPage = () => {
   const handleDeleteCover = async () => {
     if (!selectedQuizForCover) return;
     
-    if (window.confirm('Hapus cover quiz?\n\nCover akan dihapus dan background akan kembali ke warna default.')) {
-      try {
-        console.log('⏳ Deleting cover...', selectedQuizForCover)
-        const quizData = { coverImage: null };
-        await quizService.updateQuiz(selectedQuizForCover, quizData);
-        alert('Cover berhasil dihapus!');
-        await fetchMyQuizzes();
-        setShowCoverModal(false);
-        setCoverPreview(null);
-        setSelectedCoverFile(null);
-        setSelectedQuizForCover(null);
-      } catch (error) {
-        console.error('❌ Delete cover error:', error);
-        alert('Gagal hapus cover!');
+    showConfirm({
+      title: 'Hapus cover quiz?',
+      message: 'Cover akan dihapus dan background akan kembali ke warna default.',
+      confirmText: 'Hapus',
+      cancelText: 'Batal',
+      confirmColor: 'red',
+      onConfirm: async () => {
+        try {
+          console.log('⏳ Deleting cover...', selectedQuizForCover)
+          const quizData = { coverImage: null };
+          await quizService.updateQuiz(selectedQuizForCover, quizData);
+          showSuccess('Cover berhasil dihapus!');
+          await fetchMyQuizzes();
+          setShowCoverModal(false);
+          setCoverPreview(null);
+          setSelectedCoverFile(null);
+          setSelectedQuizForCover(null);
+        } catch (error) {
+          console.error('❌ Delete cover error:', error);
+          showError('Gagal hapus cover!');
+        }
       }
-    }
+    });
   }
   
   const handleDelete = async (quizId, quizTitle) => { 
-    if (window.confirm(`Yakin ingin menghapus quiz "${quizTitle}"?\n\nQuiz yang dihapus tidak bisa dikembalikan.`)) { 
-      try { 
-        await quizService.deleteQuiz(quizId)
-        alert('Quiz berhasil dihapus!')
-        fetchMyQuizzes()
-      } catch (err) { 
-        alert('Gagal menghapus quiz!')
+    showConfirm({
+      title: `Hapus quiz "${quizTitle}"?`,
+      message: 'Quiz yang dihapus tidak bisa dikembalikan.',
+      confirmText: 'Hapus',
+      cancelText: 'Batal',
+      confirmColor: 'red',
+      onConfirm: async () => {
+        try { 
+          await quizService.deleteQuiz(quizId)
+          showSuccess('Quiz berhasil dihapus!')
+          fetchMyQuizzes()
+        } catch (err) { 
+          showError('Gagal menghapus quiz!')
+        }
       }
-    }
+    });
     setOpenMenuId(null)
   }
   
   const handlePublish = async (quizId, quizTitle) => { 
-    if (window.confirm(`Publish quiz "${quizTitle}"?\n\nQuiz akan dipindahkan ke "My Quiz" dan siap untuk dimainkan live.`)) { 
-      try { 
-        await quizService.publishQuiz(quizId)
-        alert('Quiz berhasil dipublish!\nQuiz sekarang ada di tab "My Quiz".')
-        fetchMyQuizzes()
-      } catch (err) { 
-        alert('Gagal publish quiz!')
+    showConfirm({
+      title: `Publish quiz "${quizTitle}"?`,
+      message: 'Quiz akan dipindahkan ke "My Quiz" dan siap untuk dimainkan live.',
+      confirmText: 'Publish',
+      cancelText: 'Batal',
+      confirmColor: 'green',
+      onConfirm: async () => {
+        try { 
+          await quizService.publishQuiz(quizId)
+          showSuccess('Quiz berhasil dipublish!\nQuiz sekarang ada di tab "My Quiz".')
+          fetchMyQuizzes()
+        } catch (err) { 
+          showError('Gagal publish quiz!')
+        }
       }
-    }
+    });
     setOpenMenuId(null)
   }
   
   const handleUnpublish = async (quizId, quizTitle) => { 
-    if (window.confirm(`Unpublish quiz "${quizTitle}"?\n\nQuiz akan dikembalikan ke Draft.`)) { 
-      try { 
-        await quizService.unpublishQuiz(quizId)
-        alert('Quiz dikembalikan ke Draft!')
-        fetchMyQuizzes()
-      } catch (err) { 
-        alert('Gagal unpublish quiz!')
+    showConfirm({
+      title: `Unpublish quiz "${quizTitle}"?`,
+      message: 'Quiz akan dikembalikan ke Draft.',
+      confirmText: 'Unpublish',
+      cancelText: 'Batal',
+      confirmColor: 'blue',
+      onConfirm: async () => {
+        try { 
+          await quizService.unpublishQuiz(quizId)
+          showSuccess('Quiz dikembalikan ke Draft!')
+          fetchMyQuizzes()
+        } catch (err) { 
+          showError('Gagal unpublish quiz!')
+        }
       }
-    }
+    });
     setOpenMenuId(null)
   }
   
@@ -317,11 +485,8 @@ const MyQuizzesPage = () => {
   }
   
   const handleShare = quizId => { 
-    // Gunakan production URL jika sudah deploy, atau localhost untuk development
-    // TODO: Ganti dengan URL production Anda setelah deploy (misalnya: https://brainrush.vercel.app atau https://yourdomain.com)
-    const productionUrl = 'https://brainrush.vercel.app' // Ganti dengan URL production Anda
-    const isDevelopment = window.location.hostname === 'localhost'
-    const baseUrl = isDevelopment ? window.location.origin : productionUrl
+    // Gunakan APP_URL dari environment variable atau fallback ke window.location
+    const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin
     const link = `${baseUrl}/take-quiz/${quizId}`
     setShareLink(link)
     setSelectedQuizId(quizId)
@@ -331,7 +496,7 @@ const MyQuizzesPage = () => {
   
   const handleCopyShareLink = () => { 
     navigator.clipboard.writeText(shareLink)
-    alert('Link berhasil dicopy!')
+    showSuccess('Link berhasil dicopy!')
   }
   
   const toggleMenu = quizId => { 
@@ -352,17 +517,27 @@ const MyQuizzesPage = () => {
       </>
     )
     
-    if (activeTab === 'My Quiz') return (
-      <>
-        {/* Tombol Buat Live hanya untuk quiz dengan quizType === 'live' */}
-        {item.quizType === 'live' && (
-          <button onClick={e => { e.stopPropagation(); handleBuatLive(quizId) }} className="w-full px-3 py-2 text-left hover:bg-blue-50 text-blue-600">Buat Live</button>
-        )}
-        <button onClick={e => { e.stopPropagation(); handleShare(quizId) }} className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600">Bagikan Quiz</button>
-        <button onClick={e => { e.stopPropagation(); handleTambahCover(quizId) }} className="w-full px-3 py-2 text-left hover:bg-purple-50 text-purple-600">Tambah Cover</button>
-        <button onClick={e => { e.stopPropagation(); handleUnpublish(quizId, quizTitle) }} className="w-full px-3 py-2 text-left hover:bg-orange-50 text-orange-600">Unpublish</button>
-      </>
-    )
+    if (activeTab === 'My Quiz') {
+      const hasPinActive = item.activePIN && item.pinExpiresAt && new Date(item.pinExpiresAt) > new Date()
+      
+      return (
+        <>
+          {/* Tombol Buat PIN untuk semua quiz (semua timer mode) */}
+          {!hasPinActive && (
+            <button onClick={e => { e.stopPropagation(); handleBuatLive(quizId) }} className="w-full px-3 py-2 text-left hover:bg-blue-50 text-blue-600">Buat PIN Kuis</button>
+          )}
+          {hasPinActive && (
+            <>
+              <button onClick={e => { e.stopPropagation(); handleLihatMonitoring(item) }} className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600">👁️ Lihat Monitoring</button>
+              <button onClick={e => { e.stopPropagation(); handleBatalkanPIN(item) }} className="w-full px-3 py-2 text-left hover:bg-red-50 text-red-600">❌ Batalkan PIN</button>
+            </>
+          )}
+          <button onClick={e => { e.stopPropagation(); handleShare(quizId) }} className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600">Bagikan Quiz</button>
+          <button onClick={e => { e.stopPropagation(); handleTambahCover(quizId) }} className="w-full px-3 py-2 text-left hover:bg-purple-50 text-purple-600">Tambah Cover</button>
+          <button onClick={e => { e.stopPropagation(); handleUnpublish(quizId, quizTitle) }} className="w-full px-3 py-2 text-left hover:bg-orange-50 text-orange-600">Unpublish</button>
+        </>
+      )
+    }
     
     if (activeTab === 'History') return (
       <>
@@ -447,8 +622,14 @@ const MyQuizzesPage = () => {
                       {isDraft && (
                         <div className="absolute top-3 left-3 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10">DRAFT</div>
                       )}
-                      {!isHistory && (item.isPublished || item.status === 'published') && (
-                        <div className="absolute top-3 left-3 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10">PUBLISHED</div>
+                      {!isHistory && !isDraft && item.activePIN && item.pinExpiresAt && new Date(item.pinExpiresAt) > new Date() ? (
+                        <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10 animate-pulse flex items-center gap-1">
+                          🎮 KUIS BERJALAN
+                        </div>
+                      ) : (
+                        !isHistory && !isDraft && (item.isPublished || item.status === 'published') && (
+                          <div className="absolute top-3 left-3 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10">PUBLISHED</div>
+                        )
                       )}
                       {isHistory && (
                         <div className="absolute top-3 left-3 bg-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10 flex items-center gap-1">
@@ -486,6 +667,9 @@ const MyQuizzesPage = () => {
                           }
                           if (activeTab === 'History') {
                             setSelectedHistory(item)
+                          } else if (!isHistory && item.activePIN && item.pinExpiresAt && new Date(item.pinExpiresAt) > new Date()) {
+                            // Kuis sedang berjalan - buka modal detail
+                            handleOpenRunningQuiz(item)
                           } else {
                             handleEdit(quizId)
                           }
@@ -620,6 +804,226 @@ const MyQuizzesPage = () => {
         </main>
       </div>
 
+
+      {/* MODAL KUIS BERJALAN */}
+      <AnimatePresence>
+        {showRunningQuizModal && runningQuizData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowRunningQuizModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl p-8 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-800">{runningQuizData.title}</h2>
+                  <span className="inline-block mt-2 px-3 py-1 bg-red-100 text-red-700 text-sm font-bold rounded-full">
+                    🎮 KUIS BERJALAN
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowRunningQuizModal(false)}
+                  className="text-gray-500 hover:text-gray-700 transition"
+                >
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* PIN dan Countdown */}
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 mb-6">
+                <p className="text-white/80 text-sm mb-2 text-center">Kode PIN</p>
+                <p className="text-white text-5xl font-bold text-center tracking-widest mb-4">{runningQuizData.activePIN}</p>
+                
+                <div className={`rounded-xl p-4 text-center ${
+                  runningQuizTimeLeft <= 0 
+                    ? 'bg-red-100' 
+                    : runningQuizTimeLeft <= 300 
+                    ? 'bg-yellow-100' 
+                    : 'bg-white/20'
+                }`}>
+                  <p className={`text-sm mb-2 ${
+                    runningQuizTimeLeft <= 0 
+                      ? 'text-red-600' 
+                      : runningQuizTimeLeft <= 300 
+                      ? 'text-yellow-700' 
+                      : 'text-white'
+                  }`}>
+                    {runningQuizTimeLeft <= 0 ? 'Waktu Habis!' : 'Sisa Waktu'}
+                  </p>
+                  <p className={`text-4xl font-bold ${
+                    runningQuizTimeLeft <= 0 
+                      ? 'text-red-600' 
+                      : runningQuizTimeLeft <= 300 
+                      ? 'text-yellow-700 animate-pulse' 
+                      : 'text-white'
+                  }`}>
+                    {formatTimeLeft(runningQuizTimeLeft)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Daftar Player */}
+              <div className="mb-6">
+                <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center justify-between">
+                  <span>📋 Player yang Sudah Mengerjakan</span>
+                  <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-sm">
+                    {runningQuizPlayers.length} Player
+                  </span>
+                </h3>
+                
+                {runningQuizPlayers.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-5xl mb-3">👥</div>
+                    <p className="text-gray-600">Belum ada player yang mengerjakan</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto">
+                    {runningQuizPlayers.map((player, index) => (
+                      <div
+                        key={index}
+                        className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 flex items-center gap-3 border border-blue-200"
+                      >
+                        <div className="text-2xl">
+                          {typeof player.avatar === 'object' && player.avatar?.emoji 
+                            ? player.avatar.emoji 
+                            : player.avatar || '👤'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-800 truncate">{player.playerName}</p>
+                          <p className="text-xs text-gray-600">
+                            Join: {new Date(player.joinedAt).toLocaleTimeString('id-ID')}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Info Berakhir */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6 text-center">
+                <p className="text-sm text-gray-600 mb-1">Kuis akan berakhir pada</p>
+                <p className="text-lg font-bold text-gray-800">
+                  {new Date(runningQuizData.pinExpiresAt).toLocaleString('id-ID', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
+                  💡 Setelah waktu habis, hasil otomatis masuk ke History
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleBatalkanPIN(runningQuizData)}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition"
+                >
+                  ❌ Batalkan Kuis
+                </button>
+                <button
+                  onClick={() => setShowRunningQuizModal(false)}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 rounded-xl transition"
+                >
+                  Tutup
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL DURASI PIN */}
+      <AnimatePresence>
+        {showPinDurationModal && (
+          <motion.div
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" 
+            onClick={() => setShowPinDurationModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl p-8 shadow-2xl max-w-md w-full" 
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="text-center mb-6">
+                <div className="text-5xl mb-3">🔑</div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Atur Durasi PIN Kuis</h2>
+                <p className="text-sm text-gray-600">Player dapat join kapan saja selama PIN masih aktif</p>
+              </div>
+              
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Durasi PIN Aktif (jam)</label>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {[1, 2, 4, 8, 12, 24].map(hours => (
+                    <button
+                      key={hours}
+                      onClick={() => setPinDuration(hours)}
+                      className={`px-4 py-3 rounded-xl font-semibold transition ${
+                        pinDuration === hours
+                          ? 'bg-blue-600 text-white shadow-lg'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {hours} jam
+                    </button>
+                  ))}
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <label className="text-sm font-medium text-gray-700">Custom:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="168"
+                    value={pinDuration}
+                    onChange={(e) => setPinDuration(Math.max(1, Math.min(168, parseInt(e.target.value) || 1)))}
+                    className="flex-1 px-4 py-2 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none"
+                  />
+                  <span className="text-sm text-gray-600">jam</span>
+                </div>
+                
+                <p className="text-xs text-gray-500 mt-3">
+                  💡 PIN akan kadaluarsa setelah <span className="font-semibold text-blue-600">{pinDuration} jam</span> dari sekarang
+                </p>
+              </div>
+              
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowPinDurationModal(false)} 
+                  className="flex-1 px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-xl transition"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={handleCreateGameWithDuration} 
+                  className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition"
+                >
+                  Buat PIN
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* MODAL AKSES QUIZ */}
       <AnimatePresence>
@@ -946,6 +1350,38 @@ const MyQuizzesPage = () => {
                 </div>
               </div>
 
+              {/* Daftar Player yang Mengikuti */}
+              {selectedHistory.playerList && selectedHistory.playerList.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-gray-800 mb-4">
+                    📋 Player yang Mengikuti ({selectedHistory.playerList.length})
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto">
+                    {selectedHistory.playerList.map((player, index) => (
+                      <div
+                        key={index}
+                        className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 flex items-center gap-3 border border-blue-200"
+                      >
+                        <div className="text-2xl">
+                          {typeof player.avatar === 'object' && player.avatar?.emoji 
+                            ? player.avatar.emoji 
+                            : player.avatar || '👤'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-800 truncate">{player.playerName}</p>
+                          <p className="text-xs text-gray-600">
+                            Skor: <span className="font-semibold text-blue-600">{player.score || 0}</span>
+                          </p>
+                        </div>
+                        <div className="text-gray-500 font-semibold text-sm">
+                          #{index + 1}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex gap-3">
                 <button 
@@ -965,6 +1401,8 @@ const MyQuizzesPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <Toast {...toast} onClose={hideToast} />
+      <ConfirmDialog {...confirmDialog} onClose={hideConfirm} />
     </DashboardLayout>
   )
 }

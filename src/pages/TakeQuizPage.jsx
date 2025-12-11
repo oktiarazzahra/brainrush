@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { quizService } from '../services/quizService'
 import { learningService } from '../services/learningService'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
 
 const TakeQuizPage = () => {
   const navigate = useNavigate()
   const { quizId } = useParams()
   const location = useLocation()
   const quizData = location.state?.quiz
+  const { toast, showError, hideToast } = useToast()
 
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [answers, setAnswers] = useState({})
@@ -104,52 +107,44 @@ const TakeQuizPage = () => {
         
         // Check for saved progress
         try {
+          console.log('🔍 Checking for saved progress for quiz:', quizId)
           const progressResponse = await learningService.getProgress(quizId)
+          console.log('📡 Progress response:', progressResponse)
+          
           if (progressResponse && progressResponse.data && progressResponse.data.progress) {
             const progress = progressResponse.data.progress
-            console.log('📥 Found saved progress:', progress)
+            console.log('📥 ✅ FOUND SAVED PROGRESS:', {
+              currentQuestionIndex: progress.currentQuestionIndex,
+              answersCount: progress.answers?.length,
+              timeLeft: progress.timeLeft,
+              timerMode: progress.timerMode
+            })
             
             // Restore progress
             setProgressId(progress.id)
             
-            // Restore answers
+            // Restore answers - PENTING: Set dulu sebelum restore question
             const restoredAnswers = {}
             progress.answers.forEach((ans) => {
               const qIndex = formattedQuestions.findIndex(q => q._id === ans.questionId.toString())
               if (qIndex !== -1) {
                 restoredAnswers[qIndex] = ans.userAnswer
+                console.log(`✅ Restored answer for Q${qIndex + 1}:`, ans.userAnswer)
               }
             })
+            
+            console.log('📦 All restored answers:', restoredAnswers)
             setAnswers(restoredAnswers)
             
-            // PENTING: Tentukan soal mana yang harus dikerjakan sekarang
-            // Cari soal pertama yang BELUM dijawab (tidak ada di restoredAnswers)
-            let targetQuestion = progress.currentQuestionIndex
+            // PENTING: Kembali ke soal yang terakhir dikerjakan (bukan soal 1)
+            // Gunakan progress.currentQuestionIndex yang tersimpan
+            const targetQuestion = progress.currentQuestionIndex
             const answeredQuestions = Object.keys(restoredAnswers).length
             
-            // Jika jumlah jawaban < jumlah soal, cari soal pertama yang tidak ada jawabannya
-            if (answeredQuestions < formattedQuestions.length) {
-              for (let i = 0; i < formattedQuestions.length; i++) {
-                if (!(i in restoredAnswers)) {
-                  // Soal ini belum pernah dikerjakan (bahkan belum time up)
-                  targetQuestion = i
-                  break
-                }
-              }
-            } else {
-              // Semua soal sudah dikerjakan (dijawab atau time up)
-              targetQuestion = formattedQuestions.length - 1
-            }
+            console.log(`📌 ✨ RESTORED: Melanjutkan dari soal ${targetQuestion + 1} (${answeredQuestions} soal sudah dijawab dari ${formattedQuestions.length} total)`)
             
-            // Jika semua soal sudah dijawab/dikerjakan, berarti quiz selesai
-            if (answeredQuestions >= formattedQuestions.length) {
-              console.log('✅ All questions processed - finishing quiz')
-              // Auto submit
-              setCurrentQuestion(formattedQuestions.length - 1)
-            } else {
-              setCurrentQuestion(targetQuestion)
-              console.log(`📌 Restored to question ${targetQuestion + 1} (${answeredQuestions}/${formattedQuestions.length} questions processed)`)
-            }
+            // Set current question ke soal yang terakhir dikerjakan
+            setCurrentQuestion(targetQuestion)
             
             // Restore timer state - IKUTI JAM LAPTOP (system time)
             if (progress.quizEndTime) {
@@ -219,25 +214,72 @@ const TakeQuizPage = () => {
             // No notification - langsung lanjut otomatis
             console.log('✅ Progress restored - continuing from question', progress.currentQuestionIndex + 1, 'of', progress.totalQuestions)
           } else {
-            // No saved progress - set initial timer
+            // No saved progress - set initial timer and mark for save
+            console.log('🆕 Starting NEW quiz - no saved progress found')
             if (initialEndTime) {
               setTimerEndTime(initialEndTime)
               const remainingSeconds = Math.ceil((initialEndTime - Date.now()) / 1000)
               setTimeLeft(remainingSeconds)
-              setHasUnsavedProgress(true) // Mark as unsaved to trigger auto-save
               console.log('⏱️ New quiz - timer set to', remainingSeconds, 'seconds, endTime:', new Date(initialEndTime).toISOString())
             }
+            // Mark as unsaved to trigger first auto-save
+            setHasUnsavedProgress(true)
+            
+            // FORCE SAVE untuk quiz baru - buat initial progress entry
+            setTimeout(async () => {
+              console.log('💾 FORCE SAVE: Creating initial progress entry')
+              const answersArray = []
+              const currentTimeLeft = initialEndTime ? Math.ceil((initialEndTime - Date.now()) / 1000) : 0
+              console.log('💾 Saving with timeLeft:', currentTimeLeft, 'timerMode:', mode, 'endTime:', initialEndTime ? new Date(initialEndTime).toISOString() : null)
+              const response = await learningService.saveProgress(
+                quizId,
+                0, // Start dari soal pertama
+                answersArray,
+                formattedQuestions.length,
+                currentTimeLeft,
+                mode,
+                0, // totalTimeSpent starts at 0
+                initialEndTime || null
+              )
+              if (response.data && response.data.progressId) {
+                setProgressId(response.data.progressId)
+                console.log('✅ Initial progress saved with ID:', response.data.progressId)
+              }
+            }, 1000) // Delay 1 detik untuk pastikan state sudah ter-set
           }
         } catch (err) {
-          console.log('No saved progress found or error loading:', err)
+          console.log('⚠️ No saved progress found or error loading:', err.message || err)
           // Set initial timer if no progress found
           if (initialEndTime) {
             setTimerEndTime(initialEndTime)
             const remainingSeconds = Math.ceil((initialEndTime - Date.now()) / 1000)
             setTimeLeft(remainingSeconds)
-            setHasUnsavedProgress(true) // Mark as unsaved to trigger auto-save
             console.log('⏱️ New quiz (error fallback) - timer set to', remainingSeconds, 'seconds, endTime:', new Date(initialEndTime).toISOString())
           }
+          // Mark as unsaved to trigger first auto-save
+          setHasUnsavedProgress(true)
+          
+          // FORCE SAVE untuk quiz baru - buat initial progress entry
+          setTimeout(async () => {
+            console.log('💾 FORCE SAVE (error fallback): Creating initial progress entry')
+            const answersArray = []
+            const currentTimeLeft = initialEndTime ? Math.ceil((initialEndTime - Date.now()) / 1000) : 0
+            console.log('💾 Saving with timeLeft:', currentTimeLeft, 'timerMode:', mode, 'endTime:', initialEndTime ? new Date(initialEndTime).toISOString() : null)
+            const response = await learningService.saveProgress(
+              quizId,
+              0, // Start dari soal pertama
+              answersArray,
+              formattedQuestions.length,
+              currentTimeLeft,
+              mode,
+              0, // totalTimeSpent starts at 0
+              initialEndTime || null
+            )
+            if (response.data && response.data.progressId) {
+              setProgressId(response.data.progressId)
+              console.log('✅ Initial progress saved with ID:', response.data.progressId)
+            }
+          }, 1000) // Delay 1 detik untuk pastikan state sudah ter-set
         }
         
         setLoading(false)
@@ -307,27 +349,30 @@ const TakeQuizPage = () => {
     return () => clearInterval(timer)
   }, [currentQuestion, loading, quizFinished, questions.length, timerMode, timerEndTime])
 
-  // Auto-save progress every 3 seconds for real-time sync
+  // Auto-save when hasUnsavedProgress changes (instant save)
   useEffect(() => {
     if (loading || quizFinished || !questions.length) return
+    if (!hasUnsavedProgress) return
     
-    const autoSaveInterval = setInterval(() => {
-      if (hasUnsavedProgress) {
-        saveCurrentProgress()
-      }
-    }, 3000) // Auto-save every 3 seconds for real-time
+    // Debounce save untuk avoid multiple calls terlalu cepat
+    const saveTimeout = setTimeout(async () => {
+      console.log('💾 Auto-save triggered (answer changed)')
+      await saveCurrentProgress()
+    }, 500) // Delay 500ms untuk debounce
 
-    return () => clearInterval(autoSaveInterval)
-  }, [loading, quizFinished, questions.length, hasUnsavedProgress, answers, timeLeft])
+    return () => clearTimeout(saveTimeout)
+  }, [hasUnsavedProgress])
 
   // Save progress before page unload (browser close/reload)
   useEffect(() => {
-    const handleBeforeUnload = () => {
+    const handleBeforeUnload = (e) => {
       if (hasUnsavedProgress && !quizFinished) {
         // Simpan progress untuk semua mode
-        // Note: Untuk timer mode, quiz akan auto-submit saat timeLeft = 0
-        // atau saat user klik tombol "Keluar" secara manual
+        console.log('🚪 Page unload - saving progress')
+        // Use navigator.sendBeacon for reliable save on page unload
         saveCurrentProgress()
+        // Note: Modern browsers may not allow async operations here
+        // So we also rely on the instant auto-save when answers change
       }
     }
 
@@ -456,26 +501,36 @@ const TakeQuizPage = () => {
       } else if (q.type === 'Benar Salah') {
         // True/False - handle both string and boolean
         // PENTING: Jika tidak dijawab (null/undefined), otomatis salah
-        if (userAnswer === null || userAnswer === undefined) {
+        if (userAnswer === null || userAnswer === undefined || userAnswer === '') {
           isCorrect = false
           formattedAnswer = null
           console.log('True/False: Tidak dijawab - otomatis salah')
         } else {
-          const correctBool = q.correctAnswer === true || q.correctAnswer === 'true'
-          const userBool = userAnswer === true || userAnswer === 'true'
+          const correctBool = q.correctAnswer === true || q.correctAnswer === 'true' || q.correctAnswer === true
+          const userBool = userAnswer === true || userAnswer === 'true' || userAnswer === 'Benar'
           isCorrect = correctBool === userBool
           formattedAnswer = userAnswer
           console.log('True/False:', { correct: q.correctAnswer, user: userAnswer, correctBool, userBool, isCorrect })
         }
       } else if (q.type === 'Isian') {
         // Short answer - case insensitive
-        if (userAnswer && q.acceptedAnswers && q.acceptedAnswers.length > 0) {
+        // PENTING: Jika tidak dijawab atau kosong, otomatis salah
+        if (!userAnswer || typeof userAnswer !== 'string' || userAnswer.trim() === '') {
+          isCorrect = false
+          formattedAnswer = ''
+          console.log('Short answer: Tidak dijawab atau kosong - otomatis salah')
+        } else if (q.acceptedAnswers && q.acceptedAnswers.length > 0) {
           isCorrect = q.acceptedAnswers.some(
             ans => ans.toLowerCase() === userAnswer.toLowerCase().trim()
           )
+          formattedAnswer = userAnswer.trim()
+          console.log('Short answer:', { accepted: q.acceptedAnswers, user: userAnswer, isCorrect })
+        } else {
+          // Jika tidak ada acceptedAnswers, anggap salah
+          isCorrect = false
+          formattedAnswer = userAnswer.trim()
+          console.log('Short answer: No accepted answers defined')
         }
-        formattedAnswer = userAnswer || ''
-        console.log('Short answer:', { accepted: q.acceptedAnswers, user: userAnswer, isCorrect })
       }
 
       console.log(`Result: ${isCorrect ? '✅ CORRECT' : '❌ WRONG'}`)
@@ -517,13 +572,14 @@ const TakeQuizPage = () => {
       setSubmitting(false)
       // Still show results even if submission fails
       setQuizFinished(true)
-      alert('Gagal menyimpan hasil ke server, tapi hasil tetap ditampilkan.')
+      showError('Gagal menyimpan hasil ke server, tapi hasil tetap ditampilkan.')
     }
   }
 
   // Auto-save progress
   const saveCurrentProgress = async () => {
     if (!quiz || questions.length === 0) return
+    if (submitting) return // Don't save if quiz is being submitted
     
     try {
       // Convert answers to backend format
@@ -573,8 +629,6 @@ const TakeQuizPage = () => {
 
   // Handle answer selection
   const handleAnswerSelect = (optionIndex) => {
-    setHasUnsavedProgress(true)
-    
     if (currentQ.multi) {
       const current = answers[currentQuestion] || []
       if (current.includes(optionIndex)) {
@@ -594,15 +648,20 @@ const TakeQuizPage = () => {
         [currentQuestion]: [optionIndex]
       })
     }
+    
+    // Trigger save after answer is set
+    setHasUnsavedProgress(true)
   }
 
   // Handle true/false
   const handleTrueFalse = (value) => {
-    setHasUnsavedProgress(true)
     setAnswers({
       ...answers,
       [currentQuestion]: value
     })
+    
+    // Trigger save after answer is set
+    setHasUnsavedProgress(true)
   }
 
   // Handle next
@@ -615,17 +674,17 @@ const TakeQuizPage = () => {
     }))
 
     if (currentQuestion < questions.length - 1) {
-      // Save progress before moving to next question
-      if (hasUnsavedProgress) {
-        await saveCurrentProgress()
-      }
+      const nextQuestionIndex = currentQuestion + 1
       
-      setCurrentQuestion(currentQuestion + 1)
+      console.log(`➡️ Moving from Q${currentQuestion + 1} to Q${nextQuestionIndex + 1}`)
+      
+      // PENTING: Pindah ke soal berikutnya DULU
+      setCurrentQuestion(nextQuestionIndex)
       
       // Reset timer based on mode - PENTING: waktu soal sebelumnya HABIS, tidak bisa balik
       if (timerMode === 'per-question') {
         // Per-question mode: MULAI TIMER BARU untuk soal berikutnya
-        const nextQuestionTime = questions[currentQuestion + 1].timeLimit
+        const nextQuestionTime = questions[nextQuestionIndex].timeLimit
         const newEndTime = Date.now() + (nextQuestionTime * 1000)
         setTimeLeft(nextQuestionTime)
         setTimerEndTime(newEndTime)
@@ -633,13 +692,20 @@ const TakeQuizPage = () => {
         console.log('⏱️ Next question - TIMER BARU:', nextQuestionTime, 'seconds (soal sebelumnya sudah tidak bisa diakses)')
       } else if (timerMode === 'total-time') {
         // Total-time mode: timer keeps counting down (don't update timerEndTime)
+        setHasUnsavedProgress(true) // Mark untuk auto-save
         console.log('⏱️ Total-time mode: continuing countdown')
+      } else {
+        // No timer mode
+        setHasUnsavedProgress(true) // Mark untuk auto-save
       }
-      // For 'none' mode, no timer updates needed
       
       setQuestionStartTime(Date.now())
+      
+      // Auto-save akan trigger dalam 3 detik dari useEffect
+      // Atau manual save saat beforeunload
     } else {
       // Last question - calculate and submit
+      console.log('🏁 Last question - submitting quiz')
       calculateScoreAndSubmit()
     }
   }
@@ -965,7 +1031,10 @@ const TakeQuizPage = () => {
                 <input
                   type="text"
                   value={currentAnswer || ''}
-                  onChange={(e) => setAnswers({ ...answers, [currentQuestion]: e.target.value })}
+                  onChange={(e) => {
+                    setHasUnsavedProgress(true)
+                    setAnswers({ ...answers, [currentQuestion]: e.target.value })
+                  }}
                   placeholder="Ketik jawaban kamu..."
                   className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl text-base focus:outline-none focus:border-blue-500 shadow-md"
                 />
@@ -978,25 +1047,42 @@ const TakeQuizPage = () => {
                 Soal {currentQuestion + 1} dari {questions.length}
               </div>
 
-              {(currentAnswer !== undefined && currentAnswer !== null) ? (
-                <button
-                  onClick={handleNext}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl transition shadow-md"
-                >
-                  {currentQuestion < questions.length - 1 ? 'Selanjutnya →' : 'Selesai'}
-                </button>
-              ) : (
-                <button
-                  disabled
-                  className="bg-gray-400 text-gray-600 font-bold px-8 py-3 rounded-xl cursor-not-allowed opacity-50"
-                >
-                  {currentAnswer === null ? 'Tidak Dijawab (Waktu Habis)' : 'Jawab dulu untuk lanjut'}
-                </button>
-              )}
+              {(() => {
+                // Validasi jawaban berdasarkan tipe soal
+                let isAnswered = false
+                
+                if (currentQ.type === 'Pilihan Ganda') {
+                  // Multiple choice: harus ada minimal 1 pilihan
+                  isAnswered = Array.isArray(currentAnswer) && currentAnswer.length > 0
+                } else if (currentQ.type === 'Benar Salah') {
+                  // True/False: harus pilih true atau false (tidak boleh null/undefined)
+                  isAnswered = currentAnswer === true || currentAnswer === false
+                } else if (currentQ.type === 'Isian') {
+                  // Short answer: harus isi text (tidak boleh kosong)
+                  isAnswered = typeof currentAnswer === 'string' && currentAnswer.trim().length > 0
+                }
+                
+                return isAnswered ? (
+                  <button
+                    onClick={handleNext}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl transition shadow-md"
+                  >
+                    {currentQuestion < questions.length - 1 ? 'Selanjutnya →' : 'Selesai'}
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    className="bg-gray-400 text-gray-600 font-bold px-8 py-3 rounded-xl cursor-not-allowed opacity-50"
+                  >
+                    {currentAnswer === null ? 'Tidak Dijawab (Waktu Habis)' : 'Jawab dulu untuk lanjut'}
+                  </button>
+                )
+              })()}
             </div>
           </div>
         </div>
       </div>
+      <Toast {...toast} onClose={hideToast} />
     </div>
   )
 }

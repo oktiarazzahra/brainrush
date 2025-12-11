@@ -2,9 +2,13 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import AdminLayout from '../components/AdminLayout'
 import { supportService } from '../services/supportService'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
 
 const AdminSupportPage = () => {
   const [tickets, setTickets] = useState([])
+  const { toast, showSuccess, showError, showWarning, hideToast } = useToast()
+
   const [loading, setLoading] = useState(true)
   const [selectedTicket, setSelectedTicket] = useState(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -40,7 +44,7 @@ const AdminSupportPage = () => {
       calculateStats(response.data.tickets)
     } catch (error) {
       console.error('Error fetching tickets:', error)
-      alert('Gagal memuat data laporan')
+      showError('Gagal memuat data laporan')
     } finally {
       setLoading(false)
     }
@@ -59,25 +63,25 @@ const AdminSupportPage = () => {
   const handleUpdateStatus = async (ticketId, newStatus) => {
     try {
       await supportService.updateTicket(ticketId, { status: newStatus })
-      alert('Status laporan berhasil diupdate!')
+      showSuccess('Status laporan berhasil diupdate!')
       fetchTickets()
       if (selectedTicket && selectedTicket._id === ticketId) {
         setSelectedTicket({ ...selectedTicket, status: newStatus })
       }
     } catch (error) {
       console.error('Error updating ticket:', error)
-      alert('Gagal update status laporan')
+      showError('Gagal update status laporan')
     }
   }
 
   const handleUpdatePriority = async (ticketId, newPriority) => {
     try {
       await supportService.updateTicket(ticketId, { priority: newPriority })
-      alert('Priority laporan berhasil diupdate!')
+      showSuccess('Priority laporan berhasil diupdate!')
       fetchTickets()
     } catch (error) {
       console.error('Error updating priority:', error)
-      alert('Gagal update priority')
+      showError('Gagal update priority')
     }
   }
 
@@ -107,7 +111,7 @@ const AdminSupportPage = () => {
 
   const handleSendReply = async () => {
     if (!replyMessage.trim()) {
-      alert('Pesan balasan tidak boleh kosong!')
+      showWarning('Pesan balasan tidak boleh kosong!')
       return
     }
 
@@ -117,12 +121,12 @@ const AdminSupportPage = () => {
         subject: replySubject,
         message: replyMessage
       })
-      alert('✅ Balasan berhasil dikirim via email!')
+      showSuccess('✅ Balasan berhasil dikirim via email!')
       closeReplyModal()
       closeDetailModal()
     } catch (error) {
       console.error('Error sending reply:', error)
-      alert('❌ Gagal mengirim balasan: ' + (error.response?.data?.message || error.message))
+      showError('❌ Gagal mengirim balasan: ' + (error.response?.data?.message || error.message))
     } finally {
       setSendingReply(false)
     }
@@ -565,6 +569,7 @@ const AdminSupportPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <Toast {...toast} onClose={hideToast} />
     </AdminLayout>
   )
 }

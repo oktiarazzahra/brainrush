@@ -5,10 +5,17 @@ import { useNavigate } from 'react-router-dom'
 import DashboardCard from '../components/DashboardCard'
 import { quizService } from '../services/quizService'
 import { authService } from '../services/authService'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
+import useConfirm from '../hooks/useConfirm'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 
 const DashboardPage = () => {
   const navigate = useNavigate()
+  const { toast, showSuccess, showError, showWarning, hideToast } = useToast()
+  const { confirmDialog, showConfirm, hideConfirm } = useConfirm()
+
   const [activeCategory, setActiveCategory] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [pinInput, setPinInput] = useState('')
@@ -92,7 +99,7 @@ const DashboardPage = () => {
   // Handle join langsung ke waiting room dari dashboard dengan PIN
   const handleJoinWithPIN = () => {
     if (!pinInput.trim()) {
-      alert("Masukkan PIN yang valid!")
+      showWarning("Masukkan PIN yang valid!")
       return
     }
     // Navigate to join page untuk pilih avatar dan nama
@@ -107,7 +114,16 @@ const DashboardPage = () => {
 
   // Handle klik quiz card untuk masuk ke take quiz
   const handleQuizClick = (quiz) => {
-    navigate(`/take-quiz/${quiz._id}`, { state: { quiz } })
+    showConfirm({
+      title: 'Mulai Quiz?',
+      message: `Apakah Anda siap mengerjakan "${quiz.title}"?\n\nKategori: ${quiz.category}\nJumlah Soal: ${quiz.questions?.length || 0}`,
+      confirmText: 'Mulai',
+      cancelText: 'Batal',
+      confirmColor: 'blue',
+      onConfirm: () => {
+        navigate(`/take-quiz/${quiz._id}`, { state: { quiz } })
+      }
+    })
   }
 
 
@@ -242,6 +258,17 @@ const DashboardPage = () => {
           </>
         )}
       </div>
+      <ConfirmDialog 
+        isOpen={confirmDialog.isOpen}
+        onClose={hideConfirm}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        confirmColor={confirmDialog.confirmColor}
+      />
+      <Toast {...toast} onClose={hideToast} />
     </DashboardLayout>
   )
 }

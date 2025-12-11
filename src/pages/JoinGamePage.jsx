@@ -6,35 +6,43 @@ import AvatarSelector from '../components/AvatarSelector'
 import NameInput from '../components/NameInput'
 import Button from '../components/Button'
 import { gameService } from '../services/gameService'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
 
 const JoinGamePage = ({ onBack, onJoinNow }) => {
   const navigate = useNavigate()
   const location = useLocation()
+  const { toast, showSuccess, showError, showWarning, hideToast } = useToast()
+
   const { pin, fromDashboard } = location.state || {}
   
   const [selectedAvatar, setSelectedAvatar] = useState(0)
   const [playerName, setPlayerName] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // Avatar options dengan emoji dan warna
- const avatars = [
-  { emoji: '🍓', color: 'bg-pink-500', name: 'Strawberry' },
-  { emoji: '🤖', color: 'bg-blue-500', name: 'Robot' },
-  { emoji: '👽', color: 'bg-purple-500', name: 'Alien' },
-  { emoji: '🦄', color: 'bg-yellow-500', name: 'Unicorn' },
-  { emoji: '🐺', color: 'bg-gray-700', name: 'Wolf' },
-  { emoji: '🐸', color: 'bg-green-500', name: 'Frog' }
-]
+  // Avatar options dengan emoji dan warna - harus sama dengan AvatarSelector
+  const avatars = [
+    { emoji: '🍓', color: 'bg-pink-500', name: 'Strawberry' },
+    { emoji: '🤖', color: 'bg-blue-500', name: 'Robot' },
+    { emoji: '👽', color: 'bg-purple-500', name: 'Alien' },
+    { emoji: '🦄', color: 'bg-indigo-400', name: 'Unicorn' },
+    { emoji: '🦁', color: 'bg-yellow-600', name: 'Lion' },
+    { emoji: '🐸', color: 'bg-green-500', name: 'Frog' },
+    { emoji: '🐺', color: 'bg-gray-700', name: 'Wolf' },
+    { emoji: '🐬', color: 'bg-teal-400', name: 'Dolphin' },
+    { emoji: '🦉', color: 'bg-amber-500', name: 'Owl' },
+    { emoji: '🌟', color: 'bg-yellow-300', name: 'Star' }
+  ]
 
 
   const handleJoinNow = async () => {
     if (!playerName.trim()) {
-      alert('Masukkan nama kamu dulu!')
+      showWarning('Masukkan nama kamu dulu!')
       return
     }
     
     if (!pin) {
-      alert('PIN tidak ditemukan!')
+      showError('PIN tidak ditemukan!')
       return
     }
     
@@ -52,13 +60,15 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
         response = await gameService.joinGameAsGuest(pin, playerName.trim(), avatarData)
       }
       
-      // Navigate to player waiting room
-      navigate('/playerwaitingroom', {
+      // Navigate directly to player gameplay (self-paced)
+      navigate('/playergameplay', {
         state: {
           gameId: response.data.game.id,
           pin: pin,
           playerName: playerName.trim(),
           avatar: avatarData,
+          quiz: response.data.game.quiz,
+          pinExpiresAt: response.data.game.pinExpiresAt,
           fromDashboard: fromDashboard,
           isGuest: response.data.player?.isGuest || false
         }
@@ -66,7 +76,7 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
     } catch (error) {
       console.error('Error joining game:', error)
       const errorMessage = error.response?.data?.message || 'Gagal join game. Silakan coba lagi.'
-      alert(errorMessage)
+      showError(errorMessage)
       setLoading(false)
     }
   }
@@ -169,6 +179,7 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
       </main>
 
       <Footer />
+      <Toast {...toast} onClose={hideToast} />
     </div>
   )
 }

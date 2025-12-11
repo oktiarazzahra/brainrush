@@ -7,7 +7,7 @@ import socketService from '../services/socketService'
 const PlayerGameplayPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { gameId, pin, playerName, avatar, isGuest } = location.state || {}
+  const { gameId, pin, playerName, avatar, isGuest, pinExpiresAt } = location.state || {}
 
   const [currentQuestion, setCurrentQuestion] = useState(null)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
@@ -17,21 +17,20 @@ const PlayerGameplayPage = () => {
   const [myScore, setMyScore] = useState(0)
   const [feedback, setFeedback] = useState('')
   const [loading, setLoading] = useState(true)
-  const [waitingForNext, setWaitingForNext] = useState(false)
   const [gameData, setGameData] = useState(null)
-  const [showLeaderboard, setShowLeaderboard] = useState(false)
-  const [leaderboard, setLeaderboard] = useState([])
-  const [timeLeft, setTimeLeft] = useState(30)
+  const [timeLeft, setTimeLeft] = useState(0)
+  const [timerMode, setTimerMode] = useState('none') // 'none', 'per-question', 'total-time'
   const [timerActive, setTimerActive] = useState(false)
   const [timerEndTime, setTimerEndTime] = useState(null) // Absolute end time for accuracy
   const [quizCompleted, setQuizCompleted] = useState(false) // Track if player finished all questions
-  const [answerSaved, setAnswerSaved] = useState(false) // Track if answer is auto-saved
   
   // Use ref to track if timer has been initialized for current question
   const timerInitialized = useRef(false)
   const autoSaveTimeoutRef = useRef(null) // For debouncing auto-save on text input
   const selectedAnswerRef = useRef(null) // Keep track of latest answer for timer expiration
   const hasAnsweredRef = useRef(false) // Keep track of latest hasAnswered value for timer
+  const questionIndexRef = useRef(currentQuestionIndex) // Track current question to prevent stale timer triggers
+  const isFirstLoadRef = useRef(true) // Track if this is the first load ever
 
   useEffect(() => {
     if (!gameId || !pin || !playerName) {
@@ -47,28 +46,31 @@ const PlayerGameplayPage = () => {
 
     // Listen for question changes
     socketService.onQuestionChanged(({ questionIndex }) => {
-      console.log(`➡️ Moving to question ${questionIndex}`)
+      console.log(`➡️ Socket: Moving to question ${questionIndex}`)
       
-      // Only reset state if actually moving to a different question
-      setCurrentQuestionIndex(prevIndex => {
-        if (prevIndex !== questionIndex) {
-          // Moving to new question - reset all state including timer
-          setHasAnswered(false)
-          hasAnsweredRef.current = false
-          setSelectedAnswer(null)
-          selectedAnswerRef.current = null // Reset ref
-          setIsCorrect(null)
-          setFeedback('')
-          setWaitingForNext(false)
-          setShowLeaderboard(false)
-          setTimerActive(false)
-          setTimerEndTime(null) // Reset timer for new question
-          setAnswerSaved(false) // Reset auto-save flag
-          timerInitialized.current = false // Allow timer to be initialized for new question
-        }
-        // If same question (resync), don't reset - loadGameData will restore answered state
-        return questionIndex
-      })
+      // Update ref immediately untuk stop old timer
+      questionIndexRef.current = questionIndex
+      
+      // Delay update ke soal baru untuk memberi waktu player process submit
+      setTimeout(() => {
+        setCurrentQuestionIndex(prevIndex => {
+          if (prevIndex !== questionIndex) {
+            console.log(`🔄 Changing question from ${prevIndex} to ${questionIndex}`)
+            // Moving to new question - reset all state including timer
+            setHasAnswered(false)
+            hasAnsweredRef.current = false
+            setSelectedAnswer(null)
+            selectedAnswerRef.current = null
+            setIsCorrect(null)
+            setFeedback('')
+            setTimerActive(false)
+            setTimerEndTime(null)
+            // Reset draft state so player bisa lanjut jawab
+            timerInitialized.current = false // IMPORTANT: Reset timer flag
+          }
+          return questionIndex
+        })
+      }, 500) // Delay untuk buffer proses submit player
     })
 
     // Listen for game ended
@@ -101,43 +103,75 @@ const PlayerGameplayPage = () => {
         clearTimeout(autoSaveTimeoutRef.current)
       }
     }
+
+    // Jangan polling - bisa menyebabkan race condition
+    // Socket event + auto-check di loadGameData sudah cukup
+
+    return () => {
+      clearTimeout(autoSaveTimeoutRef.current)
+    }
   }, [gameId, pin, playerName, navigate])
 
   // Load question when currentQuestionIndex changes
   useEffect(() => {
     if (gameId) {
+      // Reset timer flag saat pindah soal agar timer bisa di-init ulang
+      timerInitialized.current = false
+      questionIndexRef.current = currentQuestionIndex // Update ref
       loadGameData()
     }
   }, [currentQuestionIndex, gameId]) // ✅ Added gameId to dependencies
 
   // Timer countdown with system time for accuracy
   useEffect(() => {
-    if (!timerActive || !timerEndTime) return
+    // Jangan jalankan timer saat loading atau timer tidak aktif
+    if (loading || !timerActive || !timerEndTime) return
+
+    let hasTriggered = false // Prevent double trigger
+    const capturedQuestionIndex = currentQuestionIndex // Capture current question index
 
     const timer = setInterval(() => {
+      // PENTING: Cek apakah masih di soal yang sama
+      if (questionIndexRef.current !== capturedQuestionIndex) {
+        console.log('⚠️ Question changed, stopping timer for old question');
+        clearInterval(timer);
+        return;
+      }
+
       const now = Date.now()
       const remainingMs = timerEndTime - now
       const remainingSec = Math.ceil(remainingMs / 1000)
 
-      if (remainingSec <= 0) {
-        console.log('⏰ Timer reached 0, stopping timer');
-        setTimeLeft(0);
-        setTimerActive(false);
-        clearInterval(timer);
-        // Time's up - auto submit and show feedback
-        if (!hasAnsweredRef.current) {
-          console.log('⏰ Calling handleTimeExpire...');
-          handleTimeExpire();
+      if (remainingSec <= 0 && !hasTriggered) {
+        hasTriggered = true
+        console.log('⏰ Timer reached 0 for question', capturedQuestionIndex);
+        
+        // Double check masih di soal yang sama sebelum submit
+        if (questionIndexRef.current === capturedQuestionIndex) {
+          setTimeLeft(0);
+          setTimerActive(false);
+          clearInterval(timer);
+          // Time's up - auto submit after small delay to ensure UI ready
+          if (!hasAnsweredRef.current) {
+            console.log('⏰ Calling handleTimeExpire for question', capturedQuestionIndex, 'with 300ms delay');
+            setTimeout(() => {
+              handleTimeExpire();
+            }, 300) // Delay agar soal benar-benar siap, match dengan host delay
+          } else {
+            console.log('⏰ Already answered, not calling handleTimeExpire');
+          }
         } else {
-          console.log('⏰ Already answered, not calling handleTimeExpire');
+          console.log('⚠️ Question changed before timer expire, skipping handleTimeExpire');
         }
-      } else {
+      } else if (remainingSec > 0) {
         setTimeLeft(remainingSec);
       }
     }, 100) // Update every 100ms for smooth display
 
-    return () => clearInterval(timer)
-  }, [timerActive, timerEndTime])
+    return () => {
+      clearInterval(timer)
+    }
+  }, [loading, timerActive, timerEndTime, currentQuestionIndex]) // Tambah dependencies agar timer reset saat pindah soal
 
   const loadGameData = async () => {
     try {
@@ -150,8 +184,38 @@ const PlayerGameplayPage = () => {
       
       const game = response.data.game
       setGameData(game)
+      
+      // Untuk total-time dan none mode: gunakan currentQuestionIndex lokal (manual navigation)
+      // Untuk per-question: sync ke backend (auto-move)
+      const timerMode = game.quiz.timerMode || 'per-question'
+      let questionIndexToUse = currentQuestionIndex
 
-      const currentQ = game.quiz.questions[currentQuestionIndex]
+      if (timerMode === 'per-question') {
+        // Per-question: sync ke backend (auto-move)
+        const backendIndex = game.currentQuestion || 0
+        questionIndexToUse = backendIndex
+
+        if (backendIndex !== currentQuestionIndex) {
+          setCurrentQuestionIndex(backendIndex)
+        }
+
+        if (isFirstLoadRef.current) {
+          console.log('📍 First load: syncing to backend question:', backendIndex)
+          isFirstLoadRef.current = false
+        } else {
+          console.log('📍 Sync question index to backend:', backendIndex)
+        }
+      } else {
+        // Total-time atau none: gunakan index lokal (manual navigation dengan Next/Back)
+        if (isFirstLoadRef.current) {
+          console.log('📍 First load (total-time/none): starting at question:', currentQuestionIndex)
+          isFirstLoadRef.current = false
+        } else {
+          console.log('📍 Total-time/none mode: using local index:', currentQuestionIndex)
+        }
+      }
+
+      const currentQ = game.quiz.questions[questionIndexToUse]
       setCurrentQuestion(currentQ)
       
       // Get my current score and check if already answered current question
@@ -180,93 +244,115 @@ const PlayerGameplayPage = () => {
           // Restore the saved answer and state
           setSelectedAnswer(savedAnswer?.answer)
           selectedAnswerRef.current = savedAnswer?.answer // Update ref
-          setAnswerSaved(true)
           
           // Check if it's a final submission or just auto-saved
           if (savedAnswer?.answeredAt && !savedAnswer?.autoSaved) {
-            // Final submission - show results
+            // Final submission - jawaban sudah di-submit, jangan tampilkan benar/salah
             setHasAnswered(true)
             hasAnsweredRef.current = true
-            setIsCorrect(savedAnswer?.isCorrect)
-            setWaitingForNext(true)
+            setIsCorrect(null) // Jangan set hasil
             setTimerActive(false)
-            setFeedback(savedAnswer?.isCorrect ? 'Benar! 🎉' : 'Salah 😢')
           } else {
             // Just auto-saved, timer should still be running
             setHasAnswered(false)
             hasAnsweredRef.current = false
             setIsCorrect(null)
-            setWaitingForNext(false)
             // Timer will be initialized below
           }
         } else {
           // Player hasn't answered - reset state
-          setAnswerSaved(false)
+          // Keep answer unlocked
         }
         
         // Setup timer if not yet answered (final submission)
-        if (!alreadyAnswered || (alreadyAnswered && !me.answers.find(ans => 
+        const shouldInitTimer = !alreadyAnswered || (alreadyAnswered && !me.answers.find(ans => 
           ans.questionId?.toString() === currentQuestionId
-        )?.answeredAt)) {
-          // Player hasn't submitted final answer - setup timer only once per question
-          if (!timerInitialized.current) {
-            const timerMode = game.quiz.timerMode || 'per-question'
+        )?.answeredAt)
+        
+        // Set timer mode once (stays stable like host)
+        const mode = game.quiz.timerMode || 'per-question'
+        if (!timerMode || timerMode === 'none') {
+          setTimerMode(mode)
+        }
+        
+        if (shouldInitTimer && !timerInitialized.current) {
+          // Player hasn't submitted final answer - setup timer
+          const timerMode = mode
+          
+          if (timerMode === 'total-time') {
+            // Total time mode: countdown from quiz total time
+            // Gunakan joinedAt player (bukan game.startedAt) karena self-paced
+            const totalTimeLimit = game.quiz.totalTime || 1800
             
-            if (timerMode === 'total-time') {
-              // Total time mode: countdown from quiz total time
-              const totalTimeLimit = game.quiz.totalTime || 1800 // Default 30 minutes
+            if (me.joinedAt) {
+              // Player sudah pernah join - restore timer dari joinedAt
+              const startTime = new Date(me.joinedAt).getTime()
+              const endTime = startTime + (totalTimeLimit * 1000)
+              const now = Date.now()
+              const remaining = Math.ceil((endTime - now) / 1000)
               
-              if (game.startedAt) {
-                const startTime = new Date(game.startedAt).getTime()
-                const endTime = startTime + (totalTimeLimit * 1000)
-                setTimerEndTime(endTime)
-                
-                const now = Date.now()
-                const remaining = Math.ceil((endTime - now) / 1000)
-                setTimeLeft(Math.max(0, remaining))
-                setTimerActive(true)
-                
-                console.log('⏱️ Total-time mode:', { totalTimeLimit, remaining })
-              } else {
-                const endTime = Date.now() + (totalTimeLimit * 1000)
-                setTimerEndTime(endTime)
-                setTimeLeft(totalTimeLimit)
-                setTimerActive(true)
-              }
-              timerInitialized.current = true
-            } else if (timerMode === 'per-question') {
-              // Per-question mode: use question time limit
-              const questionTimeLimit = currentQ?.timeLimit
+              console.log('⏱️ Init Total-time (restore from joinedAt):', { 
+                totalTimeLimit, 
+                remaining,
+                joinedAt: me.joinedAt 
+              })
               
-              if (questionTimeLimit && game.questionStartedAt) {
-                const startTime = new Date(game.questionStartedAt).getTime()
-                const endTime = startTime + (questionTimeLimit * 1000)
-                setTimerEndTime(endTime)
-                
-                const now = Date.now()
-                const remaining = Math.ceil((endTime - now) / 1000)
-                setTimeLeft(Math.max(0, remaining))
-                setTimerActive(true)
-                
-                console.log('⏱️ Per-question mode:', { questionTimeLimit, remaining })
-                timerInitialized.current = true
-              } else if (questionTimeLimit) {
-                const endTime = Date.now() + (questionTimeLimit * 1000)
-                setTimerEndTime(endTime)
-                setTimeLeft(questionTimeLimit)
-                setTimerActive(true)
-                timerInitialized.current = true
-              } else {
-                setTimeLeft(0)
-                setTimerActive(false)
-                setTimerEndTime(null)
-              }
+              // Set all timer state at once to prevent flicker
+              setTimerEndTime(endTime)
+              setTimeLeft(Math.max(0, remaining))
+              setTimerActive(remaining > 0)
             } else {
-              // No timer mode
+              // First time - should not happen karena joinedAt auto-set saat join
+              const endTime = Date.now() + (totalTimeLimit * 1000)
+              console.log('⏱️ Init Total-time (fresh start):', { totalTimeLimit })
+              setTimerEndTime(endTime)
+              setTimeLeft(totalTimeLimit)
+              setTimerActive(true)
+            }
+            timerInitialized.current = true
+          } else if (timerMode === 'per-question') {
+            // Per-question mode: use question time limit
+            const questionTimeLimit = currentQ?.timeLimit
+            
+            // Gunakan questionStartedAt dari player (bukan global game) untuk restore saat refresh
+            if (questionTimeLimit && me.questionStartedAt) {
+              const startTime = new Date(me.questionStartedAt).getTime()
+              const endTime = startTime + (questionTimeLimit * 1000)
+              const now = Date.now()
+              const remaining = Math.ceil((endTime - now) / 1000)
+              
+              console.log('⏱️ Init Per-question (restore from player timer):', { 
+                questionTimeLimit, 
+                remaining, 
+                questionIndex: questionIndexToUse,
+                playerStartedAt: me.questionStartedAt
+              })
+              
+              // Set all timer state at once to prevent flicker
+              setTimerEndTime(endTime)
+              setTimeLeft(Math.max(0, remaining))
+              setTimerActive(remaining > 0)
+              timerInitialized.current = true
+            } else if (questionTimeLimit) {
+              // Belum ada questionStartedAt untuk player ini - berarti fresh start
+              const endTime = Date.now() + (questionTimeLimit * 1000)
+              console.log('⏱️ Init Per-question (fresh start):', { questionTimeLimit, questionIndex: questionIndexToUse })
+              setTimerEndTime(endTime)
+              setTimeLeft(questionTimeLimit)
+              setTimerActive(true)
+              timerInitialized.current = true
+            } else {
               setTimeLeft(0)
               setTimerActive(false)
               setTimerEndTime(null)
+              timerInitialized.current = true
             }
+          } else {
+            // No timer mode
+            setTimeLeft(0)
+            setTimerActive(false)
+            setTimerEndTime(null)
+            timerInitialized.current = true
           }
         }
       }
@@ -279,7 +365,7 @@ const PlayerGameplayPage = () => {
   }
 
   const handleAnswerSelect = (answer) => {
-    if (hasAnswered) return // Don't allow changing answer after time's up
+    if (hasAnswered) return // Jangan kunci hanya karena auto-save, hanya setelah final submit
     
     // Check if this is a multiple-answer question
     // Check both questionType and correctAnswer structure for robustness
@@ -297,7 +383,7 @@ const PlayerGameplayPage = () => {
     });
     
     if (isMultipleAnswer) {
-      // Toggle selection for multiple answers
+      // Toggle selection for multiple answers - AUTO-SAVE
       setSelectedAnswer(prev => {
         const prevArray = Array.isArray(prev) ? prev : [];
         console.log('📝 Toggle multiple-answer:', { prevArray, answer });
@@ -316,7 +402,7 @@ const PlayerGameplayPage = () => {
         }
       });
     } else {
-      // Single selection
+      // Single selection (multiple choice / true-false) - AUTO-SAVE
       console.log('📌 Single selection:', answer);
       setSelectedAnswer(answer);
       selectedAnswerRef.current = answer; // Update ref
@@ -348,27 +434,25 @@ const PlayerGameplayPage = () => {
         });
       }
       
-      setAnswerSaved(true);
       console.log('✅ Answer auto-saved successfully');
     } catch (error) {
       console.error('❌ Error auto-saving answer:', error);
     }
   }
 
-  // For text input with debounce
+  // For text input - JANGAN auto-save, tunggu submit
   const handleTextAnswerChange = (value) => {
-    setSelectedAnswer(value);
-    selectedAnswerRef.current = value; // Update ref
+    setSelectedAnswer(value)
+    selectedAnswerRef.current = value // Update ref
+    // TIDAK ada auto-save untuk isian
+  }
+  
+  // Submit manual untuk soal isian
+  const handleSubmitShortAnswer = () => {
+    if (hasAnswered) return
     
-    // Clear previous timeout
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current);
-    }
-    
-    // Set new timeout for auto-save (500ms debounce)
-    autoSaveTimeoutRef.current = setTimeout(() => {
-      autoSaveAnswer(value);
-    }, 500);
+    // Save answer saat submit
+    autoSaveAnswer(selectedAnswer || '')
   }
 
   // Called when timer expires - submit whatever answer was auto-saved
@@ -426,7 +510,6 @@ const PlayerGameplayPage = () => {
       const result = response.data;
       setMyScore(result.currentScore);
       setIsCorrect(result.isCorrect);
-      setWaitingForNext(true);
       
       console.log('📡 Emitting socket event:', {
         isCorrect: result.isCorrect,
@@ -443,16 +526,37 @@ const PlayerGameplayPage = () => {
         result.timeSpent || 0
       );
       
-      // Show feedback
-      if (result.isCorrect) {
-        setFeedback(`🎉 Correct! +${result.points} points`);
-      } else {
-        setFeedback('Time\'s up! ⏰');
+      // Auto pindah ke soal berikutnya setelah waktu habis - HANYA untuk per-question mode
+      if (timerMode === 'per-question') {
+        const totalQuestions = gameData?.quiz?.questions?.length || 0
+        if (currentQuestionIndex < totalQuestions - 1) {
+          // Ada soal berikutnya - pindah otomatis setelah 2 detik
+          console.log('⏭️ Moving to next question after time expire (per-question mode)');
+          setTimeout(() => {
+            setCurrentQuestionIndex(prev => prev + 1);
+            setHasAnswered(false);
+            hasAnsweredRef.current = false;
+            setSelectedAnswer(null);
+            selectedAnswerRef.current = null;
+            setIsCorrect(null);
+            setFeedback('');
+            setTimerActive(false);
+            setTimerEndTime(null);
+            timerInitialized.current = false;
+          }, 2000);
+        } else {
+          // Soal terakhir - tampilkan quiz selesai
+          console.log('🏁 Last question, showing completion screen');
+          setTimeout(() => {
+            setQuizCompleted(true);
+          }, 2000);
+        }
       }
+      
+      // Jangan tampilkan feedback benar/salah
     } catch (error) {
       console.error('❌ Error submitting answer on time expire:', error);
       console.error('Error details:', error.response?.data || error.message);
-      setWaitingForNext(true);
     }
   };
 
@@ -500,59 +604,66 @@ const PlayerGameplayPage = () => {
         result.timeSpent
       )
 
-      // Show feedback SETELAH waktu habis
-      if (result.isCorrect) {
-        setFeedback(`🎉 Correct! +${result.points} points`)
-      } else {
-        // Format correct answer untuk display
-        let correctAnswerDisplay = 'N/A';
-        const correctAns = currentQuestion?.correctAnswer;
-        const options = currentQuestion?.options;
-        
-        if (Array.isArray(correctAns)) {
-          // If array of indices, convert to option text
-          const answerTexts = correctAns.map(ans => {
-            if (typeof ans === 'number' && options && options[ans]) {
-              return options[ans];
-            }
-            return ans;
-          });
-          correctAnswerDisplay = answerTexts.join(', ');
-        } else if (typeof correctAns === 'number' && options && options[correctAns]) {
-          // If single index, convert to option text
-          correctAnswerDisplay = options[correctAns];
+      // Auto pindah ke soal berikutnya HANYA untuk mode per-question
+      // Untuk total-time dan none, player navigasi manual dengan tombol Next/Back
+      if (timerMode === 'per-question') {
+        const totalQuestions = gameData?.quiz?.questions?.length || 0
+        if (currentQuestionIndex < totalQuestions - 1) {
+          // Ada soal berikutnya - pindah otomatis setelah 1 detik
+          console.log('⏭️ Moving to next question after submit (per-question mode)');
+          setTimeout(() => {
+            setCurrentQuestionIndex(prev => prev + 1);
+            setHasAnswered(false);
+            hasAnsweredRef.current = false;
+            setSelectedAnswer(null);
+            selectedAnswerRef.current = null;
+            setIsCorrect(null);
+            setFeedback('');
+            setTimerActive(false);
+            setTimerEndTime(null);
+            timerInitialized.current = false;
+          }, 1000);
         } else {
-          correctAnswerDisplay = String(correctAns || 'N/A');
+          // Soal terakhir - tampilkan quiz selesai
+          console.log('🏁 Last question, showing completion screen');
+          setTimeout(() => {
+            setQuizCompleted(true);
+          }, 2000);
         }
-        
-        setFeedback(`❌ Wrong! The correct answer is: ${correctAnswerDisplay}`)
-      }
-
-      setWaitingForNext(true)
-      
-      // Check if this is the last question
-      const totalQuestions = gameData?.quiz?.questions?.length || 0
-      if (currentQuestionIndex === totalQuestions - 1) {
-        // Delay showing "Quiz Selesai" to let user see the feedback first
-        setTimeout(() => {
-          setQuizCompleted(true)
-        }, 3000) // 3 second delay to show feedback
       }
     } catch (error) {
       console.error('Error submitting answer:', error)
       const errorMessage = error.response?.data?.message || '❌ Error submitting answer'
       setFeedback(errorMessage)
-      setWaitingForNext(true)
       
-      // Check if this is the last question even on error
-      const totalQuestions = gameData?.quiz?.questions?.length || 0
-      if (currentQuestionIndex === totalQuestions - 1) {
-        // Delay showing "Quiz Selesai" even on error
-        setTimeout(() => {
-          setQuizCompleted(true)
-        }, 3000)
+      // Auto pindah meski error (jangan stuck) - HANYA untuk per-question mode
+      if (timerMode === 'per-question') {
+        const totalQuestions = gameData?.quiz?.questions?.length || 0
+        if (currentQuestionIndex < totalQuestions - 1) {
+          setTimeout(() => {
+            setCurrentQuestionIndex(prev => prev + 1);
+            setHasAnswered(false);
+            hasAnsweredRef.current = false;
+            setSelectedAnswer(null);
+            selectedAnswerRef.current = null;
+            setIsCorrect(null);
+            setFeedback('');
+            timerInitialized.current = false;
+          }, 1500);
+        } else {
+          setTimeout(() => {
+            setQuizCompleted(true);
+          }, 2000);
+        }
       }
     }
+  }
+
+  // Format time (seconds to MM:SS) - Same as host
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
   if (loading) {
@@ -574,7 +685,16 @@ const PlayerGameplayPage = () => {
             </div>
             <div className="text-white">
               <div className="font-bold text-lg">{playerName}</div>
-              <div className="text-sm opacity-80">Score: {myScore}</div>
+              {pinExpiresAt && (
+                <div className="text-xs opacity-80">
+                  Berakhir: {new Date(pinExpiresAt).toLocaleString('id-ID', { 
+                    day: 'numeric', 
+                    month: 'short', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
@@ -586,14 +706,19 @@ const PlayerGameplayPage = () => {
               </span>
             </div>
 
-            {/* Timer - Show while timer is active, regardless of whether answer is selected */}
-            {timerActive && (
-              <div
-                className={`text-2xl font-bold px-4 py-2 rounded-xl ${
-                  timeLeft <= 5 ? 'bg-red-500 animate-pulse' : 'bg-white/20 backdrop-blur-sm'
-                } text-white`}
-              >
-                ⏱️ {timeLeft}s
+            {/* Timer Display - Same condition as host for stability */}
+            {timerMode !== 'none' && (
+              <div className={`backdrop-blur-sm rounded-xl px-4 py-2 font-bold text-xl transition-all ${
+                timeLeft <= 5 
+                  ? 'bg-red-500/90 text-white animate-pulse' 
+                  : timeLeft <= 10 
+                  ? 'bg-yellow-500/90 text-white' 
+                  : 'bg-white/20 text-white'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{timeLeft <= 10 ? '⏰' : '⏱️'}</span>
+                  <span>{formatTime(timeLeft)}</span>
+                </div>
               </div>
             )}
           </div>
@@ -611,7 +736,7 @@ const PlayerGameplayPage = () => {
             className="bg-white rounded-3xl shadow-2xl p-8"
           >
             {quizCompleted ? (
-              /* Quiz Completed - Waiting for game to end */
+              /* Quiz Completed - Show completion modal */
               <div className="text-center py-12">
                 <motion.div
                   initial={{ scale: 0 }}
@@ -635,14 +760,17 @@ const PlayerGameplayPage = () => {
                     Skor Akhir Anda
                   </div>
                 </div>
-                <div className="text-gray-500 mb-4">
-                  Menunggu pemain lain menyelesaikan quiz...
-                </div>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                  className="w-12 h-12 border-4 border-blue-400 border-t-transparent rounded-full mx-auto"
-                />
+                <p className="text-gray-600 mb-6">
+                  Terima kasih telah mengikuti quiz ini!
+                </p>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate(isGuest ? '/' : '/dashboard')}
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all"
+                >
+                  {isGuest ? 'Kembali ke Beranda' : 'Kembali ke Dashboard'}
+                </motion.button>
               </div>
             ) : (
               <>
@@ -680,248 +808,204 @@ const PlayerGameplayPage = () => {
                 )}
               </div>
 
-              {/* Answer Options */}
-              {!waitingForNext ? (
-                <div className="space-y-4 mb-8">
-                  {/* Multiple Choice Options */}
-                  {(currentQuestion?.questionType === 'Multiple Choice' || 
-                    currentQuestion?.questionType === 'Pilihan Ganda' || 
-                    currentQuestion?.questionType === 'multiple-choice' ||
-                    currentQuestion?.questionType === 'multiple-answer') && 
-                    currentQuestion?.options && currentQuestion.options.map((option, index) => {
-                      // Check if this is a multiple-answer question
-                      // Check both questionType and correctAnswer structure for robustness
-                      const isMultipleAnswer = currentQuestion?.questionType === 'multiple-answer' ||
-                                               (currentQuestion?.questionType === 'Pilihan Ganda' && 
-                                                Array.isArray(currentQuestion?.correctAnswer));
-                      const isSelected = isMultipleAnswer 
-                        ? (Array.isArray(selectedAnswer) && selectedAnswer.includes(option))
-                        : selectedAnswer === option;
-                      
-                      return (
+              {/* Answer Options - Always show, just disable when answered */}
+              <div className="space-y-4 mb-8">
+                {/* Multiple Choice Options */}
+                {(currentQuestion?.questionType === 'Multiple Choice' || 
+                  currentQuestion?.questionType === 'Pilihan Ganda' || 
+                  currentQuestion?.questionType === 'multiple-choice' ||
+                  currentQuestion?.questionType === 'multiple-answer') && 
+                  currentQuestion?.options && currentQuestion.options.map((option, index) => {
+                    // Check if this is a multiple-answer question
+                    // Check both questionType and correctAnswer structure for robustness
+                    const isMultipleAnswer = currentQuestion?.questionType === 'multiple-answer' ||
+                                             (currentQuestion?.questionType === 'Pilihan Ganda' && 
+                                              Array.isArray(currentQuestion?.correctAnswer));
+                    const isSelected = isMultipleAnswer 
+                      ? (Array.isArray(selectedAnswer) && selectedAnswer.includes(option))
+                      : selectedAnswer === option;
+                    
+                    return (
+                  <motion.button
+                    key={index}
+                    whileHover={{ scale: hasAnswered ? 1 : 1.02 }}
+                    whileTap={{ scale: hasAnswered ? 1 : 0.98 }}
+                    onClick={() => handleAnswerSelect(option)}
+                    disabled={hasAnswered}
+                    className={`w-full p-6 rounded-xl border-2 transition-all text-left ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 bg-gray-50 hover:border-blue-300'
+                    } ${hasAnswered ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
+                          isSelected
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-200 text-gray-700'
+                        }`}
+                      >
+                        {isMultipleAnswer ? (isSelected ? '✓' : String.fromCharCode(65 + index)) : String.fromCharCode(65 + index)}
+                      </div>
+                      <span className="text-gray-800 font-medium text-lg">{option}</span>
+                    </div>
+                  </motion.button>
+                    );
+                  })}
+
+                {/* True/False Options */}
+                {(currentQuestion?.questionType === 'True/False' || 
+                  currentQuestion?.questionType === 'Benar Salah' || 
+                  currentQuestion?.questionType === 'true-false') && (
+                  <>
                     <motion.button
-                      key={index}
                       whileHover={{ scale: hasAnswered ? 1 : 1.02 }}
                       whileTap={{ scale: hasAnswered ? 1 : 0.98 }}
-                      onClick={() => handleAnswerSelect(option)}
+                      onClick={() => handleAnswerSelect('True')}
                       disabled={hasAnswered}
                       className={`w-full p-6 rounded-xl border-2 transition-all text-left ${
-                        isSelected
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 bg-gray-50 hover:border-blue-300'
+                        selectedAnswer === 'True'
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 bg-gray-50 hover:border-green-300'
                       } ${hasAnswered ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                     >
                       <div className="flex items-center gap-4">
                         <div
                           className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
-                            isSelected
-                              ? 'bg-blue-500 text-white'
+                            selectedAnswer === 'True'
+                              ? 'bg-green-500 text-white'
                               : 'bg-gray-200 text-gray-700'
                           }`}
                         >
-                          {isMultipleAnswer ? (isSelected ? '✓' : String.fromCharCode(65 + index)) : String.fromCharCode(65 + index)}
+                          ✓
                         </div>
-                        <span className="text-gray-800 font-medium text-lg">{option}</span>
+                        <span className="text-gray-800 font-medium text-lg">True</span>
                       </div>
                     </motion.button>
-                      );
-                    })}
-
-                  {/* True/False Options */}
-                  {(currentQuestion?.questionType === 'True/False' || 
-                    currentQuestion?.questionType === 'Benar Salah' || 
-                    currentQuestion?.questionType === 'true-false') && (
-                    <>
-                      <motion.button
-                        whileHover={{ scale: hasAnswered ? 1 : 1.02 }}
-                        whileTap={{ scale: hasAnswered ? 1 : 0.98 }}
-                        onClick={() => handleAnswerSelect('True')}
-                        disabled={hasAnswered}
-                        className={`w-full p-6 rounded-xl border-2 transition-all text-left ${
-                          selectedAnswer === 'True'
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-gray-200 bg-gray-50 hover:border-green-300'
-                        } ${hasAnswered ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div
-                            className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
-                              selectedAnswer === 'True'
-                                ? 'bg-green-500 text-white'
-                                : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            ✓
-                          </div>
-                          <span className="text-gray-800 font-medium text-lg">True</span>
-                        </div>
-                      </motion.button>
-                      
-                      <motion.button
-                        whileHover={{ scale: hasAnswered ? 1 : 1.02 }}
-                        whileTap={{ scale: hasAnswered ? 1 : 0.98 }}
-                        onClick={() => handleAnswerSelect('False')}
-                        disabled={hasAnswered}
-                        className={`w-full p-6 rounded-xl border-2 transition-all text-left ${
-                          selectedAnswer === 'False'
-                            ? 'border-red-500 bg-red-50'
-                            : 'border-gray-200 bg-gray-50 hover:border-red-300'
-                        } ${hasAnswered ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div
-                            className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
-                              selectedAnswer === 'False'
-                                ? 'bg-red-500 text-white'
-                                : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            ✗
-                          </div>
-                          <span className="text-gray-800 font-medium text-lg">False</span>
-                        </div>
-                      </motion.button>
-                    </>
-                  )}
-
-                  {/* Fill in the Blank Input */}
-                  {(currentQuestion?.questionType === 'Fill in the Blank' || 
-                    currentQuestion?.questionType === 'Isian' || 
-                    currentQuestion?.questionType === 'short-answer') && (
-                    <div>
-                      <input
-                        type="text"
-                        value={selectedAnswer || ''}
-                        onChange={(e) => handleTextAnswerChange(e.target.value)}
-                        placeholder="Type your answer here..."
-                        className={`w-full p-6 rounded-xl border-2 transition-all text-lg ${
-                          selectedAnswer
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 bg-white'
-                        }`}
-                      />
-                      <div className="flex items-center justify-between mt-2">
-                        <p className="text-sm text-gray-500">
-                          💡 Hint: Type your answer exactly as it appears
-                        </p>
-                        {answerSaved && !hasAnswered && (
-                          <p className="text-sm text-green-600 flex items-center gap-1">
-                            <span>✓</span> Auto-saved
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="mb-8">
-                  {/* Saved Answer Indicator (when reconnecting) */}
-                  {hasAnswered && !waitingForNext && (
-                    <motion.div
-                      initial={{ y: -20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      className="mb-6 p-4 bg-blue-50 border-2 border-blue-400 rounded-xl"
+                    
+                    <motion.button
+                      whileHover={{ scale: hasAnswered ? 1 : 1.02 }}
+                      whileTap={{ scale: hasAnswered ? 1 : 0.98 }}
+                      onClick={() => handleAnswerSelect('False')}
+                      disabled={hasAnswered}
+                      className={`w-full p-6 rounded-xl border-2 transition-all text-left ${
+                        selectedAnswer === 'False'
+                          ? 'border-red-500 bg-red-50'
+                          : 'border-gray-200 bg-gray-50 hover:border-red-300'
+                      } ${hasAnswered ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                     >
-                      <div className="flex items-center gap-2 text-blue-700">
-                        <span className="text-2xl">💾</span>
-                        <div>
-                          <div className="font-bold">Answer Restored</div>
-                          <div className="text-sm">Your previous answer has been saved. Waiting for next question...</div>
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
+                            selectedAnswer === 'False'
+                              ? 'bg-red-500 text-white'
+                              : 'bg-gray-200 text-gray-700'
+                          }`}
+                        >
+                          ✗
                         </div>
+                        <span className="text-gray-800 font-medium text-lg">False</span>
                       </div>
-                    </motion.div>
-                  )}
-                  
-                  {/* Feedback */}
-                  {waitingForNext && (
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className={`p-6 rounded-xl ${
-                      isCorrect
-                        ? 'bg-green-100 border-2 border-green-400'
-                        : 'bg-red-100 border-2 border-red-400'
+                    </motion.button>
+                  </>
+                )}
+
+                {/* Fill in the Blank Input */}
+                {(currentQuestion?.questionType === 'Fill in the Blank' || 
+                  currentQuestion?.questionType === 'Isian' || 
+                  currentQuestion?.questionType === 'short-answer') && (
+                  <div>
+                    <input
+                      type="text"
+                      value={selectedAnswer || ''}
+                      onChange={(e) => handleTextAnswerChange(e.target.value)}
+                      disabled={hasAnswered}
+                      placeholder="Type your answer here..."
+                      className={`w-full p-6 rounded-xl border-2 transition-all text-lg ${
+                        selectedAnswer
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white'
+                      } ${hasAnswered ? 'cursor-not-allowed opacity-60' : ''}`}
+                    />
+                    {!hasAnswered && (
+                      <div className="mt-4">
+                        <button
+                          onClick={handleSubmitShortAnswer}
+                          disabled={!selectedAnswer || selectedAnswer.trim() === ''}
+                          className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
+                            selectedAnswer && selectedAnswer.trim() !== ''
+                              ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
+                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          }`}
+                        >
+                          Submit Answer ✓
+                        </button>
+                        <p className="text-sm text-gray-500 text-center mt-2">
+                          💡 Type your answer, then click Submit
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Navigation Buttons untuk Total Time dan None Mode */}
+              {(timerMode === 'total-time' || timerMode === 'none') && !quizCompleted && (
+                <div className="mt-6 flex gap-3">
+                  {/* Back Button */}
+                  <motion.button
+                    whileHover={{ scale: currentQuestionIndex > 0 ? 1.02 : 1 }}
+                    whileTap={{ scale: currentQuestionIndex > 0 ? 0.98 : 1 }}
+                    onClick={() => {
+                      if (currentQuestionIndex > 0) {
+                        setCurrentQuestionIndex(prev => prev - 1)
+                        setHasAnswered(false)
+                        hasAnsweredRef.current = false
+                        setSelectedAnswer(null)
+                        selectedAnswerRef.current = null
+                        setIsCorrect(null)
+                        setFeedback('')
+                        timerInitialized.current = false
+                      }
+                    }}
+                    disabled={currentQuestionIndex === 0}
+                    className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all ${
+                      currentQuestionIndex > 0
+                        ? 'bg-gray-500 hover:bg-gray-600 text-white cursor-pointer'
+                        : 'bg-gray-300 text-gray-400 cursor-not-allowed'
                     }`}
                   >
-                    <div className="text-4xl mb-4 text-center">{isCorrect ? '🎉' : '😞'}</div>
-                    <div
-                      className={`text-xl font-bold mb-2 text-center ${
-                        isCorrect ? 'text-green-700' : 'text-red-700'
-                      }`}
-                    >
-                      {isCorrect ? '🎉 Correct!' : '❌ Wrong!'}
-                    </div>
-                    {!isCorrect && (
-                      <div className="bg-white/50 rounded-lg p-4 mb-3">
-                        <p className="text-sm text-gray-600 mb-1">Correct answer:</p>
-                        <p className="text-lg font-semibold text-gray-800">
-                          {(() => {
-                            const correctAns = currentQuestion?.correctAnswer;
-                            const options = currentQuestion?.options;
-                            
-                            // If correctAnswer is array of numbers/indices, convert to option text
-                            if (Array.isArray(correctAns)) {
-                              const answerTexts = correctAns.map(ans => {
-                                // Check if ans is a number (index)
-                                if (typeof ans === 'number' && options && options[ans]) {
-                                  return options[ans];
-                                }
-                                return ans;
-                              });
-                              return answerTexts.join(', ');
-                            }
-                            
-                            // If correctAnswer is a number (index), convert to option text
-                            if (typeof correctAns === 'number' && options && options[correctAns]) {
-                              return options[correctAns];
-                            }
-                            
-                            return correctAns || 'N/A';
-                          })()}
-                        </p>
-                        {currentQuestion?.acceptedAnswers && currentQuestion.acceptedAnswers.length > 0 && (
-                          <p className="text-sm text-gray-600 mt-2">
-                            Also accepted: {currentQuestion.acceptedAnswers.join(', ')}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    {isCorrect && (
-                      <p className="text-green-600 font-medium mb-3">
-                        +{myScore - (gameData?.players?.find(p => p.playerName === playerName)?.score || 0)} points
-                      </p>
-                    )}
-                    <div className="text-gray-600 mt-4 text-center">
-                      Waiting for next question...
-                    </div>
-                    <div className="flex justify-center mt-4">
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                        className="w-8 h-8 border-4 border-gray-400 border-t-transparent rounded-full"
-                      />
-                    </div>
-                  </motion.div>
-                  )}
-                </div>
-              )}
+                    ← Back
+                  </motion.button>
 
-              {/* Auto-save indicator - No submit button needed */}
-              {!hasAnswered && answerSaved && (
-                <div className="bg-green-50 border-2 border-green-300 rounded-xl p-4 text-center">
-                  <p className="text-green-700 font-medium flex items-center justify-center gap-2">
-                    <span className="text-2xl">💾</span>
-                    <span>Your answer has been saved! Wait for the timer to complete.</span>
-                  </p>
-                </div>
-              )}
-              
-              {/* Waiting indicator when no answer selected */}
-              {!hasAnswered && !answerSaved && (
-                <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-4 text-center">
-                  <p className="text-blue-700 font-medium">
-                    Select or type your answer - it will be saved automatically
-                  </p>
+                  {/* Next/Finish Button */}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      const totalQuestions = gameData?.quiz?.questions?.length || 0
+                      if (currentQuestionIndex < totalQuestions - 1) {
+                        // Pindah ke soal berikutnya
+                        setCurrentQuestionIndex(prev => prev + 1)
+                        setHasAnswered(false)
+                        hasAnsweredRef.current = false
+                        setSelectedAnswer(null)
+                        selectedAnswerRef.current = null
+                        setIsCorrect(null)
+                        setFeedback('')
+                        timerInitialized.current = false
+                      } else {
+                        // Soal terakhir - tampilkan selesai
+                        setQuizCompleted(true)
+                      }
+                    }}
+                    className="flex-1 py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg transition-all"
+                  >
+                    {currentQuestionIndex < (gameData?.quiz?.questions?.length || 0) - 1 
+                      ? 'Next →' 
+                      : 'Finish 🎉'}
+                  </motion.button>
                 </div>
               )}
               </>

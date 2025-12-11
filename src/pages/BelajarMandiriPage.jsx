@@ -3,9 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import DashboardLayout from '../components/DashboardLayout'
 import { learningService } from '../services/learningService'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
 
 const BelajarMandiriPage = () => {
   const navigate = useNavigate()
+  const { toast, showSuccess, showError, showWarning, hideToast } = useToast()
+
   const [selectedQuiz, setSelectedQuiz] = useState(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [scheduledQuizzes, setScheduledQuizzes] = useState([])
@@ -108,7 +112,7 @@ const BelajarMandiriPage = () => {
       setQuizQuestions(formattedQuestions)
     } catch (err) {
       console.error('Error fetching quiz details:', err)
-      alert('Gagal memuat detail quiz')
+      showError('Gagal memuat detail quiz')
     }
   }
   
@@ -608,6 +612,7 @@ const BelajarMandiriPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <Toast {...toast} onClose={hideToast} />
     </DashboardLayout>
   )
 }
