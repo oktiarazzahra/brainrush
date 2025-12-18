@@ -218,6 +218,14 @@ const PlayerGameplayPage = () => {
       const currentQ = game.quiz.questions[questionIndexToUse]
       setCurrentQuestion(currentQ)
       
+      // 🔍 DEBUG: Log quiz timer settings
+      console.log('🎮 Quiz Timer Settings:', {
+        timerMode: game.quiz.timerMode,
+        totalTime: game.quiz.totalTime,
+        currentQuestionTimeLimit: currentQ?.timeLimit,
+        questionIndex: questionIndexToUse
+      })
+      
       // Get my current score and check if already answered current question
       const me = game.players.find(p => p.playerName === playerName)
       if (me) {

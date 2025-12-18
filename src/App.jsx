@@ -13,7 +13,6 @@ import CreateQuizPage from './pages/CreateQuizPage'
 import BelajarMandiriPage from './pages/BelajarMandiriPage'
 import HistoryPage from './pages/HistoryPage'
 import HelpPage from './pages/HelpPage'
-import LeaderboardPage from './pages/LeaderboardPage'
 import QuizReviewPage from './pages/QuizReviewPage'
 import QuizResultsPage from './pages/QuizResultsPage'
 import EditQuizPage from './pages/EditQuizPage'
@@ -60,7 +59,6 @@ function App() {
         <Route path="/schedule" element={<BelajarMandiriPage />} /> {/* Legacy route - redirect ke yang sama */}
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/help" element={<HelpPage />} />
-        <Route path="/leaderboard/:quizId" element={<LeaderboardPage />} />
         <Route path="/quiz-review/:quizId" element={<QuizReviewPage />} />
 
         {/* Admin Routes */}
