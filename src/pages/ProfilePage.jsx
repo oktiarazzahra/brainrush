@@ -16,7 +16,11 @@ const ProfilePage = () => {
   const [selectedAvatar, setSelectedAvatar] = useState(0)
   const [formData, setFormData] = useState({
     name: '',
-    email: ''
+    email: '',
+    age: '',
+    phone: '',
+    bio: '',
+    school: ''
   })
 
   useEffect(() => {
@@ -35,7 +39,11 @@ const ProfilePage = () => {
       setUserData(user)
       setFormData({
         name: user.name || '',
-        email: user.email || ''
+        email: user.email || '',
+        age: user.age || '',
+        phone: user.phone || '',
+        bio: user.bio || '',
+        school: user.school || ''
       })
       // Extract avatar index from stored avatar or default to 0
       if (user.avatar && user.avatar.includes('avatar-')) {
@@ -71,7 +79,11 @@ const ProfilePage = () => {
       setSaving(true)
       const response = await authService.updateProfile({
         name: formData.name,
-        avatar: `avatar-${selectedAvatar}`
+        avatar: `avatar-${selectedAvatar}`,
+        age: formData.age,
+        phone: formData.phone,
+        bio: formData.bio,
+        school: formData.school
       })
       setSuccess('Profile berhasil diupdate!')
       setUserData(response.data.user)
@@ -98,10 +110,10 @@ const ProfilePage = () => {
             className="text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-2 font-medium"
           >
             <span className="text-xl">←</span>
-            <span>Back</span>
+            <span>Kembali</span>
           </button>
           <h1 className="text-xl font-semibold text-gray-900">
-            My Profile
+            Profil Saya
           </h1>
           <div className="w-16"></div>
         </div>
@@ -121,7 +133,7 @@ const ProfilePage = () => {
               onClick={() => navigate('/login')}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition"
             >
-              Go to Login
+              Ke Halaman Login
             </button>
           </div>
         ) : userData ? (
@@ -140,47 +152,34 @@ const ProfilePage = () => {
             )}
 
             {/* Avatar Selection */}
-            <div className="mb-6 pb-6 border-b border-blue-100">
-              <h2 className="text-base font-semibold text-blue-900 mb-4">Avatar</h2>
+            <div className="text-center mb-8">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Pilih Avatar</h2>
               <AvatarSelector
                 selectedAvatar={selectedAvatar}
                 onAvatarSelect={setSelectedAvatar}
               />
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-blue-100">
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                <div className="text-sm text-blue-600 mb-1">Games Played</div>
-                <div className="text-2xl font-semibold text-blue-900">{userData.totalGamesPlayed || 0}</div>
-              </div>
-
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                <div className="text-sm text-blue-600 mb-1">Total Score</div>
-                <div className="text-2xl font-semibold text-blue-900">{userData.totalScore || 0}</div>
-              </div>
-            </div>
-
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Email Field */}
               <div>
-                <label className="block text-sm font-medium text-blue-900 mb-1">
-                  Email Address
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Alamat Email
                 </label>
                 <input
                   type="email"
                   value={formData.email}
                   disabled
-                  className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-gray-500 text-sm cursor-not-allowed"
+                  className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed"
                 />
-                <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                <p className="text-xs text-gray-500 mt-1.5">Email tidak dapat diubah</p>
               </div>
 
               {/* Name Field */}
               <div>
-                <label className="block text-sm font-medium text-blue-900 mb-1">
-                  Full Name
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Nama Lengkap
                 </label>
                 <input
                   type="text"
@@ -188,26 +187,91 @@ const ProfilePage = () => {
                   value={formData.name}
                   onChange={handleChange}
                   disabled={saving}
-                  placeholder="Enter your name"
-                  className="w-full px-3 py-2 bg-white border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 disabled:opacity-50 text-sm transition"
-                  required
+                  placeholder="Masukkan nama lengkap"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 transition"
+                />
+              </div>
+
+              {/* Age Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Umur
+                </label>
+                <input
+                  type="number"
+                  name="age"
+                  value={formData.age}
+                  onChange={handleChange}
+                  disabled={saving}
+                  placeholder="Masukkan umur"
+                  min="1"
+                  max="150"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 transition"
+                />
+              </div>
+
+              {/* Phone Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Nomor Telepon
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  disabled={saving}
+                  placeholder="Contoh: 08123456789"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 transition"
+                />
+              </div>
+
+              {/* School Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Sekolah / Universitas
+                </label>
+                <input
+                  type="text"
+                  name="school"
+                  value={formData.school}
+                  onChange={handleChange}
+                  disabled={saving}
+                  placeholder="Masukkan nama sekolah atau universitas"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 transition"
+                />
+              </div>
+
+              {/* Bio Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Bio / Tentang Saya
+                </label>
+                <textarea
+                  name="bio"
+                  value={formData.bio}
+                  onChange={handleChange}
+                  disabled={saving}
+                  placeholder="Ceritakan tentang diri Anda..."
+                  rows="4"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 transition resize-none"
                 />
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-2">
+              <div className="flex flex-col gap-3 pt-4">
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-medium text-sm transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                 >
-                  {saving ? 'Saving...' : 'Save Changes'}
+                  {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </button>
 
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2.5 rounded-lg font-medium text-sm transition shadow-sm"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold transition shadow-md"
                 >
                   Logout
                 </button>
