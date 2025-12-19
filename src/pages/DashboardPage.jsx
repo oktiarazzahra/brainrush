@@ -169,7 +169,7 @@ const DashboardPage = () => {
                 whileTap={{ scale: 0.95 }}
                 className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-300 hover:to-yellow-400 text-yellow-900 font-bold py-3 px-6 rounded-full shadow-lg"
               >
-                JOIN
+                GABUNG
               </motion.button>
             </div>
           </div>
