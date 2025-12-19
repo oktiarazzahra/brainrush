@@ -624,7 +624,7 @@ const MyQuizzesPage = () => {
                       )}
                       {!isHistory && !isDraft && item.activePIN && item.pinExpiresAt && new Date(item.pinExpiresAt) > new Date() ? (
                         <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10 animate-pulse flex items-center gap-1">
-                          🎮 KUIS BERJALAN
+                          KUIS BERJALAN
                         </div>
                       ) : (
                         !isHistory && !isDraft && (item.isPublished || item.status === 'published') && (
@@ -633,7 +633,7 @@ const MyQuizzesPage = () => {
                       )}
                       {isHistory && (
                         <div className="absolute top-3 left-3 bg-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10 flex items-center gap-1">
-                          👑 HOST
+                          HOST
                         </div>
                       )}
                       <button onClick={e => { e.stopPropagation(); toggleMenu(quizId) }} className="absolute top-3 right-3 bg-white/90 hover:bg-white rounded-full p-1.5 shadow-md z-10 transition">
@@ -693,29 +693,18 @@ const MyQuizzesPage = () => {
                       <div className="p-5">
                         <h3 className="font-bold text-lg text-gray-800 mb-2 line-clamp-2">{quizTitle}</h3>
                         
-                        {/* Quiz Type & Timer Mode Badges */}
+                        {/* Timer Mode Badges */}
                         {!isHistory && (
                           <div className="flex gap-2 mb-2 flex-wrap">
-                            {/* Quiz Type Badge */}
-                            {item.quizType === 'live' ? (
-                              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-semibold">
-                                🎮 Live Quiz
-                              </span>
-                            ) : (
-                              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
-                                📚 Jadwal
-                              </span>
-                            )}
-                            
                             {/* Timer Mode Badge */}
                             {item.timerMode === 'per-question' && (
                               <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
-                                ⏱️ Per Soal
+                                Per Soal
                               </span>
                             )}
                             {item.timerMode === 'total-time' && (
                               <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-semibold">
-                                ⏰ Total Waktu
+                                Total Waktu
                               </span>
                             )}
                             {item.timerMode === 'none' && (
@@ -826,7 +815,7 @@ const MyQuizzesPage = () => {
                 <div>
                   <h2 className="text-3xl font-bold text-gray-800">{runningQuizData.title}</h2>
                   <span className="inline-block mt-2 px-3 py-1 bg-red-100 text-red-700 text-sm font-bold rounded-full">
-                    🎮 KUIS BERJALAN
+                    KUIS BERJALAN
                   </span>
                 </div>
                 <button
