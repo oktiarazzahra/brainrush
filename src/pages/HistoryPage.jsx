@@ -218,9 +218,17 @@ const HistoryPage = () => {
                   <span className="text-gray-600">PIN Kuis:</span>
                   <span className="font-semibold text-gray-800">{selectedHistory.PIN}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between mb-2">
                   <span className="text-gray-600">Jumlah Soal:</span>
-                  <span className="font-semibold text-gray-800">{selectedHistory.totalQuestions || '-'} soal</span>
+                  <span className="font-semibold text-gray-800">{selectedHistory.totalQuestions || 0} soal</span>
+                </div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-600">Jumlah Pemain:</span>
+                  <span className="font-semibold text-gray-800">{selectedHistory.players || 0} pemain</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Durasi PIN:</span>
+                  <span className="font-semibold text-gray-800">{selectedHistory.duration || 'N/A'}</span>
                 </div>
               </div>
 

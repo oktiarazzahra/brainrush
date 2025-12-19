@@ -95,14 +95,29 @@ const BelajarMandiriPage = () => {
       const formattedQuestions = result.answers.map((answer) => {
         const isMultiple = Array.isArray(answer.correctAnswer)
         
+        // Normalize boolean values to Indonesian
+        const normalizeAnswer = (ans) => {
+          if (ans === true || ans === 'true' || ans === 'True') return true
+          if (ans === false || ans === 'false' || ans === 'False') return false
+          return ans
+        }
+        
+        const normalizedCorrect = Array.isArray(answer.correctAnswer) 
+          ? answer.correctAnswer.map(normalizeAnswer)
+          : [normalizeAnswer(answer.correctAnswer)]
+        
+        const normalizedUser = Array.isArray(answer.userAnswer)
+          ? answer.userAnswer.map(normalizeAnswer)
+          : [normalizeAnswer(answer.userAnswer)]
+        
         return {
           id: answer.questionNumber,
           question: answer.questionText,
           image: null,
           options: answer.options || [],
-          correctAnswers: Array.isArray(answer.correctAnswer) ? answer.correctAnswer : [answer.correctAnswer],
+          correctAnswers: normalizedCorrect,
           acceptedAnswers: answer.acceptedAnswers || [], // For short answer
-          userAnswers: Array.isArray(answer.userAnswer) ? answer.userAnswer : [answer.userAnswer],
+          userAnswers: normalizedUser,
           isCorrect: answer.isCorrect,
           multipleCorrect: isMultiple,
           explanation: answer.explanation || 'Tidak ada penjelasan tersedia.'
