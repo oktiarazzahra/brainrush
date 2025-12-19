@@ -94,7 +94,11 @@ const PinMonitoringPage = () => {
       onConfirm: async () => {
         try {
           await gameService.endGame(gameId)
-          navigate('/my-quizzes')
+          showSuccess('Kuis berhasil diakhiri! Hasil telah disimpan ke history.')
+          // Wait a bit for backend to complete saving, then navigate to history tab
+          setTimeout(() => {
+            navigate('/my-quizzes', { state: { activeTab: 'History' } })
+          }, 1500)
         } catch (error) {
           console.error('Error ending game:', error)
           showError('Gagal mengakhiri kuis')

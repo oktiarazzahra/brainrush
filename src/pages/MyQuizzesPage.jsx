@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import DashboardLayout from '../components/DashboardLayout'
 import { quizService } from '../services/quizService'
@@ -12,9 +12,10 @@ import useConfirm from '../hooks/useConfirm'
 
 const MyQuizzesPage = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { toast, showSuccess, showError, showWarning, hideToast } = useToast()
   const { confirmDialog, showConfirm, hideConfirm } = useConfirm()
-  const [activeTab, setActiveTab] = useState('Draft')
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'Draft')
   const [openMenuId, setOpenMenuId] = useState(null)
   const [showAccessModal, setShowAccessModal] = useState(false)
   const [selectedQuizAccess, setSelectedQuizAccess] = useState('public')
@@ -43,6 +44,15 @@ const MyQuizzesPage = () => {
   useEffect(() => {
     fetchMyQuizzes()
   }, [])
+
+  // Handle navigation state to auto-switch to tab
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab)
+      // Clear the state after using it
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state])
 
   // Refresh data when page becomes visible (user returns from monitoring page)
   useEffect(() => {
