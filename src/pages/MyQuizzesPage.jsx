@@ -163,28 +163,7 @@ const MyQuizzesPage = () => {
     })
   }
 
-  const handleBatalkanPIN = async (quiz) => {
-    setOpenMenuId(null)
-    
-    showConfirm({
-      title: '⚠️ Batalkan PIN Kuis?',
-      message: `PIN: ${quiz.activePIN}\n\nSemua hasil player yang sudah mengerjakan akan tersimpan di history. Apakah Anda yakin ingin membatalkan?`,
-      confirmText: 'Ya, Batalkan',
-      cancelText: 'Tidak',
-      confirmColor: 'red',
-      onConfirm: async () => {
-        try {
-          await gameService.endGame(quiz.activeGameId)
-          showSuccess('PIN berhasil dibatalkan!')
-          await fetchMyQuizzes()
-          setShowRunningQuizModal(false)
-        } catch (error) {
-          console.error('Error canceling PIN:', error)
-          showError('Gagal membatalkan PIN')
-        }
-      }
-    })
-  }
+
 
   const handleOpenRunningQuiz = async (quiz) => {
     setRunningQuizData(quiz)
@@ -534,10 +513,7 @@ const MyQuizzesPage = () => {
             <button onClick={e => { e.stopPropagation(); handleBuatLive(quizId) }} className="w-full px-3 py-2 text-left hover:bg-blue-50 text-blue-600">Buat PIN Kuis</button>
           )}
           {hasPinActive && (
-            <>
-              <button onClick={e => { e.stopPropagation(); handleLihatMonitoring(item) }} className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600">👁️ Lihat Monitoring</button>
-              <button onClick={e => { e.stopPropagation(); handleBatalkanPIN(item) }} className="w-full px-3 py-2 text-left hover:bg-red-50 text-red-600">❌ Batalkan PIN</button>
-            </>
+            <button onClick={e => { e.stopPropagation(); handleLihatMonitoring(item) }} className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600">👁️ Lihat Monitoring</button>
           )}
           <button onClick={e => { e.stopPropagation(); handleShare(quizId) }} className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600">Bagikan Quiz</button>
           <button onClick={e => { e.stopPropagation(); handleTambahCover(quizId) }} className="w-full px-3 py-2 text-left hover:bg-purple-50 text-purple-600">Tambah Cover</button>
