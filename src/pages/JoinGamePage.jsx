@@ -92,19 +92,19 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-400 to-blue-600 flex flex-col">
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-8 text-center">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-8 text-center">
         {/* Title */}
         <motion.div 
-          className="mb-8"
+          className="mb-6 sm:mb-8"
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg">
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold text-white mb-3 sm:mb-4 drop-shadow-lg">
             Gabung Game
           </h1>
           <motion.p 
-            className="text-xl text-white/80 font-medium"
+            className="text-base sm:text-xl text-white/80 font-medium"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.3 }}
@@ -128,7 +128,7 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
 
         {/* Name Input Component */}
         <motion.div
-          className="mb-8 w-full max-w-md"
+          className="mb-6 sm:mb-8 w-full max-w-md px-4"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1 }}
@@ -143,7 +143,7 @@ const JoinGamePage = ({ onBack, onJoinNow }) => {
 
         {/* Action Buttons */}
         <motion.div 
-          className="flex flex-col sm:flex-row gap-4 w-full max-w-md"
+          className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-md px-4"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1.2 }}

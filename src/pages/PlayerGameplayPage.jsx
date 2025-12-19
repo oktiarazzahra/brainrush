@@ -685,16 +685,16 @@ const PlayerGameplayPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-300 via-cyan-200 to-sky-200">
       {/* Header */}
-      <div className="bg-white/10 backdrop-blur-md border-b border-white/20 p-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="text-3xl">
+      <div className="bg-white/10 backdrop-blur-md border-b border-white/20 p-3 sm:p-4">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="text-2xl sm:text-3xl">
               {typeof avatar === 'object' && avatar?.emoji ? avatar.emoji : (avatar || '👤')}
             </div>
             <div className="text-white">
-              <div className="font-bold text-lg">{playerName}</div>
+              <div className="font-bold text-base sm:text-lg">{playerName}</div>
               {pinExpiresAt && (
-                <div className="text-xs opacity-80">
+                <div className="text-xs opacity-80 hidden sm:block">
                   Berakhir: {new Date(pinExpiresAt).toLocaleString('id-ID', { 
                     day: 'numeric', 
                     month: 'short', 
@@ -706,17 +706,17 @@ const PlayerGameplayPage = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-white">
-              <span className="text-sm opacity-80">Question: </span>
-              <span className="font-bold text-lg">
-                {currentQuestionIndex + 1} / {gameData?.quiz?.questions?.length || 0}
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg sm:rounded-xl px-3 sm:px-4 py-1.5 sm:py-2 text-white">
+              <span className="text-xs sm:text-sm opacity-80">Soal: </span>
+              <span className="font-bold text-sm sm:text-lg">
+                {currentQuestionIndex + 1}/{gameData?.quiz?.questions?.length || 0}
               </span>
             </div>
 
             {/* Timer Display - Same condition as host for stability */}
             {timerMode !== 'none' && (
-              <div className={`backdrop-blur-sm rounded-xl px-4 py-2 font-bold text-xl transition-all ${
+              <div className={`backdrop-blur-sm rounded-lg sm:rounded-xl px-3 sm:px-4 py-1.5 sm:py-2 font-bold text-lg sm:text-xl transition-all ${
                 timeLeft <= 5 
                   ? 'bg-red-500/90 text-white animate-pulse' 
                   : timeLeft <= 10 
@@ -734,48 +734,48 @@ const PlayerGameplayPage = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-4xl mx-auto p-3 sm:p-6">
         <AnimatePresence mode="wait">
           <motion.div
             key="question"
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -50, opacity: 0 }}
-            className="bg-white rounded-3xl shadow-2xl p-8"
+            className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-8"
           >
             {quizCompleted ? (
               /* Quiz Completed - Show completion modal */
-              <div className="text-center py-12">
+              <div className="text-center py-8 sm:py-12">
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                  className="text-8xl mb-6"
+                  className="text-6xl sm:text-8xl mb-4 sm:mb-6"
                 >
                   🎉
                 </motion.div>
-                <h2 className="text-4xl font-bold text-gray-800 mb-4">
-                  Quiz Selesai!
+                <h2 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-3 sm:mb-4">
+                  Kuis Selesai!
                 </h2>
-                <p className="text-xl text-gray-600 mb-6">
+                <p className="text-base sm:text-xl text-gray-600 mb-4 sm:mb-6">
                   Anda telah menyelesaikan semua soal
                 </p>
-                <div className="bg-blue-100 border-2 border-blue-400 rounded-xl p-6 mb-6">
-                  <div className="text-6xl font-bold text-blue-600 mb-2">
+                <div className="bg-blue-100 border-2 border-blue-400 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+                  <div className="text-4xl sm:text-6xl font-bold text-blue-600 mb-2">
                     {myScore}
                   </div>
-                  <div className="text-lg text-gray-700">
+                  <div className="text-base sm:text-lg text-gray-700">
                     Skor Akhir Anda
                   </div>
                 </div>
-                <p className="text-gray-600 mb-6">
-                  Terima kasih telah mengikuti quiz ini!
+                <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">
+                  Terima kasih telah mengikuti kuis ini!
                 </p>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => navigate(isGuest ? '/' : '/dashboard')}
-                  className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all"
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all"
                 >
                   {isGuest ? 'Kembali ke Beranda' : 'Kembali ke Dashboard'}
                 </motion.button>
@@ -783,9 +783,9 @@ const PlayerGameplayPage = () => {
             ) : (
               <>
               {/* Question */}
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-semibold">
+              <div className="mb-6 sm:mb-8">
+                <div className="flex items-center justify-between mb-3 sm:mb-4 flex-wrap gap-2">
+                  <span className="bg-purple-100 text-purple-700 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold">
                     {(() => {
                       const type = currentQuestion?.questionType;
                       if (type === 'multiple-answer') return 'Multiple Answer';
@@ -795,18 +795,18 @@ const PlayerGameplayPage = () => {
                       return type || 'Multiple Choice';
                     })()}
                   </span>
-                  <span className="text-gray-500 text-sm">
-                    {currentQuestion?.points || 1} points
+                  <span className="text-gray-500 text-xs sm:text-sm">
+                    {currentQuestion?.points || 1} poin
                   </span>
                 </div>
 
-                <h2 className="text-3xl font-bold text-gray-800 mb-6">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 mb-4 sm:mb-6">
                   {currentQuestion?.question}
                 </h2>
 
                 {/* Question Image */}
                 {currentQuestion?.imageData && (
-                  <div className="mb-6">
+                  <div className="mb-4 sm:mb-6">
                     <img
                       src={currentQuestion.imageData}
                       alt="Question"
@@ -817,7 +817,7 @@ const PlayerGameplayPage = () => {
               </div>
 
               {/* Answer Options - Always show, just disable when answered */}
-              <div className="space-y-4 mb-8">
+              <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
                 {/* Multiple Choice Options */}
                 {(currentQuestion?.questionType === 'Multiple Choice' || 
                   currentQuestion?.questionType === 'Pilihan Ganda' || 
@@ -840,15 +840,15 @@ const PlayerGameplayPage = () => {
                     whileTap={{ scale: hasAnswered ? 1 : 0.98 }}
                     onClick={() => handleAnswerSelect(option)}
                     disabled={hasAnswered}
-                    className={`w-full p-6 rounded-xl border-2 transition-all text-left ${
+                    className={`w-full p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 transition-all text-left ${
                       isSelected
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 bg-gray-50 hover:border-blue-300'
                     } ${hasAnswered ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4">
                       <div
-                        className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
+                        className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-bold text-base sm:text-lg ${
                           isSelected
                             ? 'bg-blue-500 text-white'
                             : 'bg-gray-200 text-gray-700'
@@ -856,7 +856,7 @@ const PlayerGameplayPage = () => {
                       >
                         {isMultipleAnswer ? (isSelected ? '✓' : String.fromCharCode(65 + index)) : String.fromCharCode(65 + index)}
                       </div>
-                      <span className="text-gray-800 font-medium text-lg">{option}</span>
+                      <span className="text-gray-800 font-medium text-sm sm:text-base md:text-lg break-words">{option}</span>
                     </div>
                   </motion.button>
                     );
@@ -872,15 +872,15 @@ const PlayerGameplayPage = () => {
                       whileTap={{ scale: hasAnswered ? 1 : 0.98 }}
                       onClick={() => handleAnswerSelect('True')}
                       disabled={hasAnswered}
-                      className={`w-full p-6 rounded-xl border-2 transition-all text-left ${
+                      className={`w-full p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 transition-all text-left ${
                         selectedAnswer === 'True'
                           ? 'border-green-500 bg-green-50'
                           : 'border-gray-200 bg-gray-50 hover:border-green-300'
                       } ${hasAnswered ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                     >
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3 sm:gap-4">
                         <div
-                          className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
+                          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-bold text-base sm:text-lg ${
                             selectedAnswer === 'True'
                               ? 'bg-green-500 text-white'
                               : 'bg-gray-200 text-gray-700'
@@ -888,7 +888,7 @@ const PlayerGameplayPage = () => {
                         >
                           ✓
                         </div>
-                        <span className="text-gray-800 font-medium text-lg">True</span>
+                        <span className="text-gray-800 font-medium text-sm sm:text-base md:text-lg">Benar</span>
                       </div>
                     </motion.button>
                     
@@ -897,15 +897,15 @@ const PlayerGameplayPage = () => {
                       whileTap={{ scale: hasAnswered ? 1 : 0.98 }}
                       onClick={() => handleAnswerSelect('False')}
                       disabled={hasAnswered}
-                      className={`w-full p-6 rounded-xl border-2 transition-all text-left ${
+                      className={`w-full p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 transition-all text-left ${
                         selectedAnswer === 'False'
                           ? 'border-red-500 bg-red-50'
                           : 'border-gray-200 bg-gray-50 hover:border-red-300'
                       } ${hasAnswered ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                     >
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3 sm:gap-4">
                         <div
-                          className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
+                          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-bold text-base sm:text-lg ${
                             selectedAnswer === 'False'
                               ? 'bg-red-500 text-white'
                               : 'bg-gray-200 text-gray-700'
@@ -913,7 +913,7 @@ const PlayerGameplayPage = () => {
                         >
                           ✗
                         </div>
-                        <span className="text-gray-800 font-medium text-lg">False</span>
+                        <span className="text-gray-800 font-medium text-sm sm:text-base md:text-lg">Salah</span>
                       </div>
                     </motion.button>
                   </>
@@ -929,25 +929,25 @@ const PlayerGameplayPage = () => {
                       value={selectedAnswer || ''}
                       onChange={(e) => handleTextAnswerChange(e.target.value)}
                       disabled={hasAnswered}
-                      placeholder="Type your answer here..."
-                      className={`w-full p-6 rounded-xl border-2 transition-all text-lg ${
+                      placeholder="Ketik jawaban Anda..."
+                      className={`w-full p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 transition-all text-base sm:text-lg ${
                         selectedAnswer
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 bg-white'
                       } ${hasAnswered ? 'cursor-not-allowed opacity-60' : ''}`}
                     />
                     {!hasAnswered && (
-                      <div className="mt-4">
+                      <div className="mt-3 sm:mt-4">
                         <button
                           onClick={handleSubmitShortAnswer}
                           disabled={!selectedAnswer || selectedAnswer.trim() === ''}
-                          className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
+                          className={`w-full py-3 sm:py-4 rounded-lg sm:rounded-xl font-bold text-base sm:text-lg transition-all ${
                             selectedAnswer && selectedAnswer.trim() !== ''
                               ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
                               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                           }`}
                         >
-                          Submit Answer ✓
+                          Kirim Jawaban ✓
                         </button>
                         <p className="text-sm text-gray-500 text-center mt-2">
                           💡 Type your answer, then click Submit
@@ -960,7 +960,7 @@ const PlayerGameplayPage = () => {
 
               {/* Navigation Buttons untuk Total Time dan None Mode */}
               {(timerMode === 'total-time' || timerMode === 'none') && !quizCompleted && (
-                <div className="mt-6 flex gap-3">
+                <div className="mt-4 sm:mt-6 flex gap-2 sm:gap-3">
                   {/* Back Button */}
                   <motion.button
                     whileHover={{ scale: currentQuestionIndex > 0 ? 1.02 : 1 }}
@@ -978,13 +978,13 @@ const PlayerGameplayPage = () => {
                       }
                     }}
                     disabled={currentQuestionIndex === 0}
-                    className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all ${
+                    className={`flex-1 py-3 sm:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base md:text-lg transition-all ${
                       currentQuestionIndex > 0
                         ? 'bg-gray-500 hover:bg-gray-600 text-white cursor-pointer'
                         : 'bg-gray-300 text-gray-400 cursor-not-allowed'
                     }`}
                   >
-                    ← Back
+                    ← Kembali
                   </motion.button>
 
                   {/* Next/Finish Button */}
@@ -1008,11 +1008,11 @@ const PlayerGameplayPage = () => {
                         setQuizCompleted(true)
                       }
                     }}
-                    className="flex-1 py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg transition-all"
+                    className="flex-1 py-3 sm:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base md:text-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg transition-all"
                   >
                     {currentQuestionIndex < (gameData?.quiz?.questions?.length || 0) - 1 
-                      ? 'Next →' 
-                      : 'Finish 🎉'}
+                      ? 'Lanjut →' 
+                      : 'Selesai 🎉'}
                   </motion.button>
                 </div>
               )}

@@ -133,50 +133,63 @@ const DashboardPage = () => {
       <motion.div
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="bg-white/10 backdrop-blur-md border-b border-white/20 p-6"
+        className="bg-white/10 backdrop-blur-md border-b border-white/20 p-3 sm:p-6"
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-6">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-3 sm:gap-4">
+          {/* Mobile: Logo and Profile di atas */}
+          <div className="flex items-center justify-between w-full lg:hidden">
+            <div className="text-2xl sm:text-3xl font-bold text-yellow-400 stroke-text">Brain Rush</div>
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-br from-blue-300 via-blue-400 to-blue-500 p-0.5 cursor-pointer shadow-lg transition"
+              onClick={() => navigate('/profile')}
+            >
+              <div className="h-full w-full rounded-full bg-white flex items-center justify-center text-xl sm:text-2xl">
+                {loading ? '⏳' : getAvatarEmoji()}
+              </div>
+            </motion.div>
+          </div>
 
-
+          {/* Search and PIN Section */}
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 w-full lg:w-auto">
             {/* Search Bar */}
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <input
                 type="text"
                 placeholder="Cari konten"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="bg-white border-2 border-blue-300 rounded-full px-6 py-3 pl-12 text-gray-800 placeholder-gray-500 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400 w-80 shadow-md"
+                className="bg-white border-2 border-blue-300 rounded-full px-6 py-2 sm:py-3 pl-10 sm:pl-12 text-gray-800 placeholder-gray-500 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400 w-full sm:w-64 lg:w-80 shadow-md text-sm sm:text-base"
               />
-              <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-600">
+              <div className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-600 text-lg sm:text-xl">
                 🔍
               </div>
             </div>
 
-
             {/* PIN Input and Join Button */}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <input
                 type="text"
-                placeholder="Masukkan PIN"
+                placeholder="PIN"
                 value={pinInput}
                 onChange={e => setPinInput(e.target.value)}
-                className="bg-white border-2 border-blue-300 rounded-full px-6 py-3 text-gray-800 placeholder-gray-500 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400 w-48 shadow-md"
+                className="bg-white border-2 border-blue-300 rounded-full px-4 sm:px-6 py-2 sm:py-3 text-gray-800 placeholder-gray-500 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1 sm:w-32 lg:w-48 shadow-md text-sm sm:text-base"
+                maxLength={6}
               />
               <motion.button
                 onClick={handleJoinWithPIN}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-300 hover:to-yellow-400 text-yellow-900 font-bold py-3 px-6 rounded-full shadow-lg"
+                className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-300 hover:to-yellow-400 text-yellow-900 font-bold py-2 sm:py-3 px-4 sm:px-6 rounded-full shadow-lg text-sm sm:text-base whitespace-nowrap"
               >
                 GABUNG
               </motion.button>
             </div>
           </div>
 
-
-          {/* Logo and Profile */}
-          <div className="flex items-center space-x-4">
+          {/* Desktop: Logo and Profile */}
+          <div className="hidden lg:flex items-center space-x-4">
             <div className="text-3xl font-bold text-yellow-400 stroke-text">Brain Rush</div>
             <motion.div
               whileHover={{ scale: 1.05 }}
@@ -194,7 +207,7 @@ const DashboardPage = () => {
 
 
       {/* Category buttons */}
-      <div className="flex-1 px-8 py-6">
+      <div className="flex-1 px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -208,7 +221,8 @@ const DashboardPage = () => {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="flex space-x-4 mb-6 overflow-x-auto pb-2"
+              className="flex space-x-2 sm:space-x-4 mb-4 sm:mb-6 overflow-x-auto pb-2 scrollbar-hide"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {categories.map(category => (
                 <motion.button
@@ -216,7 +230,7 @@ const DashboardPage = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setActiveCategory(category)}
-                  className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 whitespace-nowrap ${
+                  className={`px-4 sm:px-6 py-2 sm:py-3 rounded-full font-semibold transition-all duration-300 whitespace-nowrap text-sm sm:text-base ${
                     activeCategory === category ? 'bg-white text-blue-600 shadow-lg' : 'bg-white/10 text-white hover:bg-white/20'
                   }`}
                 >
@@ -238,7 +252,7 @@ const DashboardPage = () => {
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.4 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5"
               >
                 {filteredQuizzes.map((quiz, index) => (
                   <DashboardCard

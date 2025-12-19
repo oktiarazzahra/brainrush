@@ -75,3 +75,14 @@ body {
 .btn-hover:hover::before {
   left: 100%;
 }
+
+/* Hide scrollbar for category buttons - Webkit (Chrome, Safari) */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for category buttons - Firefox */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
