@@ -878,6 +878,10 @@ const PlayerGameplayPage = () => {
                       ? (Array.isArray(selectedAnswer) && selectedAnswer.includes(option))
                       : selectedAnswer === option;
                     
+                    // Warna untuk pilihan ganda
+                    const COLORS = ['bg-pink-200', 'bg-green-200', 'bg-yellow-100', 'bg-blue-200'];
+                    const bgColor = COLORS[index % COLORS.length];
+                    
                     return (
                   <motion.button
                     key={index}
@@ -885,23 +889,23 @@ const PlayerGameplayPage = () => {
                     whileTap={{ scale: hasAnswered ? 1 : 0.98 }}
                     onClick={() => handleAnswerSelect(option)}
                     disabled={hasAnswered}
-                    className={`w-full p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 transition-all text-left ${
+                    className={`w-full p-4 sm:p-6 rounded-lg sm:rounded-xl shadow-md transition-all text-left ${bgColor} ${
                       isSelected
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 bg-gray-50 hover:border-blue-300'
+                        ? 'ring-4 ring-blue-500'
+                        : 'hover:shadow-lg'
                     } ${hasAnswered ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                   >
-                    <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="flex items-center justify-between gap-3 sm:gap-4">
+                      <span className="text-gray-800 font-bold text-sm sm:text-base md:text-lg break-words">{option}</span>
                       <div
-                        className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-bold text-base sm:text-lg ${
+                        className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center font-bold text-base sm:text-lg flex-shrink-0 ${
                           isSelected
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-200 text-gray-700'
+                            ? 'bg-blue-600 border-blue-600 text-white'
+                            : 'bg-white border-gray-600'
                         }`}
                       >
-                        {isMultipleAnswer ? (isSelected ? '✓' : String.fromCharCode(65 + index)) : String.fromCharCode(65 + index)}
+                        {isSelected && '✓'}
                       </div>
-                      <span className="text-gray-800 font-medium text-sm sm:text-base md:text-lg break-words">{option}</span>
                     </div>
                   </motion.button>
                     );

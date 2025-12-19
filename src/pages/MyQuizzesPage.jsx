@@ -173,8 +173,6 @@ const MyQuizzesPage = () => {
     })
   }
 
-
-
   const handleOpenRunningQuiz = async (quiz) => {
     setRunningQuizData(quiz)
     setShowRunningQuizModal(true)
@@ -912,14 +910,8 @@ const MyQuizzesPage = () => {
               {/* Action Buttons */}
               <div className="flex gap-3">
                 <button
-                  onClick={() => handleBatalkanPIN(runningQuizData)}
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition"
-                >
-                  ❌ Batalkan Kuis
-                </button>
-                <button
                   onClick={() => setShowRunningQuizModal(false)}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 rounded-xl transition"
+                  className="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 rounded-xl transition"
                 >
                   Tutup
                 </button>
