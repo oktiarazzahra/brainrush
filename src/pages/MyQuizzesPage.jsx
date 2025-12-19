@@ -653,17 +653,16 @@ const MyQuizzesPage = () => {
                           coverImage ? 'bg-gray-100' : 'bg-gradient-to-r from-blue-200 to-blue-300'
                         }`} 
                         onClick={() => {
-                          if (isDraft && activeTab === 'Draft') {
-                            return;
-                          }
                           if (activeTab === 'History') {
                             setSelectedHistory(item)
+                          } else if (activeTab === 'Draft' && isDraft) {
+                            // Hanya di tab Draft yang bisa langsung edit
+                            handleEdit(quizId)
                           } else if (!isHistory && item.activePIN && item.pinExpiresAt && new Date(item.pinExpiresAt) > new Date()) {
                             // Kuis sedang berjalan - buka modal detail
                             handleOpenRunningQuiz(item)
-                          } else {
-                            handleEdit(quizId)
                           }
+                          // Di tab My Quiz tidak ada aksi klik - harus unpublish dulu ke draft untuk edit
                         }}
                       >
                         {coverImage ? (

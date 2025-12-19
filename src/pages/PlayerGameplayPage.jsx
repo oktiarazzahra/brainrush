@@ -583,7 +583,7 @@ const PlayerGameplayPage = () => {
         });
         
         if (currentIdx < totalQuestions - 1) {
-          // Ada soal berikutnya - pindah otomatis setelah 2 detik
+          // Ada soal berikutnya - pindah otomatis langsung setelah waktu habis
           console.log('⏭️ Moving to next question after time expire (per-question mode)');
           setTimeout(() => {
             setCurrentQuestionIndex(prev => prev + 1);
@@ -596,13 +596,13 @@ const PlayerGameplayPage = () => {
             setTimerActive(false);
             setTimerEndTime(null);
             timerInitialized.current = false;
-          }, 2000);
+          }, 500);
         } else {
           // Soal terakhir - tampilkan quiz selesai
           console.log('🏁 Last question, showing completion screen');
           setTimeout(() => {
             setQuizCompleted(true);
-          }, 2000);
+          }, 500);
         }
       }
       
