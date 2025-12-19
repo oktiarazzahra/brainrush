@@ -92,7 +92,7 @@ const MyQuizzesPage = () => {
       setQuizzes(quizzesList)
     } catch (err) {
       console.error('❌ Error loading quizzes:', err)
-      setError('Gagal memuat quiz. Coba lagi.')
+      setError('Gagal memuat kuis. Coba lagi.')
     } finally {
       setLoading(false)
     }
@@ -562,7 +562,7 @@ const MyQuizzesPage = () => {
           {loading && (
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              <p className="ml-4 text-lg text-blue-800">Memuat quiz...</p>
+              <p className="ml-4 text-lg text-blue-800">Memuat kuis...</p>
             </div>
           )}
 

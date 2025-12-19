@@ -178,7 +178,7 @@ const EditQuizPage = () => {
 
         setActiveIdx(0)
       } catch (err) {
-        showError('Gagal memuat quiz: ' + (err.message || 'Unknown error'))
+        showError('Gagal memuat kuis: ' + (err.message || 'Unknown error'))
         navigate('/my-quizzes')
       } finally {
         setLoading(false)
@@ -494,7 +494,7 @@ const EditQuizPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-blue-200 flex items-center justify-center">
-        <div className="text-gray-800 text-lg font-bold">Memuat quiz...</div>
+        <div className="text-gray-800 text-lg font-bold">Memuat kuis...</div>
       </div>
     )
   }

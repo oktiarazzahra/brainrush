@@ -285,7 +285,7 @@ const TakeQuizPage = () => {
         setLoading(false)
       } catch (err) {
         console.error('Error fetching quiz:', err)
-        setError('Gagal memuat quiz. Silakan coba lagi.')
+        setError('Gagal memuat kuis. Silakan coba lagi.')
         setLoading(false)
       }
     }
