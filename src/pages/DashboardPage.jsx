@@ -230,8 +230,8 @@ const DashboardPage = () => {
             {filteredQuizzes.length === 0 ? (
               <div className="text-center py-20">
                 <div className="text-6xl mb-4">📚</div>
-                <p className="text-white text-xl font-semibold">No quizzes found</p>
-                <p className="text-white/70 mt-2">Try selecting a different category or create your own quiz!</p>
+                <p className="text-white text-xl font-semibold">Tidak ada kuis ditemukan</p>
+                <p className="text-white/70 mt-2">Coba pilih kategori lain atau buat kuis sendiri!</p>
               </div>
             ) : (
               <motion.div
