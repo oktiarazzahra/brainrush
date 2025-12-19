@@ -31,6 +31,8 @@ const PlayerGameplayPage = () => {
   const hasAnsweredRef = useRef(false) // Keep track of latest hasAnswered value for timer
   const questionIndexRef = useRef(currentQuestionIndex) // Track current question to prevent stale timer triggers
   const isFirstLoadRef = useRef(true) // Track if this is the first load ever
+  const timerModeRef = useRef('none') // Track timer mode to avoid stale closure in handleTimeExpire
+  const gameDataRef = useRef(null) // Track gameData for access in handleTimeExpire
 
   useEffect(() => {
     if (!gameId || !pin || !playerName) {
@@ -173,6 +175,15 @@ const PlayerGameplayPage = () => {
     }
   }, [loading, timerActive, timerEndTime, currentQuestionIndex]) // Tambah dependencies agar timer reset saat pindah soal
 
+  // Sync refs with state to avoid stale closures
+  useEffect(() => {
+    timerModeRef.current = timerMode
+  }, [timerMode])
+
+  useEffect(() => {
+    gameDataRef.current = gameData
+  }, [gameData])
+
   const loadGameData = async () => {
     try {
       console.log('🔄 loadGameData called for questionIndex:', currentQuestionIndex);
@@ -184,6 +195,7 @@ const PlayerGameplayPage = () => {
       
       const game = response.data.game
       setGameData(game)
+      gameDataRef.current = game // Update ref for access in timer callbacks
       
       // Untuk total-time dan none mode: gunakan currentQuestionIndex lokal (manual navigation)
       // Untuk per-question: sync ke backend (auto-move)
@@ -281,6 +293,7 @@ const PlayerGameplayPage = () => {
         const mode = game.quiz.timerMode || 'per-question'
         console.log('🔧 Setting timerMode to:', mode, 'from quiz.timerMode:', game.quiz.timerMode)
         setTimerMode(mode) // Always update to match quiz settings
+        timerModeRef.current = mode // Update ref to avoid stale closure
         
         if (shouldInitTimer && !timerInitialized.current) {
           // Player hasn't submitted final answer - setup timer
@@ -322,34 +335,56 @@ const PlayerGameplayPage = () => {
             // Per-question mode: use question time limit
             const questionTimeLimit = currentQ?.timeLimit
             
-            // Gunakan questionStartedAt dari player (bukan global game) untuk restore saat refresh
-            if (questionTimeLimit && me.questionStartedAt) {
-              const startTime = new Date(me.questionStartedAt).getTime()
-              const endTime = startTime + (questionTimeLimit * 1000)
-              const now = Date.now()
-              const remaining = Math.ceil((endTime - now) / 1000)
+            if (questionTimeLimit) {
+              // Check if player pernah start timer untuk question ini (ada di answers dengan autoSaved)
+              const playerAnswer = me.answers?.find(ans => 
+                ans.questionId?.toString() === currentQ?._id?.toString()
+              )
               
-              console.log('⏱️ Init Per-question (restore from player timer):', { 
-                questionTimeLimit, 
-                remaining, 
-                questionIndex: questionIndexToUse,
-                playerStartedAt: me.questionStartedAt
-              })
-              
-              // Set all timer state at once to prevent flicker
-              setTimerEndTime(endTime)
-              setTimeLeft(Math.max(0, remaining))
-              setTimerActive(remaining > 0)
-              timerInitialized.current = true
-            } else if (questionTimeLimit) {
-              // Belum ada questionStartedAt untuk player ini - berarti fresh start
-              const endTime = Date.now() + (questionTimeLimit * 1000)
-              console.log('⏱️ Init Per-question (fresh start):', { questionTimeLimit, questionIndex: questionIndexToUse })
-              setTimerEndTime(endTime)
-              setTimeLeft(questionTimeLimit)
-              setTimerActive(true)
+              // Jika ada questionStartedAt dari backend, restore dari situ
+              if (me.questionStartedAt && playerAnswer?.autoSaved && !playerAnswer?.answeredAt) {
+                const startTime = new Date(me.questionStartedAt).getTime()
+                const endTime = startTime + (questionTimeLimit * 1000)
+                const now = Date.now()
+                const remaining = Math.ceil((endTime - now) / 1000)
+                
+                console.log('⏱️ Init Per-question (restore from backend):', { 
+                  questionTimeLimit, 
+                  remaining, 
+                  questionIndex: questionIndexToUse,
+                  playerStartedAt: me.questionStartedAt,
+                  hasAutoSave: !!playerAnswer
+                })
+                
+                // Jika timer masih ada sisa, restore
+                if (remaining > 0) {
+                  setTimerEndTime(endTime)
+                  setTimeLeft(remaining)
+                  setTimerActive(true)
+                } else {
+                  // Timer sudah habis tapi belum di-handle - trigger expire
+                  console.log('⚠️ Timer sudah habis saat restore, triggering expire...')
+                  setTimerEndTime(null)
+                  setTimeLeft(0)
+                  setTimerActive(false)
+                  // Trigger auto-submit setelah state di-set
+                  setTimeout(() => {
+                    if (!hasAnsweredRef.current) {
+                      handleTimeExpire()
+                    }
+                  }, 100)
+                }
+              } else {
+                // Fresh start - belum pernah start timer untuk question ini
+                const endTime = Date.now() + (questionTimeLimit * 1000)
+                console.log('⏱️ Init Per-question (fresh start):', { questionTimeLimit, questionIndex: questionIndexToUse })
+                setTimerEndTime(endTime)
+                setTimeLeft(questionTimeLimit)
+                setTimerActive(true)
+              }
               timerInitialized.current = true
             } else {
+              // No time limit for this question
               setTimeLeft(0)
               setTimerActive(false)
               setTimerEndTime(null)
@@ -535,9 +570,19 @@ const PlayerGameplayPage = () => {
       );
       
       // Auto pindah ke soal berikutnya setelah waktu habis - HANYA untuk per-question mode
-      if (timerMode === 'per-question') {
-        const totalQuestions = gameData?.quiz?.questions?.length || 0
-        if (currentQuestionIndex < totalQuestions - 1) {
+      // Use ref to avoid stale closure issue
+      if (timerModeRef.current === 'per-question') {
+        const totalQuestions = gameDataRef.current?.quiz?.questions?.length || 0
+        const currentIdx = questionIndexRef.current
+        
+        console.log('🔍 Checking auto-move conditions:', {
+          timerMode: timerModeRef.current,
+          currentIdx,
+          totalQuestions,
+          shouldMove: currentIdx < totalQuestions - 1
+        });
+        
+        if (currentIdx < totalQuestions - 1) {
           // Ada soal berikutnya - pindah otomatis setelah 2 detik
           console.log('⏭️ Moving to next question after time expire (per-question mode)');
           setTimeout(() => {
