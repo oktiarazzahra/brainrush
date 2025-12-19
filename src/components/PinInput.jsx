@@ -76,7 +76,7 @@ const PinInput = ({ pin, onPinChange, onJoin }) => {
           }}
           transition={{ duration: 0.2 }}
         >
-          JOIN
+          GABUNG
         </motion.span>
       </Button>
     </div>

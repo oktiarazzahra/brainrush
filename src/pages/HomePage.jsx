@@ -16,7 +16,7 @@ const HomePage = ({ onJoin }) => {
   const handleJoinClick = () => {
     if (pin.trim()) {
       console.log('PIN validated:', pin)
-      navigate(`/join`, { state: { pin } })
+      navigate(`/join`, { state: { pin, fromDashboard: false } })
       if (onJoin) onJoin(pin)
     } else {
       showWarning('Masukkan PIN terlebih dahulu!')
