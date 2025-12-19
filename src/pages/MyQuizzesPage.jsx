@@ -699,12 +699,12 @@ const MyQuizzesPage = () => {
                             {/* Timer Mode Badge */}
                             {item.timerMode === 'per-question' && (
                               <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
-                                Per Soal
+                                ⏱️ Per Soal
                               </span>
                             )}
                             {item.timerMode === 'total-time' && (
                               <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-semibold">
-                                Total Waktu
+                                ⏰ Total Waktu
                               </span>
                             )}
                             {item.timerMode === 'none' && (
@@ -718,7 +718,7 @@ const MyQuizzesPage = () => {
                         <p className="text-sm text-gray-600 mb-1">
                           {isHistory 
                             ? new Date(item.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-                            : (item.author || item.creator?.name || 'Brain_Rush')
+                            : (item.author || item.creator?.name || JSON.parse(localStorage.getItem('user') || '{}').fullName || 'Anonymous')
                           }
                         </p>
                         <div className="flex items-center justify-between">
