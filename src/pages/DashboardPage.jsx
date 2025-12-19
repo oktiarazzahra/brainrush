@@ -133,7 +133,7 @@ const DashboardPage = () => {
       <motion.div
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="bg-white/10 backdrop-blur-md border-b border-white/20 p-3 sm:p-6 pt-16 lg:pt-3 sm:lg:pt-6"
+        className="bg-white/10 backdrop-blur-md border-b border-white/20 p-3 sm:p-6"
       >
         <div className="flex flex-col lg:flex-row items-center justify-between gap-3 sm:gap-4">
           {/* Mobile: Logo and Profile di atas */}

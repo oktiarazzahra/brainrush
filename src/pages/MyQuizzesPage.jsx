@@ -89,7 +89,14 @@ const MyQuizzesPage = () => {
         }
       })
       
-      setQuizzes(quizzesList)
+      // Add author from localStorage if not present (for My Quizzes page, all quizzes belong to current user)
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+      const enrichedQuizzes = quizzesList.map(quiz => ({
+        ...quiz,
+        author: quiz.createdBy?.name || quiz.author || currentUser.fullName || 'Anonymous'
+      }))
+      
+      setQuizzes(enrichedQuizzes)
     } catch (err) {
       console.error('❌ Error loading quizzes:', err)
       setError('Gagal memuat kuis. Coba lagi.')
@@ -718,7 +725,7 @@ const MyQuizzesPage = () => {
                         <p className="text-sm text-gray-600 mb-1">
                           {isHistory 
                             ? new Date(item.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-                            : (item.author || item.creator?.name || JSON.parse(localStorage.getItem('user') || '{}').fullName || 'Anonymous')
+                            : item.author
                           }
                         </p>
                         <div className="flex items-center justify-between">
