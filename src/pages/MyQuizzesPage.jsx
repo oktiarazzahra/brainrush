@@ -614,7 +614,7 @@ const MyQuizzesPage = () => {
                         <div className="absolute top-3 left-3 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10">DRAFT</div>
                       )}
                       {!isHistory && !isDraft && item.activePIN && item.pinExpiresAt && new Date(item.pinExpiresAt) > new Date() ? (
-                        <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10 animate-pulse flex items-center gap-1">
+                        <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10 flex items-center gap-1">
                           KUIS BERJALAN
                         </div>
                       ) : (
