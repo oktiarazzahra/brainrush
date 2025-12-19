@@ -86,7 +86,7 @@ const PinMonitoringPage = () => {
 
   const handleEndEarly = () => {
     showConfirm({
-      title: '⚠️ Akhiri Kuis Sekarang?',
+      title: 'Akhiri Kuis Sekarang?',
       message: 'Semua player yang sudah mengerjakan akan tercatat di history. Apakah Anda yakin?',
       confirmText: 'Ya, Akhiri',
       cancelText: 'Batal',
@@ -136,9 +136,9 @@ const PinMonitoringPage = () => {
                 <p className="text-white text-3xl font-bold tracking-wider">{PIN}</p>
                 <button
                   onClick={handleCopyPIN}
-                  className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition text-sm"
+                  className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition text-sm font-semibold"
                 >
-                  📋
+                  Salin
                 </button>
               </div>
             </div>
@@ -185,13 +185,13 @@ const PinMonitoringPage = () => {
 
           {loading ? (
             <div className="text-center py-8">
-              <div className="animate-spin text-4xl mb-2">⏳</div>
-              <p className="text-gray-500 text-sm">Memuat...</p>
+              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+              <p className="text-gray-500 text-sm">Memuat data...</p>
             </div>
           ) : players.length === 0 ? (
             <div className="text-center py-8">
-              <div className="text-4xl mb-2">👥</div>
-              <p className="text-gray-500 text-sm">Belum ada player</p>
+              <p className="text-gray-500 font-semibold mb-1">Belum ada player</p>
+              <p className="text-gray-400 text-xs">Player yang join akan muncul di sini</p>
             </div>
           ) : (
             <div className="max-h-64 overflow-y-auto space-y-2">
@@ -215,7 +215,7 @@ const PinMonitoringPage = () => {
                     </p>
                   </div>
                   {player.hasFinished && (
-                    <div className="text-green-500 text-lg">✅</div>
+                    <div className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-semibold">Selesai</div>
                   )}
                 </motion.div>
               ))}
@@ -236,7 +236,7 @@ const PinMonitoringPage = () => {
               onClick={handleEndEarly}
               className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-xl transition text-sm"
             >
-              ❌ Akhiri Kuis
+              Akhiri Kuis
             </button>
           )}
         </div>

@@ -421,7 +421,7 @@ const TakeQuizPage = () => {
       <div className="min-h-screen bg-blue-200 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block h-16 w-16 animate-spin rounded-full border-4 border-solid border-white border-r-transparent mb-4"></div>
-          <p className="text-white text-2xl font-bold">Loading Quiz...</p>
+          <p className="text-white text-2xl font-bold">Memuat kuis...</p>
         </div>
       </div>
     )

@@ -277,14 +277,14 @@ const PlayerGameplayPage = () => {
           ans.questionId?.toString() === currentQuestionId
         )?.answeredAt)
         
-        // Set timer mode once (stays stable like host)
+        // Set timer mode from quiz settings
         const mode = game.quiz.timerMode || 'per-question'
-        if (!timerMode || timerMode === 'none') {
-          setTimerMode(mode)
-        }
+        console.log('🔧 Setting timerMode to:', mode, 'from quiz.timerMode:', game.quiz.timerMode)
+        setTimerMode(mode) // Always update to match quiz settings
         
         if (shouldInitTimer && !timerInitialized.current) {
           // Player hasn't submitted final answer - setup timer
+          console.log('⏰ Initializing timer with mode:', mode, 'shouldInitTimer:', shouldInitTimer)
           const timerMode = mode
           
           if (timerMode === 'total-time') {

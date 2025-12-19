@@ -199,7 +199,7 @@ const DashboardPage = () => {
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-white border-r-transparent mb-4"></div>
-              <p className="text-white text-xl font-semibold">Loading quizzes...</p>
+              <p className="text-white text-xl font-semibold">Memuat kuis...</p>
             </div>
           </div>
         ) : (
