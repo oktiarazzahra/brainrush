@@ -476,20 +476,9 @@ const TakeQuizPage = () => {
 
   // Calculate score and prepare submission data
   const calculateScoreAndSubmit = async () => {
-    // PENTING: Pastikan semua auto-save selesai dulu
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current)
-    }
-    
-    // Pastikan progress terakhir tersimpan sebelum submit final
-    await saveCurrentProgress()
-    
     let correct = 0
     const submissionAnswers = []
 
-    console.log('📊 Starting score calculation...')
-    console.log('📝 Current answers state:', answers)
-    
     questions.forEach((q, index) => {
       const userAnswer = answers[index]
       let isCorrect = false
@@ -499,8 +488,7 @@ const TakeQuizPage = () => {
         type: q.type,
         multi: q.multi,
         correctAnswer: q.correctAnswer,
-        userAnswer: userAnswer,
-        hasAnswer: userAnswer !== undefined && userAnswer !== null
+        userAnswer: userAnswer
       })
 
       if (q.type === 'Pilihan Ganda' && q.multi) {
@@ -535,29 +523,22 @@ const TakeQuizPage = () => {
         }
       } else if (q.type === 'Isian') {
         // Short answer - case insensitive
-        // PENTING: Cek apakah ada jawaban yang valid
+        // PENTING: Jika tidak dijawab atau kosong, otomatis salah
         if (!userAnswer || typeof userAnswer !== 'string' || userAnswer.trim() === '') {
           isCorrect = false
-          formattedAnswer = '' // Kirim empty string, bukan undefined
-          console.log('Short answer: Tidak dijawab atau kosong - otomatis salah', { userAnswer })
+          formattedAnswer = ''
+          console.log('Short answer: Tidak dijawab atau kosong - otomatis salah')
+        } else if (q.acceptedAnswers && q.acceptedAnswers.length > 0) {
+          isCorrect = q.acceptedAnswers.some(
+            ans => ans.toLowerCase() === userAnswer.toLowerCase().trim()
+          )
+          formattedAnswer = userAnswer.trim()
+          console.log('Short answer:', { accepted: q.acceptedAnswers, user: userAnswer, isCorrect })
         } else {
-          const trimmedAnswer = userAnswer.trim()
-          formattedAnswer = trimmedAnswer
-          
-          if (q.acceptedAnswers && q.acceptedAnswers.length > 0) {
-            isCorrect = q.acceptedAnswers.some(
-              ans => ans.toLowerCase().trim() === trimmedAnswer.toLowerCase()
-            )
-            console.log('Short answer:', { 
-              accepted: q.acceptedAnswers, 
-              userTrimmed: trimmedAnswer,
-              isCorrect 
-            })
-          } else {
-            // Jika tidak ada acceptedAnswers, anggap salah tapi tetap kirim jawabannya
-            isCorrect = false
-            console.log('Short answer: No accepted answers defined, answer:', trimmedAnswer)
-          }
+          // Jika tidak ada acceptedAnswers, anggap salah
+          isCorrect = false
+          formattedAnswer = userAnswer.trim()
+          console.log('Short answer: No accepted answers defined')
         }
       }
 
@@ -570,25 +551,22 @@ const TakeQuizPage = () => {
       // Get the question _id from formatted questions
       submissionAnswers.push({
         questionId: questions[index]._id,
-        answer: formattedAnswer !== undefined && formattedAnswer !== null ? formattedAnswer : '',
+        answer: formattedAnswer,
         timeSpent: 0 // Could track time per question if needed
       })
     })
 
-    // JANGAN hitung skor di frontend - biarkan backend yang hitung
-    // Frontend hanya menampilkan hasil dari backend
-    console.log('📊 Preparing submission data:', {
+    const percentage = Math.round((correct / questions.length) * 100)
+    setScore(percentage)
+    setCorrectCount(correct)
+
+    console.log('📊 Submission data:', {
       quizId,
       totalQuestions: questions.length,
-      answersToSubmit: submissionAnswers.length,
-      progressId
+      correctAnswers: correct,
+      percentage,
+      answers: submissionAnswers
     })
-    
-    console.log('📤 Submission answers:', submissionAnswers.map((a, i) => ({
-      question: i + 1,
-      answer: a.answer,
-      hasAnswer: a.answer !== '' && a.answer !== null && a.answer !== undefined
-    })))
 
     // Submit to backend
     try {
