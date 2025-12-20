@@ -483,19 +483,18 @@ const PlayerGameplayPage = () => {
     }
   }
 
-  // For text input - JANGAN auto-save, tunggu submit
+  // For text input - Auto-save dengan debounce
   const handleTextAnswerChange = (value) => {
     setSelectedAnswer(value)
     selectedAnswerRef.current = value // Update ref
-    // TIDAK ada auto-save untuk isian
-  }
-  
-  // Submit manual untuk soal isian
-  const handleSubmitShortAnswer = () => {
-    if (hasAnswered) return
     
-    // Save answer saat submit
-    autoSaveAnswer(selectedAnswer || '')
+    // Auto-save dengan debounce untuk isian
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+    }
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      autoSaveAnswer(value)
+    }, 1000) // Auto-save setelah 1 detik tidak mengetik
   }
 
   // Called when timer expires - submit whatever answer was auto-saved
@@ -583,26 +582,22 @@ const PlayerGameplayPage = () => {
         });
         
         if (currentIdx < totalQuestions - 1) {
-          // Ada soal berikutnya - pindah otomatis langsung setelah waktu habis
+          // Ada soal berikutnya - pindah otomatis LANGSUNG setelah waktu habis (no delay)
           console.log('⏭️ Moving to next question after time expire (per-question mode)');
-          setTimeout(() => {
-            setCurrentQuestionIndex(prev => prev + 1);
-            setHasAnswered(false);
-            hasAnsweredRef.current = false;
-            setSelectedAnswer(null);
-            selectedAnswerRef.current = null;
-            setIsCorrect(null);
-            setFeedback('');
-            setTimerActive(false);
-            setTimerEndTime(null);
-            timerInitialized.current = false;
-          }, 500);
+          setCurrentQuestionIndex(prev => prev + 1);
+          setHasAnswered(false);
+          hasAnsweredRef.current = false;
+          setSelectedAnswer(null);
+          selectedAnswerRef.current = null;
+          setIsCorrect(null);
+          setFeedback('');
+          setTimerActive(false);
+          setTimerEndTime(null);
+          timerInitialized.current = false;
         } else {
           // Soal terakhir - tampilkan quiz selesai
           console.log('🏁 Last question, showing completion screen');
-          setTimeout(() => {
-            setQuizCompleted(true);
-          }, 500);
+          setQuizCompleted(true);
         }
       }
       
@@ -722,7 +717,7 @@ const PlayerGameplayPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-300 via-cyan-200 to-sky-200 flex items-center justify-center">
-        <div className="text-white text-2xl">Loading question...</div>
+        <div className="text-white text-2xl">Memuat soal...</div>
       </div>
     )
   }
@@ -985,29 +980,21 @@ const PlayerGameplayPage = () => {
                           : 'border-gray-200 bg-white'
                       } ${hasAnswered ? 'cursor-not-allowed opacity-60' : ''}`}
                     />
-                    {!hasAnswered && (
-                      <div className="mt-3 sm:mt-4">
-                        <button
-                          onClick={handleSubmitShortAnswer}
-                          disabled={!selectedAnswer || selectedAnswer.trim() === ''}
-                          className={`w-full py-3 sm:py-4 rounded-lg sm:rounded-xl font-bold text-base sm:text-lg transition-all ${
-                            selectedAnswer && selectedAnswer.trim() !== ''
-                              ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
-                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          }`}
-                        >
-                          Kirim Jawaban ✓
-                        </button>
-                        <p className="text-sm text-gray-500 text-center mt-2">
-                          💡 Type your answer, then click Submit
-                        </p>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
 
-              {/* Navigation Buttons untuk Total Time dan None Mode */}
+              {/* Info untuk player: jawaban auto-save */}
+              {timerMode === 'per-question' && !hasAnswered && selectedAnswer && (
+                <div className="mt-4 text-center">
+                  <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm">
+                    <span className="text-lg">✓</span>
+                    <span className="font-medium">Jawaban tersimpan! Tunggu waktu habis untuk lanjut...</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Navigation Buttons HANYA untuk Total Time dan None Mode */}
               {(timerMode === 'total-time' || timerMode === 'none') && !quizCompleted && (
                 <div className="mt-4 sm:mt-6 flex gap-2 sm:gap-3">
                   {/* Back Button */}
