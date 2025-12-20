@@ -499,18 +499,29 @@ const TakeQuizPage = () => {
         formattedAnswer = userIndex
         console.log('Single choice:', { correctIndex, userIndex, isCorrect })
       } else if (q.type === 'Benar Salah') {
-        // True/False - handle both string and boolean
+        // True/False - convert to string for backend consistency
         // PENTING: Jika tidak dijawab (null/undefined), otomatis salah
-        if (userAnswer === null || userAnswer === undefined || userAnswer === '') {
+        if (userAnswer === null || userAnswer === undefined) {
           isCorrect = false
           formattedAnswer = null
           console.log('True/False: Tidak dijawab - otomatis salah')
         } else {
-          const correctBool = q.correctAnswer === true || q.correctAnswer === 'true' || q.correctAnswer === true
+          // Normalize to compare
+          const correctBool = q.correctAnswer === true || q.correctAnswer === 'true' || q.correctAnswer === 'Benar'
           const userBool = userAnswer === true || userAnswer === 'true' || userAnswer === 'Benar'
           isCorrect = correctBool === userBool
-          formattedAnswer = userAnswer
-          console.log('True/False:', { correct: q.correctAnswer, user: userAnswer, correctBool, userBool, isCorrect })
+          
+          // PENTING: Kirim sebagai string 'Benar' atau 'Salah' ke backend
+          formattedAnswer = userAnswer === true || userAnswer === 'true' || userAnswer === 'Benar' ? 'Benar' : 'Salah'
+          
+          console.log('True/False:', { 
+            correct: q.correctAnswer, 
+            user: userAnswer, 
+            correctBool, 
+            userBool, 
+            formattedAnswer,
+            isCorrect 
+          })
         }
       } else if (q.type === 'Isian') {
         // Short answer - case insensitive
