@@ -499,29 +499,18 @@ const TakeQuizPage = () => {
         formattedAnswer = userIndex
         console.log('Single choice:', { correctIndex, userIndex, isCorrect })
       } else if (q.type === 'Benar Salah') {
-        // True/False - convert to string for backend consistency
+        // True/False - handle both string and boolean
         // PENTING: Jika tidak dijawab (null/undefined), otomatis salah
-        if (userAnswer === null || userAnswer === undefined) {
+        if (userAnswer === null || userAnswer === undefined || userAnswer === '') {
           isCorrect = false
           formattedAnswer = null
           console.log('True/False: Tidak dijawab - otomatis salah')
         } else {
-          // Normalize to compare
           const correctBool = q.correctAnswer === true || q.correctAnswer === 'true' || q.correctAnswer === 'Benar'
           const userBool = userAnswer === true || userAnswer === 'true' || userAnswer === 'Benar'
           isCorrect = correctBool === userBool
-          
-          // PENTING: Kirim sebagai string 'Benar' atau 'Salah' ke backend
-          formattedAnswer = userAnswer === true || userAnswer === 'true' || userAnswer === 'Benar' ? 'Benar' : 'Salah'
-          
-          console.log('True/False:', { 
-            correct: q.correctAnswer, 
-            user: userAnswer, 
-            correctBool, 
-            userBool, 
-            formattedAnswer,
-            isCorrect 
-          })
+          formattedAnswer = userAnswer
+          console.log('True/False:', { correct: q.correctAnswer, user: userAnswer, correctBool, userBool, isCorrect })
         }
       } else if (q.type === 'Isian') {
         // Short answer - case insensitive
@@ -529,18 +518,24 @@ const TakeQuizPage = () => {
         if (!userAnswer || typeof userAnswer !== 'string' || userAnswer.trim() === '') {
           isCorrect = false
           formattedAnswer = ''
-          console.log('Short answer: Tidak dijawab atau kosong - otomatis salah')
+          console.log('❌ Isian: Tidak dijawab atau kosong')
         } else if (q.acceptedAnswers && q.acceptedAnswers.length > 0) {
+          const userAnswerNormalized = userAnswer.toLowerCase().trim()
           isCorrect = q.acceptedAnswers.some(
-            ans => ans.toLowerCase() === userAnswer.toLowerCase().trim()
+            ans => ans.toLowerCase().trim() === userAnswerNormalized
           )
           formattedAnswer = userAnswer.trim()
-          console.log('Short answer:', { accepted: q.acceptedAnswers, user: userAnswer, isCorrect })
+          console.log('📝 Isian check:', { 
+            acceptedAnswers: q.acceptedAnswers,
+            userAnswer: userAnswer,
+            userAnswerNormalized,
+            isCorrect 
+          })
         } else {
           // Jika tidak ada acceptedAnswers, anggap salah
           isCorrect = false
           formattedAnswer = userAnswer.trim()
-          console.log('Short answer: No accepted answers defined')
+          console.log('⚠️ Isian: No accepted answers defined for this question')
         }
       }
 
@@ -1065,6 +1060,12 @@ const TakeQuizPage = () => {
                   placeholder="Ketik jawaban kamu..."
                   className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl text-base focus:outline-none focus:border-blue-500 shadow-md"
                 />
+                {currentAnswer && currentAnswer.trim() !== '' && (
+                  <div className="flex items-center gap-2 mt-2 text-sm">
+                    <span className="text-green-600">✓</span>
+                    <span className="text-gray-600">Jawaban tersimpan</span>
+                  </div>
+                )}
               </div>
             )}
 
