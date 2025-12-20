@@ -561,6 +561,9 @@ const TakeQuizPage = () => {
 
     // Submit to backend
     try {
+      setSubmitting(true)
+      const response = await learningService.submitLearning(quizId, submissionAnswers, progressId)
+      console.log('✅ Submission successful:', response)
       
       // Gunakan skor dari backend (yang benar)
       if (response.data && response.data.results) {
@@ -574,9 +577,6 @@ const TakeQuizPage = () => {
         })
       }
       
-      setSubmitting(true)
-      const response = await learningService.submitLearning(quizId, submissionAnswers, progressId)
-      console.log('✅ Submission successful:', response)
       setSubmitting(false)
       setQuizFinished(true)
       setHasUnsavedProgress(false)
