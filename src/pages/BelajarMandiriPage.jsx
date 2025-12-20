@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import DashboardLayout from '../components/DashboardLayout'
 import { learningService } from '../services/learningService'
@@ -8,6 +8,7 @@ import { useToast } from '../hooks/useToast'
 
 const BelajarMandiriPage = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { toast, showSuccess, showError, showWarning, hideToast } = useToast()
 
   const [selectedQuiz, setSelectedQuiz] = useState(null)
@@ -22,6 +23,39 @@ const BelajarMandiriPage = () => {
   // Fetch learning history on mount
   useEffect(() => {
     fetchLearningHistory()
+  }, [])
+
+  // Refresh when coming back from quiz with state.refresh
+  useEffect(() => {
+    if (location.state?.refresh) {
+      console.log('🔄 Refresh triggered from navigation state')
+      fetchLearningHistory()
+      // Clear the state after using it
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state])
+
+  // Refresh data when page becomes visible (user returns from quiz)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('👀 Page visible - refreshing learning history')
+        fetchLearningHistory()
+      }
+    }
+    
+    const handleFocus = () => {
+      console.log('🔄 Window focused - refreshing learning history')
+      fetchLearningHistory()
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [])
 
   const fetchLearningHistory = async () => {
