@@ -476,9 +476,20 @@ const TakeQuizPage = () => {
 
   // Calculate score and prepare submission data
   const calculateScoreAndSubmit = async () => {
+    // PENTING: Pastikan semua auto-save selesai dulu
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+    }
+    
+    // Pastikan progress terakhir tersimpan sebelum submit final
+    await saveCurrentProgress()
+    
     let correct = 0
     const submissionAnswers = []
 
+    console.log('📊 Starting score calculation...')
+    console.log('📝 Current answers state:', answers)
+    
     questions.forEach((q, index) => {
       const userAnswer = answers[index]
       let isCorrect = false
@@ -488,7 +499,8 @@ const TakeQuizPage = () => {
         type: q.type,
         multi: q.multi,
         correctAnswer: q.correctAnswer,
-        userAnswer: userAnswer
+        userAnswer: userAnswer,
+        hasAnswer: userAnswer !== undefined && userAnswer !== null
       })
 
       if (q.type === 'Pilihan Ganda' && q.multi) {
@@ -523,22 +535,29 @@ const TakeQuizPage = () => {
         }
       } else if (q.type === 'Isian') {
         // Short answer - case insensitive
-        // PENTING: Jika tidak dijawab atau kosong, otomatis salah
+        // PENTING: Cek apakah ada jawaban yang valid
         if (!userAnswer || typeof userAnswer !== 'string' || userAnswer.trim() === '') {
           isCorrect = false
-          formattedAnswer = ''
-          console.log('Short answer: Tidak dijawab atau kosong - otomatis salah')
-        } else if (q.acceptedAnswers && q.acceptedAnswers.length > 0) {
-          isCorrect = q.acceptedAnswers.some(
-            ans => ans.toLowerCase() === userAnswer.toLowerCase().trim()
-          )
-          formattedAnswer = userAnswer.trim()
-          console.log('Short answer:', { accepted: q.acceptedAnswers, user: userAnswer, isCorrect })
+          formattedAnswer = '' // Kirim empty string, bukan undefined
+          console.log('Short answer: Tidak dijawab atau kosong - otomatis salah', { userAnswer })
         } else {
-          // Jika tidak ada acceptedAnswers, anggap salah
-          isCorrect = false
-          formattedAnswer = userAnswer.trim()
-          console.log('Short answer: No accepted answers defined')
+          const trimmedAnswer = userAnswer.trim()
+          formattedAnswer = trimmedAnswer
+          
+          if (q.acceptedAnswers && q.acceptedAnswers.length > 0) {
+            isCorrect = q.acceptedAnswers.some(
+              ans => ans.toLowerCase().trim() === trimmedAnswer.toLowerCase()
+            )
+            console.log('Short answer:', { 
+              accepted: q.acceptedAnswers, 
+              userTrimmed: trimmedAnswer,
+              isCorrect 
+            })
+          } else {
+            // Jika tidak ada acceptedAnswers, anggap salah tapi tetap kirim jawabannya
+            isCorrect = false
+            console.log('Short answer: No accepted answers defined, answer:', trimmedAnswer)
+          }
         }
       }
 
@@ -551,25 +570,41 @@ const TakeQuizPage = () => {
       // Get the question _id from formatted questions
       submissionAnswers.push({
         questionId: questions[index]._id,
-        answer: formattedAnswer,
+        answer: formattedAnswer !== undefined && formattedAnswer !== null ? formattedAnswer : '',
         timeSpent: 0 // Could track time per question if needed
       })
     })
 
-    const percentage = Math.round((correct / questions.length) * 100)
-    setScore(percentage)
-    setCorrectCount(correct)
-
-    console.log('📊 Submission data:', {
+    // JANGAN hitung skor di frontend - biarkan backend yang hitung
+    // Frontend hanya menampilkan hasil dari backend
+    console.log('📊 Preparing submission data:', {
       quizId,
       totalQuestions: questions.length,
-      correctAnswers: correct,
-      percentage,
-      answers: submissionAnswers
+      answersToSubmit: submissionAnswers.length,
+      progressId
     })
+    
+    console.log('📤 Submission answers:', submissionAnswers.map((a, i) => ({
+      question: i + 1,
+      answer: a.answer,
+      hasAnswer: a.answer !== '' && a.answer !== null && a.answer !== undefined
+    })))
 
     // Submit to backend
     try {
+      
+      // Gunakan skor dari backend (yang benar)
+      if (response.data && response.data.results) {
+        const results = response.data.results
+        setScore(results.percentage || 0)
+        setCorrectCount(results.correctAnswers || 0)
+        console.log('📊 Final score from backend:', {
+          percentage: results.percentage,
+          correctAnswers: results.correctAnswers,
+          totalQuestions: results.totalQuestions
+        })
+      }
+      
       setSubmitting(true)
       const response = await learningService.submitLearning(quizId, submissionAnswers, progressId)
       console.log('✅ Submission successful:', response)
@@ -1042,8 +1077,14 @@ const TakeQuizPage = () => {
                   value={currentAnswer || ''}
                   onChange={(e) => {
                     const value = e.target.value
+                    console.log('✏️ Text input changed:', value)
+                    
                     // Update state immediately untuk responsiveness
-                    setAnswers({ ...answers, [currentQuestion]: value })
+                    setAnswers(prev => {
+                      const updated = { ...prev, [currentQuestion]: value }
+                      console.log('📝 Updated answers state:', updated)
+                      return updated
+                    })
                     
                     // Clear timeout sebelumnya
                     if (autoSaveTimeoutRef.current) {
@@ -1052,15 +1093,29 @@ const TakeQuizPage = () => {
                     
                     // Set timeout baru untuk auto-save (debounce)
                     autoSaveTimeoutRef.current = setTimeout(async () => {
-                      console.log('💾 Auto-saving text answer:', value)
+                      console.log('💾 Auto-saving text answer for question', currentQuestion + 1, ':', value)
                       setHasUnsavedProgress(true)
-                      // Trigger auto-save langsung
-                      await saveCurrentProgress()
+                      // Trigger auto-save langsung dengan jawaban terbaru
+                      try {
+                        await saveCurrentProgress()
+                        console.log('✅ Text answer saved successfully')
+                      } catch (error) {
+                        console.error('❌ Error saving text answer:', error)
+                      }
                     }, 1000) // 1 detik setelah user berhenti mengetik
+                  }}
+                  onBlur={async () => {
+                    // Juga save saat user keluar dari input (blur)
+                    if (autoSaveTimeoutRef.current) {
+                      clearTimeout(autoSaveTimeoutRef.current)
+                    }
+                    console.log('💾 Auto-saving on blur (user left input)')
+                    await saveCurrentProgress()
                   }}
                   placeholder="Ketik jawaban kamu..."
                   className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl text-base focus:outline-none focus:border-blue-500 shadow-md"
                 />
+                <p className="text-xs text-gray-500 mt-2">💡 Jawaban akan tersimpan otomatis</p>
               </div>
             )}
 
