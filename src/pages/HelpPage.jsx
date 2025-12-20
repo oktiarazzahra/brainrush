@@ -102,6 +102,9 @@ const HelpPage = () => {
       // Kirim ke backend API
       const response = await supportService.submitTicket(reportForm)
       
+      // Reset sending state dulu sebelum close modal
+      setSending(false)
+      
       // Tampilkan success message dengan ticket ID
       showSuccess(`✅ Laporan berhasil dikirim!\n\n` + `Ticket ID: ${response.data.ticketId}\n\n` + `Tim kami akan segera meninjau laporan Anda dan menghubungi melalui email jika diperlukan.\n\n` + `Terima kasih telah membantu meningkatkan Brain Rush!`)
       
@@ -111,9 +114,8 @@ const HelpPage = () => {
       
     } catch (error) {
       console.error('Submit ticket error:', error)
-      showError(`❌ Gagal mengirim laporan\n\n` + `${error.message || 'Terjadi kesalahan. Silakan coba lagi.'}`)
-    } finally {
       setSending(false)
+      showError(`❌ Gagal mengirim laporan\n\n` + `${error.message || 'Terjadi kesalahan. Silakan coba lagi.'}`)
     }
   }
 

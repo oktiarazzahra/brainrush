@@ -582,22 +582,26 @@ const PlayerGameplayPage = () => {
         });
         
         if (currentIdx < totalQuestions - 1) {
-          // Ada soal berikutnya - pindah otomatis LANGSUNG setelah waktu habis (no delay)
+          // Ada soal berikutnya - pindah otomatis dengan delay kecil untuk smooth transition
           console.log('⏭️ Moving to next question after time expire (per-question mode)');
-          setCurrentQuestionIndex(prev => prev + 1);
-          setHasAnswered(false);
-          hasAnsweredRef.current = false;
-          setSelectedAnswer(null);
-          selectedAnswerRef.current = null;
-          setIsCorrect(null);
-          setFeedback('');
-          setTimerActive(false);
-          setTimerEndTime(null);
-          timerInitialized.current = false;
+          setTimeout(() => {
+            setCurrentQuestionIndex(prev => prev + 1);
+            setHasAnswered(false);
+            hasAnsweredRef.current = false;
+            setSelectedAnswer(null);
+            selectedAnswerRef.current = null;
+            setIsCorrect(null);
+            setFeedback('');
+            setTimerActive(false);
+            setTimerEndTime(null);
+            timerInitialized.current = false;
+          }, 500); // Small delay untuk smooth transition
         } else {
           // Soal terakhir - tampilkan quiz selesai
           console.log('🏁 Last question, showing completion screen');
-          setQuizCompleted(true);
+          setTimeout(() => {
+            setQuizCompleted(true);
+          }, 1000);
         }
       }
       

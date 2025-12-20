@@ -121,14 +121,17 @@ const AdminSupportPage = () => {
         subject: replySubject,
         message: replyMessage
       })
+      
+      // Reset sending state dulu sebelum close modal
+      setSendingReply(false)
+      
       showSuccess('✅ Balasan berhasil dikirim via email!')
       closeReplyModal()
       closeDetailModal()
     } catch (error) {
       console.error('Error sending reply:', error)
-      showError('❌ Gagal mengirim balasan: ' + (error.response?.data?.message || error.message))
-    } finally {
       setSendingReply(false)
+      showError('❌ Gagal mengirim balasan: ' + (error.response?.data?.message || error.message))
     }
   }
 

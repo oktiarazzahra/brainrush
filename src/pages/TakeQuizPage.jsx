@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { quizService } from '../services/quizService'
 import { learningService } from '../services/learningService'
@@ -33,6 +33,9 @@ const TakeQuizPage = () => {
   const [timerMode, setTimerMode] = useState('per-question') // 'none', 'per-question', 'total-time'
   const [totalQuizTime, setTotalQuizTime] = useState(0) // Total time for entire quiz (if total-time mode)
   const [timerEndTime, setTimerEndTime] = useState(null) // Absolute end time based on system time
+  
+  // Ref untuk debounce auto-save pada input isian
+  const autoSaveTimeoutRef = useRef(null)
 
   // Fetch quiz data from API
   useEffect(() => {
@@ -377,7 +380,13 @@ const TakeQuizPage = () => {
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      // Clear debounce timeout on unmount
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
+      }
+    }
   }, [hasUnsavedProgress, quizFinished])
 
   // Handle time up for current question (per-question mode only)
@@ -1032,8 +1041,22 @@ const TakeQuizPage = () => {
                   type="text"
                   value={currentAnswer || ''}
                   onChange={(e) => {
-                    setHasUnsavedProgress(true)
-                    setAnswers({ ...answers, [currentQuestion]: e.target.value })
+                    const value = e.target.value
+                    // Update state immediately untuk responsiveness
+                    setAnswers({ ...answers, [currentQuestion]: value })
+                    
+                    // Clear timeout sebelumnya
+                    if (autoSaveTimeoutRef.current) {
+                      clearTimeout(autoSaveTimeoutRef.current)
+                    }
+                    
+                    // Set timeout baru untuk auto-save (debounce)
+                    autoSaveTimeoutRef.current = setTimeout(async () => {
+                      console.log('💾 Auto-saving text answer:', value)
+                      setHasUnsavedProgress(true)
+                      // Trigger auto-save langsung
+                      await saveCurrentProgress()
+                    }, 1000) // 1 detik setelah user berhenti mengetik
                   }}
                   placeholder="Ketik jawaban kamu..."
                   className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl text-base focus:outline-none focus:border-blue-500 shadow-md"
