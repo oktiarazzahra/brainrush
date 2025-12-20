@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { quizService } from '../services/quizService'
 import Toast from '../components/Toast'
@@ -45,6 +45,7 @@ const CreateQuizPage = () => {
   // Removed quizType - all quizzes support all question types and timer modes
   const [timerMode, setTimerMode] = useState('per-question')
   const [totalTime, setTotalTime] = useState(30)
+  const [creatorName, setCreatorName] = useState('Anonymous')
   const [questions, setQuestions] = useState([
     {
       question: '',
@@ -64,6 +65,19 @@ const CreateQuizPage = () => {
   const [saving, setSaving] = useState(false)
 
   const categories = ['Bahasa', 'Sains', 'Matematika', 'Biologi', 'Sejarah', 'Geografi', 'Olahraga', 'Umum']
+
+  // Load creator name from localStorage
+  useEffect(() => {
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr)
+        setCreatorName(user.fullName || user.name || 'Anonymous')
+      } catch (error) {
+        console.error('Error parsing user:', error)
+      }
+    }
+  }, [])
 
   const updateQuestion = (field, value, idx = activeIdx) => {
     if (idx < 0 || idx >= questions.length) return
@@ -426,6 +440,13 @@ const CreateQuizPage = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Pembuat</label>
+                <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-700 font-semibold flex items-center gap-2">
+                  <span className="text-blue-600">👤</span>
+                  {creatorName}
+                </div>
               </div>
             </div>
 

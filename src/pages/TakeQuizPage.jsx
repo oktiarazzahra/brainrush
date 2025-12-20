@@ -1047,7 +1047,8 @@ const TakeQuizPage = () => {
                 Soal {currentQuestion + 1} dari {questions.length}
               </div>
 
-              {(() => {
+              {/* Tombol Selanjutnya/Selesai - hanya muncul untuk mode total-time dan none */}
+              {(timerMode === 'total-time' || timerMode === 'none') && (() => {
                 // Validasi jawaban berdasarkan tipe soal
                 let isAnswered = false
                 
