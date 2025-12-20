@@ -258,7 +258,7 @@ const DashboardPage = () => {
                   <DashboardCard
                     key={quiz._id}
                     title={quiz.title}
-                    author={quiz.createdBy?.name || 'Anonymous'}
+                    author={quiz.createdBy?.fullName || quiz.createdBy?.name || 'Anonymous'}
                     questions={quiz.questions?.length || 0}
                     modules={0}
                     image={quiz.coverImage || `https://images.pexels.com/photos/${256262 + index}/pexels-photo.jpeg?auto=compress&cs=tinysrgb&w=400`}

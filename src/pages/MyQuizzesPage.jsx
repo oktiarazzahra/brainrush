@@ -103,7 +103,7 @@ const MyQuizzesPage = () => {
       const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
       const enrichedQuizzes = quizzesList.map(quiz => ({
         ...quiz,
-        author: quiz.createdBy?.name || quiz.author || currentUser.fullName || 'Anonymous'
+        author: quiz.createdBy?.fullName || quiz.createdBy?.name || quiz.author || currentUser.fullName || currentUser.name || 'Anonymous'
       }))
       
       setQuizzes(enrichedQuizzes)
