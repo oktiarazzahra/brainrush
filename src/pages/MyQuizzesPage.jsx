@@ -256,10 +256,11 @@ const MyQuizzesPage = () => {
         console.log('✅ Game created successfully:', response)
         const gameData = response.data.game
         
+        // Tutup modal dulu baru refresh
         setShowPinDurationModal(false)
         
-        // Refresh quiz list sekali saja
-        await fetchMyQuizzes()
+        // Refresh quiz list di background
+        fetchMyQuizzes()
       } catch (error) {
         console.error('❌ Error creating live game:', error)
         console.error('Error details:', error.response?.data || error.message)
@@ -373,11 +374,15 @@ const MyQuizzesPage = () => {
       await quizService.updateQuiz(selectedQuizForCover, quizData);
 
       showSuccess('Cover berhasil disimpan!');
-      await fetchMyQuizzes();
+      
+      // Tutup modal dulu baru refresh
       setShowCoverModal(false);
       setCoverPreview(null);
       setSelectedCoverFile(null);
       setSelectedQuizForCover(null);
+      
+      // Refresh data di background
+      fetchMyQuizzes();
     } catch (error) {
       console.error('❌ Upload cover error:', error);
       showError('Gagal upload cover!');
@@ -658,10 +663,8 @@ const MyQuizzesPage = () => {
                           } else if (activeTab === 'Draft' && isDraft) {
                             // Hanya di tab Draft yang bisa langsung edit
                             handleEdit(quizId)
-                          } else if (!isHistory && item.activePIN && item.pinExpiresAt && new Date(item.pinExpiresAt) > new Date()) {
-                            // Kuis sedang berjalan - buka modal detail
-                            handleOpenRunningQuiz(item)
                           }
+                          // Kuis sedang berjalan dengan PIN - tidak ada aksi klik
                           // Di tab My Quiz tidak ada aksi klik - harus unpublish dulu ke draft untuk edit
                         }}
                       >
@@ -784,141 +787,7 @@ const MyQuizzesPage = () => {
       </div>
 
 
-      {/* MODAL KUIS BERJALAN */}
-      <AnimatePresence>
-        {showRunningQuizModal && runningQuizData && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowRunningQuizModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-2xl p-8 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-3xl font-bold text-gray-800">{runningQuizData.title}</h2>
-                  <span className="inline-block mt-2 px-3 py-1 bg-red-100 text-red-700 text-sm font-bold rounded-full">
-                    KUIS BERJALAN
-                  </span>
-                </div>
-                <button
-                  onClick={() => setShowRunningQuizModal(false)}
-                  className="text-gray-500 hover:text-gray-700 transition"
-                >
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
 
-              {/* PIN dan Countdown */}
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 mb-6">
-                <p className="text-white/80 text-sm mb-2 text-center">Kode PIN</p>
-                <p className="text-white text-5xl font-bold text-center tracking-widest mb-4">{runningQuizData.activePIN}</p>
-                
-                <div className={`rounded-xl p-4 text-center ${
-                  runningQuizTimeLeft <= 0 
-                    ? 'bg-red-100' 
-                    : runningQuizTimeLeft <= 300 
-                    ? 'bg-yellow-100' 
-                    : 'bg-white/20'
-                }`}>
-                  <p className={`text-sm mb-2 ${
-                    runningQuizTimeLeft <= 0 
-                      ? 'text-red-600' 
-                      : runningQuizTimeLeft <= 300 
-                      ? 'text-yellow-700' 
-                      : 'text-white'
-                  }`}>
-                    {runningQuizTimeLeft <= 0 ? 'Waktu Habis!' : 'Sisa Waktu'}
-                  </p>
-                  <p className={`text-4xl font-bold ${
-                    runningQuizTimeLeft <= 0 
-                      ? 'text-red-600' 
-                      : runningQuizTimeLeft <= 300 
-                      ? 'text-yellow-700 animate-pulse' 
-                      : 'text-white'
-                  }`}>
-                    {formatTimeLeft(runningQuizTimeLeft)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Daftar Player */}
-              <div className="mb-6">
-                <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center justify-between">
-                  <span>📋 Player yang Sudah Mengerjakan</span>
-                  <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-sm">
-                    {runningQuizPlayers.length} Player
-                  </span>
-                </h3>
-                
-                {runningQuizPlayers.length === 0 ? (
-                  <div className="text-center py-8">
-                    <div className="text-5xl mb-3">👥</div>
-                    <p className="text-gray-600">Belum ada player yang mengerjakan</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto">
-                    {runningQuizPlayers.map((player, index) => (
-                      <div
-                        key={index}
-                        className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 flex items-center gap-3 border border-blue-200"
-                      >
-                        <div className="text-2xl">
-                          {typeof player.avatar === 'object' && player.avatar?.emoji 
-                            ? player.avatar.emoji 
-                            : player.avatar || '👤'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-800 truncate">{player.playerName}</p>
-                          <p className="text-xs text-gray-600">
-                            Join: {new Date(player.joinedAt).toLocaleTimeString('id-ID')}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Info Berakhir */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-6 text-center">
-                <p className="text-sm text-gray-600 mb-1">Kuis akan berakhir pada</p>
-                <p className="text-lg font-bold text-gray-800">
-                  {new Date(runningQuizData.pinExpiresAt).toLocaleString('id-ID', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  💡 Setelah waktu habis, hasil otomatis masuk ke History
-                </p>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowRunningQuizModal(false)}
-                  className="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 rounded-xl transition"
-                >
-                  Tutup
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* MODAL DURASI PIN */}
       <AnimatePresence>
