@@ -49,6 +49,16 @@ const QuizResultsPage = () => {
     }
   }
 
+  // Helper function to format answer display (True/False → Benar/Salah)
+  const formatAnswerDisplay = (answer) => {
+    if (answer === 'True') return 'Benar'
+    if (answer === 'False') return 'Salah'
+    if (Array.isArray(answer)) {
+      return answer.map(a => a === 'True' ? 'Benar' : a === 'False' ? 'Salah' : a).join(', ')
+    }
+    return answer || 'No answer'
+  }
+
   const processGameHistory = (gameHistory) => {
     // Process data from GameHistory model
     const processedPlayers = (gameHistory.playerResults || []).map((player, index) => {
@@ -66,10 +76,12 @@ const QuizResultsPage = () => {
         answers: answers.map((ans, i) => ({
           questionNum: i + 1,
           question: ans.question || `Question ${i + 1}`,
-          userAnswer: Array.isArray(ans.userAnswer) ? ans.userAnswer.join(', ') : ans.userAnswer || 'No answer',
+          userAnswer: Array.isArray(ans.userAnswer) 
+            ? ans.userAnswer.map(a => formatAnswerDisplay(a)).join(', ')
+            : formatAnswerDisplay(ans.userAnswer),
           correctAnswer: Array.isArray(ans.correctAnswer) 
-            ? ans.correctAnswer.join(', ') 
-            : ans.correctAnswer || 'N/A',
+            ? ans.correctAnswer.map(a => formatAnswerDisplay(a)).join(', ')
+            : formatAnswerDisplay(ans.correctAnswer) || 'N/A',
           isCorrect: ans.isCorrect
         }))
       }
@@ -115,10 +127,10 @@ const QuizResultsPage = () => {
           answers: answers.map((ans, i) => ({
             questionNum: i + 1,
             question: ans.question || `Question ${i + 1}`,
-            userAnswer: ans.userAnswer || ans.answer || 'No answer',
+            userAnswer: formatAnswerDisplay(ans.userAnswer || ans.answer),
             correctAnswer: Array.isArray(ans.correctAnswer) 
-              ? ans.correctAnswer.join(', ') 
-              : ans.correctAnswer,
+              ? ans.correctAnswer.map(a => formatAnswerDisplay(a)).join(', ')
+              : formatAnswerDisplay(ans.correctAnswer),
             isCorrect: ans.isCorrect
           }))
         }
