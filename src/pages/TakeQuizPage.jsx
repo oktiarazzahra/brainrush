@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { quizService } from '../services/quizService'
 import { learningService } from '../services/learningService'
@@ -24,6 +24,10 @@ const TakeQuizPage = () => {
   const [questions, setQuestions] = useState([])
   const [progressId, setProgressId] = useState(null)
   const [hasUnsavedProgress, setHasUnsavedProgress] = useState(false)
+  const [isianSaving, setIsianSaving] = useState(false) // Loading state untuk auto-save isian
+  
+  // Ref untuk debounce auto-save isian
+  const isianSaveTimeoutRef = useRef(null)
   
   // Timer states
   const [timeLeft, setTimeLeft] = useState(0) // Time left for current question
@@ -1054,16 +1058,42 @@ const TakeQuizPage = () => {
                   type="text"
                   value={currentAnswer || ''}
                   onChange={(e) => {
+                    const value = e.target.value
                     setHasUnsavedProgress(true)
-                    setAnswers({ ...answers, [currentQuestion]: e.target.value })
+                    setAnswers({ ...answers, [currentQuestion]: value })
+                    
+                    // Clear timeout sebelumnya
+                    if (isianSaveTimeoutRef.current) {
+                      clearTimeout(isianSaveTimeoutRef.current)
+                    }
+                    
+                    // Set saving state
+                    setIsianSaving(true)
+                    
+                    // Auto-save dengan debounce 1 detik
+                    isianSaveTimeoutRef.current = setTimeout(async () => {
+                      console.log('💾 Auto-saving isian answer:', value)
+                      await saveCurrentProgress()
+                      setIsianSaving(false)
+                      console.log('✅ Isian answer saved')
+                    }, 1000)
                   }}
                   placeholder="Ketik jawaban kamu..."
                   className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl text-base focus:outline-none focus:border-blue-500 shadow-md"
                 />
                 {currentAnswer && currentAnswer.trim() !== '' && (
                   <div className="flex items-center gap-2 mt-2 text-sm">
-                    <span className="text-green-600">✓</span>
-                    <span className="text-gray-600">Jawaban tersimpan</span>
+                    {isianSaving ? (
+                      <>
+                        <span className="inline-block w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
+                        <span className="text-blue-600">Menyimpan...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-green-600">✓</span>
+                        <span className="text-gray-600">Jawaban tersimpan</span>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
