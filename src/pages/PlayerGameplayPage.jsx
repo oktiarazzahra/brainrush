@@ -23,6 +23,7 @@ const PlayerGameplayPage = () => {
   const [timerActive, setTimerActive] = useState(false)
   const [timerEndTime, setTimerEndTime] = useState(null) // Absolute end time for accuracy
   const [quizCompleted, setQuizCompleted] = useState(false) // Track if player finished all questions
+  const [showTimeUpAnimation, setShowTimeUpAnimation] = useState(false) // Show animation when time expires
   
   // Use ref to track if timer has been initialized for current question
   const timerInitialized = useRef(false)
@@ -117,8 +118,7 @@ const PlayerGameplayPage = () => {
   // Load question when currentQuestionIndex changes
   useEffect(() => {
     if (gameId) {
-      // Reset timer flag saat pindah soal agar timer bisa di-init ulang
-      timerInitialized.current = false
+      // JANGAN reset timerInitialized - biar restore logic yang handle
       questionIndexRef.current = currentQuestionIndex // Update ref
       loadGameData()
     }
@@ -153,12 +153,17 @@ const PlayerGameplayPage = () => {
           setTimeLeft(0);
           setTimerActive(false);
           clearInterval(timer);
-          // Time's up - auto submit after small delay to ensure UI ready
+          
+          // Show time up animation first
           if (!hasAnsweredRef.current) {
-            console.log('⏰ Calling handleTimeExpire for question', capturedQuestionIndex, 'with 300ms delay');
+            console.log('⏰ Showing time up animation for question', capturedQuestionIndex);
+            setShowTimeUpAnimation(true);
+            
+            // Wait for animation, then submit
             setTimeout(() => {
+              setShowTimeUpAnimation(false);
               handleTimeExpire();
-            }, 300) // Delay agar soal benar-benar siap, match dengan host delay
+            }, 1500) // 1.5 detik untuk animasi
           } else {
             console.log('⏰ Already answered, not calling handleTimeExpire');
           }
@@ -305,7 +310,35 @@ const PlayerGameplayPage = () => {
             // Gunakan joinedAt player (bukan game.startedAt) karena self-paced
             const totalTimeLimit = game.quiz.totalTime || 1800
             
-            if (me.joinedAt) {
+            // PENTING: Cek localStorage dulu untuk restore timer (prevent reset on refresh)
+            const localStorageKey = `timer_${gameId}_${playerName}`
+            const savedTimerData = localStorage.getItem(localStorageKey)
+            
+            if (savedTimerData) {
+              // Restore dari localStorage
+              const { endTime } = JSON.parse(savedTimerData)
+              const now = Date.now()
+              const remaining = Math.ceil((endTime - now) / 1000)
+              
+              console.log('⏱️ Init Total-time (restore from localStorage):', { 
+                totalTimeLimit, 
+                remaining,
+                endTime: new Date(endTime).toISOString()
+              })
+              
+              if (remaining > 0) {
+                setTimerEndTime(endTime)
+                setTimeLeft(remaining)
+                setTimerActive(true)
+              } else {
+                // Timer sudah habis
+                console.log('⚠️ Timer expired from localStorage')
+                localStorage.removeItem(localStorageKey)
+                setTimerEndTime(null)
+                setTimeLeft(0)
+                setTimerActive(false)
+              }
+            } else if (me.joinedAt) {
               // Player sudah pernah join - restore timer dari joinedAt
               const startTime = new Date(me.joinedAt).getTime()
               const endTime = startTime + (totalTimeLimit * 1000)
@@ -318,6 +351,9 @@ const PlayerGameplayPage = () => {
                 joinedAt: me.joinedAt 
               })
               
+              // Simpan ke localStorage untuk persist across refresh
+              localStorage.setItem(localStorageKey, JSON.stringify({ endTime }))
+              
               // Set all timer state at once to prevent flicker
               setTimerEndTime(endTime)
               setTimeLeft(Math.max(0, remaining))
@@ -326,6 +362,10 @@ const PlayerGameplayPage = () => {
               // First time - should not happen karena joinedAt auto-set saat join
               const endTime = Date.now() + (totalTimeLimit * 1000)
               console.log('⏱️ Init Total-time (fresh start):', { totalTimeLimit })
+              
+              // Simpan ke localStorage
+              localStorage.setItem(localStorageKey, JSON.stringify({ endTime }))
+              
               setTimerEndTime(endTime)
               setTimeLeft(totalTimeLimit)
               setTimerActive(true)
@@ -336,25 +376,66 @@ const PlayerGameplayPage = () => {
             const questionTimeLimit = currentQ?.timeLimit
             
             if (questionTimeLimit) {
-              // Check if player pernah start timer untuk question ini (ada di answers dengan autoSaved)
+              // Check if player pernah start timer untuk question ini
               const playerAnswer = me.answers?.find(ans => 
                 ans.questionId?.toString() === currentQ?._id?.toString()
               )
               
-              // Jika ada questionStartedAt dari backend, restore dari situ
-              if (me.questionStartedAt && playerAnswer?.autoSaved && !playerAnswer?.answeredAt) {
+              // PENTING: Cek localStorage dulu untuk restore timer (prevent reset on refresh)
+              const localStorageKey = `timer_${gameId}_${playerName}_q${questionIndexToUse}`
+              const savedTimerData = localStorage.getItem(localStorageKey)
+              
+              if (savedTimerData) {
+                // Restore dari localStorage
+                const { endTime } = JSON.parse(savedTimerData)
+                const now = Date.now()
+                const remaining = Math.ceil((endTime - now) / 1000)
+                
+                console.log('⏱️ Init Per-question (restore from localStorage):', { 
+                  questionTimeLimit, 
+                  remaining,
+                  questionIndex: questionIndexToUse,
+                  endTime: new Date(endTime).toISOString()
+                })
+                
+                if (remaining > 0) {
+                  setTimerEndTime(endTime)
+                  setTimeLeft(remaining)
+                  setTimerActive(true)
+                } else {
+                  // Timer sudah habis
+                  console.log('⚠️ Timer expired from localStorage, triggering expire...')
+                  localStorage.removeItem(localStorageKey)
+                  setTimerEndTime(null)
+                  setTimeLeft(0)
+                  setTimerActive(false)
+                  
+                  // Show animation before handling expire
+                  if (!hasAnsweredRef.current) {
+                    setShowTimeUpAnimation(true);
+                    setTimeout(() => {
+                      setShowTimeUpAnimation(false);
+                      handleTimeExpire();
+                    }, 1500);
+                  }
+                }
+              } else if (me.questionStartedAt && !playerAnswer?.answeredAt) {
+                // Restore dari questionStartedAt (backend timestamp)
                 const startTime = new Date(me.questionStartedAt).getTime()
                 const endTime = startTime + (questionTimeLimit * 1000)
                 const now = Date.now()
                 const remaining = Math.ceil((endTime - now) / 1000)
                 
-                console.log('⏱️ Init Per-question (restore from backend):', { 
+                console.log('⏱️ Init Per-question (restore from questionStartedAt):', { 
                   questionTimeLimit, 
                   remaining, 
                   questionIndex: questionIndexToUse,
                   playerStartedAt: me.questionStartedAt,
-                  hasAutoSave: !!playerAnswer
+                  hasAnswer: !!playerAnswer
                 })
+                
+                // Simpan ke localStorage untuk persist across refresh
+                localStorage.setItem(localStorageKey, JSON.stringify({ endTime }))
                 
                 // Jika timer masih ada sisa, restore
                 if (remaining > 0) {
@@ -367,17 +448,24 @@ const PlayerGameplayPage = () => {
                   setTimerEndTime(null)
                   setTimeLeft(0)
                   setTimerActive(false)
-                  // Trigger auto-submit setelah state di-set
-                  setTimeout(() => {
-                    if (!hasAnsweredRef.current) {
-                      handleTimeExpire()
-                    }
-                  }, 100)
+                  
+                  // Show animation before handling expire
+                  if (!hasAnsweredRef.current) {
+                    setShowTimeUpAnimation(true);
+                    setTimeout(() => {
+                      setShowTimeUpAnimation(false);
+                      handleTimeExpire();
+                    }, 1500);
+                  }
                 }
               } else {
                 // Fresh start - belum pernah start timer untuk question ini
                 const endTime = Date.now() + (questionTimeLimit * 1000)
                 console.log('⏱️ Init Per-question (fresh start):', { questionTimeLimit, questionIndex: questionIndexToUse })
+                
+                // Simpan ke localStorage untuk persist across refresh
+                localStorage.setItem(localStorageKey, JSON.stringify({ endTime }))
+                
                 setTimerEndTime(endTime)
                 setTimeLeft(questionTimeLimit)
                 setTimerActive(true)
@@ -517,6 +605,18 @@ const PlayerGameplayPage = () => {
     setHasAnswered(true);
     hasAnsweredRef.current = true;
     setTimerActive(false);
+    
+    // Cleanup localStorage timer for current question
+    const timerMode = timerModeRef.current;
+    if (timerMode === 'total-time') {
+      const localStorageKey = `timer_${gameId}_${playerName}`;
+      localStorage.removeItem(localStorageKey);
+      console.log('🗑️ Cleared localStorage timer (total-time)');
+    } else if (timerMode === 'per-question') {
+      const localStorageKey = `timer_${gameId}_${playerName}_q${questionIndexRef.current}`;
+      localStorage.removeItem(localStorageKey);
+      console.log('🗑️ Cleared localStorage timer (per-question)');
+    }
 
     try {
       let answer = latestAnswer;
@@ -618,6 +718,18 @@ const PlayerGameplayPage = () => {
     setHasAnswered(true)
     hasAnsweredRef.current = true
     setTimerActive(false)
+    
+    // Cleanup localStorage timer for current question
+    const timerMode = timerModeRef.current;
+    if (timerMode === 'total-time') {
+      const localStorageKey = `timer_${gameId}_${playerName}`;
+      localStorage.removeItem(localStorageKey);
+      console.log('🗑️ Cleared localStorage timer (total-time)');
+    } else if (timerMode === 'per-question') {
+      const localStorageKey = `timer_${gameId}_${playerName}_q${questionIndexRef.current}`;
+      localStorage.removeItem(localStorageKey);
+      console.log('🗑️ Cleared localStorage timer (per-question)');
+    }
 
     try {
       // Calculate time spent
@@ -728,6 +840,51 @@ const PlayerGameplayPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-300 via-cyan-200 to-sky-200">
+      {/* Time Up Animation Overlay */}
+      <AnimatePresence>
+        {showTimeUpAnimation && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.5 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
+          >
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+              className="bg-white rounded-3xl p-12 shadow-2xl text-center"
+            >
+              <motion.div
+                initial={{ rotate: 0 }}
+                animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="text-8xl mb-4"
+              >
+                ⏰
+              </motion.div>
+              <motion.h2
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="text-4xl font-bold text-red-600 mb-2"
+              >
+                Waktu Habis!
+              </motion.h2>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.7 }}
+                className="text-gray-600 text-xl"
+              >
+                Melanjutkan ke soal berikutnya...
+              </motion.p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
       {/* Header */}
       <div className="bg-white/10 backdrop-blur-md border-b border-white/20 p-3 sm:p-4">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
