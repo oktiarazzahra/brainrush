@@ -90,6 +90,13 @@ const PlayerGameplayPage = () => {
         clearTimeout(autoSaveTimeoutRef.current)
       }
     }
+
+    // Jangan polling - bisa menyebabkan race condition
+    // Socket event + auto-check di loadGameData sudah cukup
+
+    return () => {
+      clearTimeout(autoSaveTimeoutRef.current)
+    }
   }, [gameId, pin, playerName, navigate])
 
   // Load question when currentQuestionIndex changes
@@ -1000,17 +1007,7 @@ const PlayerGameplayPage = () => {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    // 🧹 Cleanup storage sebelum navigate
-                    sessionStorage.removeItem(`questionIndex_${gameId}_${playerName}`)
-                    for (let i = 0; i < localStorage.length; i++) {
-                      const key = localStorage.key(i)
-                      if (key && key.startsWith(`timer_${gameId}_${playerName}`)) {
-                        localStorage.removeItem(key)
-                      }
-                    }
-                    navigate(isGuest ? '/' : '/dashboard')
-                  }}
+                  onClick={() => navigate(isGuest ? '/' : '/dashboard')}
                   className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all"
                 >
                   {isGuest ? 'Kembali ke Beranda' : 'Kembali ke Dashboard'}
