@@ -211,10 +211,6 @@ const TakeQuizPage = () => {
               }
             }
             
-            if (progress.totalTimeSpent) {
-              setTotalTimeSpent(progress.totalTimeSpent)
-            }
-            
             // No notification - langsung lanjut otomatis
             console.log('✅ Progress restored - continuing from question', progress.currentQuestionIndex + 1, 'of', progress.totalQuestions)
           } else {
@@ -348,7 +344,7 @@ const TakeQuizPage = () => {
       
       // Track total time
       setTotalTimeSpent((prev) => prev + 1)
-    }, 100) // Update every 100ms for smoother display, calculate from system time
+    }, 1000) // Update every 1 second using system time for accuracy
 
     return () => clearInterval(timer)
   }, [currentQuestion, loading, quizFinished, questions.length, timerMode, timerEndTime])
@@ -362,7 +358,7 @@ const TakeQuizPage = () => {
     const saveTimeout = setTimeout(async () => {
       console.log('💾 Auto-save triggered (answer changed)')
       await saveCurrentProgress()
-    }, 500) // Delay 500ms untuk debounce
+    }, 1000) // Delay 1 second untuk debounce
 
     return () => clearTimeout(saveTimeout)
   }, [hasUnsavedProgress])
@@ -775,6 +771,12 @@ const TakeQuizPage = () => {
                 <div className="flex gap-4">
                   <button
                     onClick={() => {
+                      // 🧹 Cleanup: Delete saved progress dari backend setelah selesai
+                      if (progressId) {
+                        learningService.deleteProgress(progressId).catch(err => 
+                          console.warn('Failed to delete progress:', err)
+                        )
+                      }
                       // Trigger refresh di BelajarMandiriPage dengan reload
                       navigate('/belajar-mandiri', { state: { refresh: true } })
                     }}
@@ -783,7 +785,15 @@ const TakeQuizPage = () => {
                     📚 Lihat Review
                   </button>
                   <button
-                    onClick={() => navigate('/dashboard')}
+                    onClick={() => {
+                      // 🧹 Cleanup: Delete saved progress dari backend sebelum navigate
+                      if (progressId) {
+                        learningService.deleteProgress(progressId).catch(err => 
+                          console.warn('Failed to delete progress:', err)
+                        )
+                      }
+                      navigate('/dashboard')
+                    }}
                     className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-xl transition shadow-md"
                   >
                     ← Dashboard
