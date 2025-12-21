@@ -47,34 +47,12 @@ const PlayerGameplayPage = () => {
     // Join the game room
     socketService.joinGame(gameId, playerName, 'player')
 
-    // Listen for question changes
-    socketService.onQuestionChanged(({ questionIndex }) => {
-      console.log(`➡️ Socket: Moving to question ${questionIndex}`)
-      
-      // Update ref immediately untuk stop old timer
-      questionIndexRef.current = questionIndex
-      
-      // Delay update ke soal baru untuk memberi waktu player process submit
-      setTimeout(() => {
-        setCurrentQuestionIndex(prevIndex => {
-          if (prevIndex !== questionIndex) {
-            console.log(`🔄 Changing question from ${prevIndex} to ${questionIndex}`)
-            // Moving to new question - reset all state including timer
-            setHasAnswered(false)
-            hasAnsweredRef.current = false
-            setSelectedAnswer(null)
-            selectedAnswerRef.current = null
-            setIsCorrect(null)
-            setFeedback('')
-            setTimerActive(false)
-            setTimerEndTime(null)
-            // Reset draft state so player bisa lanjut jawab
-            timerInitialized.current = false // IMPORTANT: Reset timer flag
-          }
-          return questionIndex
-        })
-      }, 500) // Delay untuk buffer proses submit player
-    })
+    // ❌ DISABLED: Question changes dari host - player navigasi sendiri (self-paced)
+    // socketService.onQuestionChanged(({ questionIndex }) => {
+    //   console.log(`➡️ Socket: Moving to question ${questionIndex}`)
+    //   ...
+    // })
+    console.log('🎯 Self-paced mode: Player can navigate questions independently')
 
     // Listen for game ended
     socketService.onGameEnded(({ results }) => {
@@ -199,34 +177,16 @@ const PlayerGameplayPage = () => {
       setGameData(game)
       gameDataRef.current = game // Update ref for access in timer callbacks
       
-      // Untuk total-time dan none mode: gunakan currentQuestionIndex lokal (manual navigation)
-      // Untuk per-question: sync ke backend (auto-move)
+      // 🎯 SELF-PACED: Semua mode menggunakan currentQuestionIndex lokal (manual navigation)
+      // Player tidak sync dengan host, bisa kerjakan soal dengan pace sendiri
       const timerMode = game.quiz.timerMode || 'per-question'
       let questionIndexToUse = currentQuestionIndex
 
-      if (timerMode === 'per-question') {
-        // Per-question: sync ke backend (auto-move)
-        const backendIndex = game.currentQuestion || 0
-        questionIndexToUse = backendIndex
-
-        if (backendIndex !== currentQuestionIndex) {
-          setCurrentQuestionIndex(backendIndex)
-        }
-
-        if (isFirstLoadRef.current) {
-          console.log('📍 First load: syncing to backend question:', backendIndex)
-          isFirstLoadRef.current = false
-        } else {
-          console.log('📍 Sync question index to backend:', backendIndex)
-        }
+      if (isFirstLoadRef.current) {
+        console.log('📍 First load (self-paced): starting at question:', currentQuestionIndex)
+        isFirstLoadRef.current = false
       } else {
-        // Total-time atau none: gunakan index lokal (manual navigation dengan Next/Back)
-        if (isFirstLoadRef.current) {
-          console.log('📍 First load (total-time/none): starting at question:', currentQuestionIndex)
-          isFirstLoadRef.current = false
-        } else {
-          console.log('📍 Total-time/none mode: using local index:', currentQuestionIndex)
-        }
+        console.log('📍 Self-paced mode: using local index:', currentQuestionIndex)
       }
 
       const currentQ = game.quiz.questions[questionIndexToUse]
@@ -594,63 +554,13 @@ const PlayerGameplayPage = () => {
 
   // Called when timer expires - submit whatever answer was auto-saved
   const handleTimeExpire = async () => {
-    // PENTING: Untuk per-question mode, tetap perlu pindah soal meskipun sudah dijawab
-    // Jadi jangan skip kalau sudah answered - hanya skip submit, tapi tetap auto-move
+    // 🎯 SELF-PACED: Jika sudah dijawab, tidak perlu auto-move lagi
+    // Player akan klik Next sendiri setelah siap
     const alreadyAnswered = hasAnsweredRef.current;
     
     if (alreadyAnswered) {
-      console.log('⏰ Timer expired and already answered - will auto-move to next question');
-      
-      // Skip submit, langsung ke auto-move logic
-      // Auto pindah ke soal berikutnya - HANYA untuk per-question mode
-      if (timerModeRef.current === 'per-question') {
-        const totalQuestions = gameDataRef.current?.quiz?.questions?.length || 0
-        const currentIdx = questionIndexRef.current
-        
-        console.log('🔍 Checking auto-move conditions:', {
-          timerMode: timerModeRef.current,
-          currentIdx,
-          totalQuestions,
-          shouldMove: currentIdx < totalQuestions - 1
-        });
-        
-        if (currentIdx < totalQuestions - 1) {
-          // Ada soal berikutnya - pindah otomatis
-          console.log('⏭️ Moving to next question after time expire (already answered)');
-          
-          // Clear localStorage untuk soal sekarang
-          const localStorageKey = `timer_${gameId}_${playerName}_q${currentIdx}`;
-          localStorage.removeItem(localStorageKey);
-          console.log('🗑️ Cleared localStorage timer for completed question:', localStorageKey);
-          
-          setTimeout(() => {
-            setCurrentQuestionIndex(prev => prev + 1);
-            setHasAnswered(false);
-            hasAnsweredRef.current = false;
-            setSelectedAnswer(null);
-            selectedAnswerRef.current = null;
-            setIsCorrect(null);
-            setFeedback('');
-            setTimerActive(false);
-            setTimerEndTime(null);
-            timerInitialized.current = false;
-          }, 500);
-        } else {
-          // Soal terakhir - tampilkan quiz selesai
-          console.log('🏁 Last question (already answered), showing completion screen');
-          
-          // Clear localStorage untuk soal terakhir
-          const localStorageKey = `timer_${gameId}_${playerName}_q${currentIdx}`;
-          localStorage.removeItem(localStorageKey);
-          console.log('🗑️ Cleared localStorage timer for last question:', localStorageKey);
-          
-          setTimeout(() => {
-            setQuizCompleted(true);
-          }, 1000);
-        }
-      }
-      
-      return; // Exit early since already submitted
+      console.log('⏰ Timer expired and already answered - waiting for player to click Next');
+      return; // Exit early, tidak auto-move
     }
     
     // Use ref value to get the latest answer (avoid stale closure)
@@ -717,54 +627,9 @@ const PlayerGameplayPage = () => {
         result.timeSpent || 0
       );
       
-      // Auto pindah ke soal berikutnya setelah waktu habis - HANYA untuk per-question mode
-      // Use ref to avoid stale closure issue
-      if (timerModeRef.current === 'per-question') {
-        const totalQuestions = gameDataRef.current?.quiz?.questions?.length || 0
-        const currentIdx = questionIndexRef.current
-        
-        console.log('🔍 Checking auto-move conditions:', {
-          timerMode: timerModeRef.current,
-          currentIdx,
-          totalQuestions,
-          shouldMove: currentIdx < totalQuestions - 1
-        });
-        
-        if (currentIdx < totalQuestions - 1) {
-          // Ada soal berikutnya - pindah otomatis dengan delay kecil untuk smooth transition
-          console.log('⏭️ Moving to next question after time expire (per-question mode)');
-          
-          // Clear localStorage untuk soal sekarang
-          const localStorageKey = `timer_${gameId}_${playerName}_q${currentIdx}`;
-          localStorage.removeItem(localStorageKey);
-          console.log('🗑️ Cleared localStorage timer for completed question:', localStorageKey);
-          
-          setTimeout(() => {
-            setCurrentQuestionIndex(prev => prev + 1);
-            setHasAnswered(false);
-            hasAnsweredRef.current = false;
-            setSelectedAnswer(null);
-            selectedAnswerRef.current = null;
-            setIsCorrect(null);
-            setFeedback('');
-            setTimerActive(false);
-            setTimerEndTime(null);
-            timerInitialized.current = false;
-          }, 500); // Small delay untuk smooth transition
-        } else {
-          // Soal terakhir - tampilkan quiz selesai
-          console.log('🏁 Last question, showing completion screen');
-          
-          // Clear localStorage untuk soal terakhir
-          const localStorageKey = `timer_${gameId}_${playerName}_q${currentIdx}`;
-          localStorage.removeItem(localStorageKey);
-          console.log('🗑️ Cleared localStorage timer for last question:', localStorageKey);
-          
-          setTimeout(() => {
-            setQuizCompleted(true);
-          }, 1000);
-        }
-      }
+      // 🎯 SELF-PACED: Timer habis tidak auto-move, player klik Next sendiri
+      // Hanya tandai soal sebagai "time expired" tapi tetap di soal yang sama
+      console.log('⏰ Time expired - waiting for player to click Next button');
       
       // Jangan tampilkan feedback benar/salah
     } catch (error) {
@@ -821,58 +686,60 @@ const PlayerGameplayPage = () => {
         result.timeSpent
       )
 
-      // Auto pindah ke soal berikutnya HANYA untuk mode per-question
-      // Untuk total-time dan none, player navigasi manual dengan tombol Next/Back
-      if (timerMode === 'per-question') {
-        const totalQuestions = gameData?.quiz?.questions?.length || 0
-        if (currentQuestionIndex < totalQuestions - 1) {
-          // Ada soal berikutnya - pindah otomatis setelah 1 detik
-          console.log('⏭️ Moving to next question after submit (per-question mode)');
-          setTimeout(() => {
-            setCurrentQuestionIndex(prev => prev + 1);
-            setHasAnswered(false);
-            hasAnsweredRef.current = false;
-            setSelectedAnswer(null);
-            selectedAnswerRef.current = null;
-            setIsCorrect(null);
-            setFeedback('');
-            setTimerActive(false);
-            setTimerEndTime(null);
-            timerInitialized.current = false;
-          }, 1000);
-        } else {
-          // Soal terakhir - tampilkan quiz selesai
-          console.log('🏁 Last question, showing completion screen');
-          setTimeout(() => {
-            setQuizCompleted(true);
-          }, 2000);
-        }
-      }
+      // 🎯 SELF-PACED: Tidak auto-move, player navigasi manual dengan tombol Next/Previous
+      console.log('✅ Answer submitted - waiting for player to navigate manually');
     } catch (error) {
       console.error('Error submitting answer:', error)
       const errorMessage = error.response?.data?.message || '❌ Error submitting answer'
       setFeedback(errorMessage)
       
-      // Auto pindah meski error (jangan stuck) - HANYA untuk per-question mode
+      // 🎯 SELF-PACED: Tidak auto-move meski error, player navigasi manual
+      console.log('⚠️ Error submitting - player can still navigate manually');
+    }
+  }
+
+  // Handler untuk navigasi manual Next/Previous
+  const handleNextQuestion = () => {
+    const totalQuestions = gameData?.quiz?.questions?.length || 0
+    if (currentQuestionIndex < totalQuestions - 1) {
+      // Clear localStorage untuk soal sekarang
       if (timerMode === 'per-question') {
-        const totalQuestions = gameData?.quiz?.questions?.length || 0
-        if (currentQuestionIndex < totalQuestions - 1) {
-          setTimeout(() => {
-            setCurrentQuestionIndex(prev => prev + 1);
-            setHasAnswered(false);
-            hasAnsweredRef.current = false;
-            setSelectedAnswer(null);
-            selectedAnswerRef.current = null;
-            setIsCorrect(null);
-            setFeedback('');
-            timerInitialized.current = false;
-          }, 1500);
-        } else {
-          setTimeout(() => {
-            setQuizCompleted(true);
-          }, 2000);
-        }
+        const localStorageKey = `timer_${gameId}_${playerName}_q${currentQuestionIndex}`;
+        localStorage.removeItem(localStorageKey);
+        console.log('🗑️ Cleared localStorage timer:', localStorageKey);
       }
+      
+      console.log('⏭️ Moving to next question');
+      setCurrentQuestionIndex(prev => prev + 1);
+      setHasAnswered(false);
+      hasAnsweredRef.current = false;
+      setSelectedAnswer(null);
+      selectedAnswerRef.current = null;
+      setIsCorrect(null);
+      setFeedback('');
+      setTimerActive(false);
+      setTimerEndTime(null);
+      timerInitialized.current = false;
+    } else {
+      // Soal terakhir - tampilkan quiz selesai
+      console.log('🏁 Last question, showing completion screen');
+      setQuizCompleted(true);
+    }
+  }
+
+  const handlePreviousQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      console.log('⏮️ Moving to previous question');
+      setCurrentQuestionIndex(prev => prev - 1);
+      setHasAnswered(false);
+      hasAnsweredRef.current = false;
+      setSelectedAnswer(null);
+      selectedAnswerRef.current = null;
+      setIsCorrect(null);
+      setFeedback('');
+      setTimerActive(false);
+      setTimerEndTime(null);
+      timerInitialized.current = false;
     }
   }
 
@@ -1199,34 +1066,23 @@ const PlayerGameplayPage = () => {
               </div>
 
               {/* Info untuk player: jawaban auto-save */}
-              {timerMode === 'per-question' && !hasAnswered && selectedAnswer && (
+              {!hasAnswered && selectedAnswer && (
                 <div className="mt-4 text-center">
                   <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm">
                     <span className="text-lg">✓</span>
-                    <span className="font-medium">Jawaban tersimpan! Tunggu waktu habis untuk lanjut...</span>
+                    <span className="font-medium">Jawaban tersimpan!</span>
                   </div>
                 </div>
               )}
 
-              {/* Navigation Buttons HANYA untuk Total Time dan None Mode */}
-              {(timerMode === 'total-time' || timerMode === 'none') && !quizCompleted && (
+              {/* 🎯 SELF-PACED: Navigation Buttons untuk SEMUA mode */}
+              {!quizCompleted && (
                 <div className="mt-4 sm:mt-6 flex gap-2 sm:gap-3">
                   {/* Back Button */}
                   <motion.button
                     whileHover={{ scale: currentQuestionIndex > 0 ? 1.02 : 1 }}
                     whileTap={{ scale: currentQuestionIndex > 0 ? 0.98 : 1 }}
-                    onClick={() => {
-                      if (currentQuestionIndex > 0) {
-                        setCurrentQuestionIndex(prev => prev - 1)
-                        setHasAnswered(false)
-                        hasAnsweredRef.current = false
-                        setSelectedAnswer(null)
-                        selectedAnswerRef.current = null
-                        setIsCorrect(null)
-                        setFeedback('')
-                        timerInitialized.current = false
-                      }
-                    }}
+                    onClick={handlePreviousQuestion}
                     disabled={currentQuestionIndex === 0}
                     className={`flex-1 py-3 sm:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base md:text-lg transition-all ${
                       currentQuestionIndex > 0
@@ -1241,28 +1097,12 @@ const PlayerGameplayPage = () => {
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => {
-                      const totalQuestions = gameData?.quiz?.questions?.length || 0
-                      if (currentQuestionIndex < totalQuestions - 1) {
-                        // Pindah ke soal berikutnya
-                        setCurrentQuestionIndex(prev => prev + 1)
-                        setHasAnswered(false)
-                        hasAnsweredRef.current = false
-                        setSelectedAnswer(null)
-                        selectedAnswerRef.current = null
-                        setIsCorrect(null)
-                        setFeedback('')
-                        timerInitialized.current = false
-                      } else {
-                        // Soal terakhir - tampilkan selesai
-                        setQuizCompleted(true)
-                      }
-                    }}
-                    className="flex-1 py-3 sm:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base md:text-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg transition-all"
+                    onClick={handleNextQuestion}
+                    className="flex-1 py-3 sm:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base md:text-lg bg-blue-600 hover:bg-blue-700 text-white transition-all cursor-pointer"
                   >
                     {currentQuestionIndex < (gameData?.quiz?.questions?.length || 0) - 1 
-                      ? 'Lanjut →' 
-                      : 'Selesai 🎉'}
+                      ? 'Selanjutnya →' 
+                      : 'Selesai'}
                   </motion.button>
                 </div>
               )}
