@@ -230,11 +230,26 @@ const PlayerGameplayPage = () => {
           
           // Check if it's a final submission or just auto-saved
           if (savedAnswer?.answeredAt && !savedAnswer?.autoSaved) {
-            // Final submission - jawaban sudah di-submit, jangan tampilkan benar/salah
+            // Final submission - jawaban sudah di-submit
             setHasAnswered(true)
             hasAnsweredRef.current = true
             setIsCorrect(null) // Jangan set hasil
             setTimerActive(false)
+            
+            // ⚡ AUTO-MOVE: Soal sudah dijawab, langsung pindah ke soal berikutnya
+            console.log('⚡ Soal sudah dijawab, auto-move ke soal berikutnya...')
+            setTimeout(() => {
+              const totalQuestions = game.quiz.questions.length
+              if (questionIndexToUse < totalQuestions - 1) {
+                timerInitialized.current = false
+                setCurrentQuestionIndex(questionIndexToUse + 1)
+              } else {
+                setQuizCompleted(true)
+              }
+            }, 500)
+            
+            setLoading(false)
+            return // Skip timer initialization
           } else {
             // Just auto-saved, timer should still be running
             setHasAnswered(false)
@@ -364,21 +379,29 @@ const PlayerGameplayPage = () => {
                   setTimeLeft(remaining)
                   setTimerActive(true)
                 } else {
-                  // Timer sudah habis
-                  console.log('⚠️ Timer expired from localStorage, triggering expire...')
+                  // Timer sudah habis - langsung auto-move
+                  console.log('⚡ Timer expired from localStorage, auto-moving...')
                   localStorage.removeItem(localStorageKey)
                   setTimerEndTime(null)
                   setTimeLeft(0)
                   setTimerActive(false)
                   
-                  // Show animation before handling expire
+                  // Langsung pindah soal tanpa animation (sudah terlambat)
                   if (!hasAnsweredRef.current) {
-                    setShowTimeUpAnimation(true);
-                    setTimeout(() => {
-                      setShowTimeUpAnimation(false);
-                      handleTimeExpire();
-                    }, 1500);
+                    // Submit jawaban kosong jika belum dijawab
+                    handleTimeExpire()
                   }
+                  
+                  // Auto-move ke soal berikutnya
+                  setTimeout(() => {
+                    const totalQuestions = game.quiz.questions.length
+                    if (questionIndexToUse < totalQuestions - 1) {
+                      timerInitialized.current = false
+                      setCurrentQuestionIndex(questionIndexToUse + 1)
+                    } else {
+                      setQuizCompleted(true)
+                    }
+                  }, 500)
                 }
               } else if (me.questionStartedAt && !playerAnswer?.answeredAt) {
                 // Restore dari questionStartedAt (backend timestamp)
