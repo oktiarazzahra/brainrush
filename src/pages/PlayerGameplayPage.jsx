@@ -9,8 +9,14 @@ const PlayerGameplayPage = () => {
   const location = useLocation()
   const { gameId, pin, playerName, avatar, isGuest, pinExpiresAt } = location.state || {}
 
+  // 👍 Initialize currentQuestionIndex dari sessionStorage untuk prevent blink
+  const getInitialQuestionIndex = () => {
+    const cached = sessionStorage.getItem(`questionIndex_${gameId}_${playerName}`)
+    return cached ? parseInt(cached, 10) : 0
+  }
+
   const [currentQuestion, setCurrentQuestion] = useState(null)
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(getInitialQuestionIndex())
   const [selectedAnswer, setSelectedAnswer] = useState(null)
   const [hasAnswered, setHasAnswered] = useState(false)
   const [isCorrect, setIsCorrect] = useState(null)
@@ -99,6 +105,10 @@ const PlayerGameplayPage = () => {
       // ✅ Reset timerInitialized agar timer soal baru bisa di-initialize
       timerInitialized.current = false
       questionIndexRef.current = currentQuestionIndex // Update ref
+      
+      // 💾 Save questionIndex ke sessionStorage untuk prevent blink on refresh
+      sessionStorage.setItem(`questionIndex_${gameId}_${playerName}`, currentQuestionIndex.toString())
+      
       loadGameData()
     }
   }, [currentQuestionIndex, gameId]) // ✅ Added gameId to dependencies
@@ -197,6 +207,9 @@ const PlayerGameplayPage = () => {
           questionIndexToUse = Math.min(nextQuestionIndex, game.quiz.questions.length - 1)
           setCurrentQuestionIndex(questionIndexToUse)
           questionIndexRef.current = questionIndexToUse
+          
+          // 💾 Update sessionStorage dengan progress terbaru
+          sessionStorage.setItem(`questionIndex_${gameId}_${playerName}`, questionIndexToUse.toString())
         }
         console.log('📍 First load (self-paced): starting at question:', questionIndexToUse)
         isFirstLoadRef.current = false
@@ -844,8 +857,15 @@ const PlayerGameplayPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-300 via-cyan-200 to-sky-200 flex items-center justify-center">
-        <div className="text-white text-2xl">Memuat soal...</div>
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="text-white text-2xl font-bold"
+        >
+          Memuat soal...
+        </motion.div>
       </div>
     )
   }
