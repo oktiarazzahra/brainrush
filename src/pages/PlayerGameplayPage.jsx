@@ -178,13 +178,27 @@ const PlayerGameplayPage = () => {
       setGameData(game)
       gameDataRef.current = game // Update ref for access in timer callbacks
       
-      // 🎯 SELF-PACED: Semua mode menggunakan currentQuestionIndex lokal (manual navigation)
-      // Player tidak sync dengan host, bisa kerjakan soal dengan pace sendiri
+      // 🎯 SELF-PACED: Detect progress player dan set currentQuestionIndex yang benar
       const timerMode = game.quiz.timerMode || 'per-question'
       let questionIndexToUse = currentQuestionIndex
 
       if (isFirstLoadRef.current) {
-        console.log('📍 First load (self-paced): starting at question:', currentQuestionIndex)
+        // First load - detect soal mana yang harus dikerjakan
+        const me = game.players.find(p => p.playerName === playerName)
+        if (me && me.answers && me.answers.length > 0) {
+          // Cari soal pertama yang belum dijawab (answeredAt exists)
+          const answeredQuestions = me.answers.filter(ans => ans.answeredAt && !ans.autoSaved)
+          const nextQuestionIndex = answeredQuestions.length // Index of next unanswered question
+          
+          console.log('📍 First load: Player has answered', answeredQuestions.length, 'questions')
+          console.log('📍 Setting initial question to:', nextQuestionIndex)
+          
+          // Set question index LANGSUNG sebelum render
+          questionIndexToUse = Math.min(nextQuestionIndex, game.quiz.questions.length - 1)
+          setCurrentQuestionIndex(questionIndexToUse)
+          questionIndexRef.current = questionIndexToUse
+        }
+        console.log('📍 First load (self-paced): starting at question:', questionIndexToUse)
         isFirstLoadRef.current = false
       } else {
         console.log('📍 Self-paced mode: using local index:', currentQuestionIndex)
