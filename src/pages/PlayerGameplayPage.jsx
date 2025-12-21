@@ -628,8 +628,8 @@ const PlayerGameplayPage = () => {
         result.timeSpent || 0
       );
       
-      // ⚡ AUTO-MOVE: Otomatis pindah ke soal berikutnya setelah 1.5 detik
-      console.log('⚡ AUTO-MOVE: Waktu habis, pindah ke soal berikutnya dalam 1.5 detik...')
+      // ⚡ AUTO-MOVE: Otomatis pindah ke soal berikutnya
+      console.log('⚡ AUTO-MOVE: Waktu habis, pindah ke soal berikutnya...')
       setTimeout(async () => {
         const totalQuestions = gameData?.quiz?.questions?.length || 0
         if (currentQuestionIndex < totalQuestions - 1) {
@@ -651,7 +651,7 @@ const PlayerGameplayPage = () => {
           }
           setQuizCompleted(true)
         }
-      }, 1500)
+      }, 500)
       
       // 🎯 SELF-PACED: Timer habis tidak auto-move, player klik Next sendiri
       // Hanya tandai soal sebagai "time expired" tapi tetap di soal yang sama
@@ -712,8 +712,8 @@ const PlayerGameplayPage = () => {
         result.timeSpent
       )
 
-      // ⚡ AUTO-MOVE: Otomatis pindah ke soal berikutnya setelah 1.5 detik
-      console.log('⚡ AUTO-MOVE: Pindah ke soal berikutnya dalam 1.5 detik...')
+      // ⚡ AUTO-MOVE: Otomatis pindah ke soal berikutnya
+      console.log('⚡ AUTO-MOVE: Pindah ke soal berikutnya...')
       setTimeout(async () => {
         const totalQuestions = gameData?.quiz?.questions?.length || 0
         if (currentQuestionIndex < totalQuestions - 1) {
@@ -735,7 +735,7 @@ const PlayerGameplayPage = () => {
           }
           setQuizCompleted(true)
         }
-      }, 1500)
+      }, 500)
 
       // 🎯 SELF-PACED: Tidak auto-move, player navigasi manual dengan tombol Next/Previous
       console.log('✅ Answer submitted - waiting for player to navigate manually');
@@ -753,12 +753,16 @@ const PlayerGameplayPage = () => {
   const handleNextQuestion = () => {
     const totalQuestions = gameData?.quiz?.questions?.length || 0
     if (currentQuestionIndex < totalQuestions - 1) {
-      // Clear localStorage untuk soal sekarang
-      if (timerMode === 'per-question') {
-        const localStorageKey = `timer_${gameId}_${playerName}_q${currentQuestionIndex}`;
-        localStorage.removeItem(localStorageKey);
-        console.log('🗑️ Cleared localStorage timer:', localStorageKey);
+      // Clear ALL localStorage timers untuk quiz ini (prevent stuck on refresh)
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith(`timer_${gameId}_${playerName}`)) {
+          keysToRemove.push(key)
+        }
       }
+      keysToRemove.forEach(key => localStorage.removeItem(key))
+      console.log('🗑️ Cleared all localStorage timers:', keysToRemove.length)
       
       console.log('⏭️ Moving to next question');
       setCurrentQuestionIndex(prev => prev + 1);
