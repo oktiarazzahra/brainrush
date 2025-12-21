@@ -96,7 +96,8 @@ const PlayerGameplayPage = () => {
   // Load question when currentQuestionIndex changes
   useEffect(() => {
     if (gameId) {
-      // JANGAN reset timerInitialized - biar restore logic yang handle
+      // ✅ Reset timerInitialized agar timer soal baru bisa di-initialize
+      timerInitialized.current = false
       questionIndexRef.current = currentQuestionIndex // Update ref
       loadGameData()
     }
@@ -1120,40 +1121,8 @@ const PlayerGameplayPage = () => {
                 <div className="mt-4 text-center">
                   <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm">
                     <span className="text-lg">✓</span>
-                    <span className="font-medium">Jawaban tersimpan!</span>
+                    <span className="font-medium">Jawaban tersimpan! Otomatis lanjut ke soal berikutnya...</span>
                   </div>
-                </div>
-              )}
-
-              {/* 🎯 SELF-PACED: Navigation Buttons untuk SEMUA mode */}
-              {!quizCompleted && (
-                <div className="mt-4 sm:mt-6 flex gap-2 sm:gap-3">
-                  {/* Back Button */}
-                  <motion.button
-                    whileHover={{ scale: currentQuestionIndex > 0 ? 1.02 : 1 }}
-                    whileTap={{ scale: currentQuestionIndex > 0 ? 0.98 : 1 }}
-                    onClick={handlePreviousQuestion}
-                    disabled={currentQuestionIndex === 0}
-                    className={`flex-1 py-3 sm:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base md:text-lg transition-all ${
-                      currentQuestionIndex > 0
-                        ? 'bg-gray-500 hover:bg-gray-600 text-white cursor-pointer'
-                        : 'bg-gray-300 text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    ← Kembali
-                  </motion.button>
-
-                  {/* Next/Finish Button */}
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleNextQuestion}
-                    className="flex-1 py-3 sm:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base md:text-lg bg-blue-600 hover:bg-blue-700 text-white transition-all cursor-pointer"
-                  >
-                    {currentQuestionIndex < (gameData?.quiz?.questions?.length || 0) - 1 
-                      ? 'Selanjutnya →' 
-                      : 'Selesai'}
-                  </motion.button>
                 </div>
               )}
               </>
