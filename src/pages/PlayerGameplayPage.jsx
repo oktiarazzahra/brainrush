@@ -594,9 +594,63 @@ const PlayerGameplayPage = () => {
 
   // Called when timer expires - submit whatever answer was auto-saved
   const handleTimeExpire = async () => {
-    if (hasAnsweredRef.current) {
-      console.log('⏰ Timer expired but already answered, skipping');
-      return;
+    // PENTING: Untuk per-question mode, tetap perlu pindah soal meskipun sudah dijawab
+    // Jadi jangan skip kalau sudah answered - hanya skip submit, tapi tetap auto-move
+    const alreadyAnswered = hasAnsweredRef.current;
+    
+    if (alreadyAnswered) {
+      console.log('⏰ Timer expired and already answered - will auto-move to next question');
+      
+      // Skip submit, langsung ke auto-move logic
+      // Auto pindah ke soal berikutnya - HANYA untuk per-question mode
+      if (timerModeRef.current === 'per-question') {
+        const totalQuestions = gameDataRef.current?.quiz?.questions?.length || 0
+        const currentIdx = questionIndexRef.current
+        
+        console.log('🔍 Checking auto-move conditions:', {
+          timerMode: timerModeRef.current,
+          currentIdx,
+          totalQuestions,
+          shouldMove: currentIdx < totalQuestions - 1
+        });
+        
+        if (currentIdx < totalQuestions - 1) {
+          // Ada soal berikutnya - pindah otomatis
+          console.log('⏭️ Moving to next question after time expire (already answered)');
+          
+          // Clear localStorage untuk soal sekarang
+          const localStorageKey = `timer_${gameId}_${playerName}_q${currentIdx}`;
+          localStorage.removeItem(localStorageKey);
+          console.log('🗑️ Cleared localStorage timer for completed question:', localStorageKey);
+          
+          setTimeout(() => {
+            setCurrentQuestionIndex(prev => prev + 1);
+            setHasAnswered(false);
+            hasAnsweredRef.current = false;
+            setSelectedAnswer(null);
+            selectedAnswerRef.current = null;
+            setIsCorrect(null);
+            setFeedback('');
+            setTimerActive(false);
+            setTimerEndTime(null);
+            timerInitialized.current = false;
+          }, 500);
+        } else {
+          // Soal terakhir - tampilkan quiz selesai
+          console.log('🏁 Last question (already answered), showing completion screen');
+          
+          // Clear localStorage untuk soal terakhir
+          const localStorageKey = `timer_${gameId}_${playerName}_q${currentIdx}`;
+          localStorage.removeItem(localStorageKey);
+          console.log('🗑️ Cleared localStorage timer for last question:', localStorageKey);
+          
+          setTimeout(() => {
+            setQuizCompleted(true);
+          }, 1000);
+        }
+      }
+      
+      return; // Exit early since already submitted
     }
     
     // Use ref value to get the latest answer (avoid stale closure)
@@ -612,18 +666,6 @@ const PlayerGameplayPage = () => {
     setHasAnswered(true);
     hasAnsweredRef.current = true;
     setTimerActive(false);
-    
-    // Cleanup localStorage timer for current question
-    const timerMode = timerModeRef.current;
-    if (timerMode === 'total-time') {
-      const localStorageKey = `timer_${gameId}_${playerName}`;
-      localStorage.removeItem(localStorageKey);
-      console.log('🗑️ Cleared localStorage timer (total-time)');
-    } else if (timerMode === 'per-question') {
-      const localStorageKey = `timer_${gameId}_${playerName}_q${questionIndexRef.current}`;
-      localStorage.removeItem(localStorageKey);
-      console.log('🗑️ Cleared localStorage timer (per-question)');
-    }
 
     try {
       let answer = latestAnswer;
