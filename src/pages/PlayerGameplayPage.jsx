@@ -627,6 +627,31 @@ const PlayerGameplayPage = () => {
         result.timeSpent || 0
       );
       
+      // ⚡ AUTO-MOVE: Otomatis pindah ke soal berikutnya setelah 1.5 detik
+      console.log('⚡ AUTO-MOVE: Waktu habis, pindah ke soal berikutnya dalam 1.5 detik...')
+      setTimeout(async () => {
+        const totalQuestions = gameData?.quiz?.questions?.length || 0
+        if (currentQuestionIndex < totalQuestions - 1) {
+          // Reset timerInitialized agar timer soal berikutnya bisa init
+          timerInitialized.current = false
+          handleNextQuestion()
+        } else {
+          // Soal terakhir - fetch final score sebelum tampilkan completion
+          console.log('🏁 Last question, fetching final score...')
+          try {
+            const gameResponse = await gameService.getGameState(gameId)
+            const me = gameResponse.data.players.find(p => p.playerName === playerName)
+            if (me) {
+              console.log('✅ Final score:', me.score)
+              setMyScore(me.score || 0)
+            }
+          } catch (error) {
+            console.error('❌ Error fetching final score:', error)
+          }
+          setQuizCompleted(true)
+        }
+      }, 1500)
+      
       // 🎯 SELF-PACED: Timer habis tidak auto-move, player klik Next sendiri
       // Hanya tandai soal sebagai "time expired" tapi tetap di soal yang sama
       console.log('⏰ Time expired - waiting for player to click Next button');
@@ -685,6 +710,31 @@ const PlayerGameplayPage = () => {
         result.currentScore,
         result.timeSpent
       )
+
+      // ⚡ AUTO-MOVE: Otomatis pindah ke soal berikutnya setelah 1.5 detik
+      console.log('⚡ AUTO-MOVE: Pindah ke soal berikutnya dalam 1.5 detik...')
+      setTimeout(async () => {
+        const totalQuestions = gameData?.quiz?.questions?.length || 0
+        if (currentQuestionIndex < totalQuestions - 1) {
+          // Reset timerInitialized agar timer soal berikutnya bisa init
+          timerInitialized.current = false
+          handleNextQuestion()
+        } else {
+          // Soal terakhir - fetch final score sebelum tampilkan completion
+          console.log('🏁 Last question, fetching final score...')
+          try {
+            const gameResponse = await gameService.getGameState(gameId)
+            const me = gameResponse.data.players.find(p => p.playerName === playerName)
+            if (me) {
+              console.log('✅ Final score:', me.score)
+              setMyScore(me.score || 0)
+            }
+          } catch (error) {
+            console.error('❌ Error fetching final score:', error)
+          }
+          setQuizCompleted(true)
+        }
+      }, 1500)
 
       // 🎯 SELF-PACED: Tidak auto-move, player navigasi manual dengan tombol Next/Previous
       console.log('✅ Answer submitted - waiting for player to navigate manually');
