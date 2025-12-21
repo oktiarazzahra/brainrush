@@ -154,19 +154,16 @@ const PlayerGameplayPage = () => {
           setTimerActive(false);
           clearInterval(timer);
           
-          // Show time up animation first
-          if (!hasAnsweredRef.current) {
-            console.log('⏰ Showing time up animation for question', capturedQuestionIndex);
-            setShowTimeUpAnimation(true);
-            
-            // Wait for animation, then submit
-            setTimeout(() => {
-              setShowTimeUpAnimation(false);
-              handleTimeExpire();
-            }, 1500) // 1.5 detik untuk animasi
-          } else {
-            console.log('⏰ Already answered, not calling handleTimeExpire');
-          }
+          // Show time up animation first (always show for better UX)
+          console.log('⏰ Showing time up animation for question', capturedQuestionIndex);
+          setShowTimeUpAnimation(true);
+          
+          // Wait for animation, then handle expire
+          setTimeout(() => {
+            setShowTimeUpAnimation(false);
+            // Always call handleTimeExpire untuk per-question auto-move
+            handleTimeExpire();
+          }, 1500) // 1.5 detik untuk animasi
         } else {
           console.log('⚠️ Question changed before timer expire, skipping handleTimeExpire');
         }
@@ -348,11 +345,13 @@ const PlayerGameplayPage = () => {
               console.log('⏱️ Init Total-time (restore from joinedAt):', { 
                 totalTimeLimit, 
                 remaining,
-                joinedAt: me.joinedAt 
+                joinedAt: me.joinedAt,
+                endTime: new Date(endTime).toISOString()
               })
               
-              // Simpan ke localStorage untuk persist across refresh
+              // PENTING: Simpan ke localStorage untuk persist across refresh
               localStorage.setItem(localStorageKey, JSON.stringify({ endTime }))
+              console.log('💾 Saved to localStorage:', localStorageKey)
               
               // Set all timer state at once to prevent flicker
               setTimerEndTime(endTime)
@@ -361,10 +360,11 @@ const PlayerGameplayPage = () => {
             } else {
               // First time - should not happen karena joinedAt auto-set saat join
               const endTime = Date.now() + (totalTimeLimit * 1000)
-              console.log('⏱️ Init Total-time (fresh start):', { totalTimeLimit })
+              console.log('⏱️ Init Total-time (fresh start):', { totalTimeLimit, endTime: new Date(endTime).toISOString() })
               
-              // Simpan ke localStorage
+              // PENTING: Simpan ke localStorage
               localStorage.setItem(localStorageKey, JSON.stringify({ endTime }))
+              console.log('💾 Saved to localStorage:', localStorageKey)
               
               setTimerEndTime(endTime)
               setTimeLeft(totalTimeLimit)
@@ -431,11 +431,13 @@ const PlayerGameplayPage = () => {
                   remaining, 
                   questionIndex: questionIndexToUse,
                   playerStartedAt: me.questionStartedAt,
-                  hasAnswer: !!playerAnswer
+                  hasAnswer: !!playerAnswer,
+                  endTime: new Date(endTime).toISOString()
                 })
                 
-                // Simpan ke localStorage untuk persist across refresh
+                // PENTING: Simpan ke localStorage untuk persist across refresh
                 localStorage.setItem(localStorageKey, JSON.stringify({ endTime }))
+                console.log('💾 Saved to localStorage:', localStorageKey)
                 
                 // Jika timer masih ada sisa, restore
                 if (remaining > 0) {
@@ -461,10 +463,15 @@ const PlayerGameplayPage = () => {
               } else {
                 // Fresh start - belum pernah start timer untuk question ini
                 const endTime = Date.now() + (questionTimeLimit * 1000)
-                console.log('⏱️ Init Per-question (fresh start):', { questionTimeLimit, questionIndex: questionIndexToUse })
+                console.log('⏱️ Init Per-question (fresh start):', { 
+                  questionTimeLimit, 
+                  questionIndex: questionIndexToUse,
+                  endTime: new Date(endTime).toISOString()
+                })
                 
-                // Simpan ke localStorage untuk persist across refresh
+                // PENTING: Simpan ke localStorage untuk persist across refresh
                 localStorage.setItem(localStorageKey, JSON.stringify({ endTime }))
+                console.log('💾 Saved to localStorage:', localStorageKey)
                 
                 setTimerEndTime(endTime)
                 setTimeLeft(questionTimeLimit)
@@ -684,6 +691,12 @@ const PlayerGameplayPage = () => {
         if (currentIdx < totalQuestions - 1) {
           // Ada soal berikutnya - pindah otomatis dengan delay kecil untuk smooth transition
           console.log('⏭️ Moving to next question after time expire (per-question mode)');
+          
+          // Clear localStorage untuk soal sekarang
+          const localStorageKey = `timer_${gameId}_${playerName}_q${currentIdx}`;
+          localStorage.removeItem(localStorageKey);
+          console.log('🗑️ Cleared localStorage timer for completed question:', localStorageKey);
+          
           setTimeout(() => {
             setCurrentQuestionIndex(prev => prev + 1);
             setHasAnswered(false);
@@ -699,6 +712,12 @@ const PlayerGameplayPage = () => {
         } else {
           // Soal terakhir - tampilkan quiz selesai
           console.log('🏁 Last question, showing completion screen');
+          
+          // Clear localStorage untuk soal terakhir
+          const localStorageKey = `timer_${gameId}_${playerName}_q${currentIdx}`;
+          localStorage.removeItem(localStorageKey);
+          console.log('🗑️ Cleared localStorage timer for last question:', localStorageKey);
+          
           setTimeout(() => {
             setQuizCompleted(true);
           }, 1000);
@@ -719,19 +738,11 @@ const PlayerGameplayPage = () => {
     hasAnsweredRef.current = true
     setTimerActive(false)
     
-    // Cleanup localStorage timer for current question
-    const timerMode = timerModeRef.current;
-    if (timerMode === 'total-time') {
-      const localStorageKey = `timer_${gameId}_${playerName}`;
-      localStorage.removeItem(localStorageKey);
-      console.log('🗑️ Cleared localStorage timer (total-time)');
-    } else if (timerMode === 'per-question') {
-      const localStorageKey = `timer_${gameId}_${playerName}_q${questionIndexRef.current}`;
-      localStorage.removeItem(localStorageKey);
-      console.log('🗑️ Cleared localStorage timer (per-question)');
-    }
+    // JANGAN clear localStorage di sini - biarkan timer tetap jalan
+    // localStorage hanya di-clear saat pindah soal atau quiz selesai
+    console.log('✅ Answer submitted, timer will continue until time expires or next question')
 
-    try {
+    try{
       // Calculate time spent
       const questionTimeLimit = currentQuestion?.timeLimit || null
       const timeSpentValue = questionTimeLimit !== null
