@@ -144,20 +144,18 @@ const QuizReviewPage = () => {
                   />
                 </div>
 
-                {/* Image Box - SAMA PERSIS */}
-                <div className="w-full flex justify-center mb-4 sm:mb-5">
-                  <div className="bg-gray-100 h-[120px] sm:h-[150px] w-full max-w-[450px] flex items-center justify-center font-bold text-sm sm:text-base text-gray-600 rounded-xl shadow-md">
-                    {currentQ.image ? (
+                {/* Image Box - HANYA TAMPIL KALAU ADA */}
+                {currentQ.image && (
+                  <div className="w-full flex justify-center mb-4 sm:mb-5">
+                    <div className="bg-gray-100 h-[120px] sm:h-[150px] w-full max-w-[450px] flex items-center justify-center rounded-xl shadow-md overflow-hidden">
                       <img 
                         src={currentQ.image} 
                         alt="Gambar Soal" 
-                        className="h-[100px] sm:h-[120px] rounded-lg object-cover" 
+                        className="w-full h-full object-cover" 
                       />
-                    ) : (
-                      'Upload Gambar..'
-                    )}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Options Grid - SAMA PERSIS */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-x-6 sm:gap-y-4 mb-6 sm:mb-8">
