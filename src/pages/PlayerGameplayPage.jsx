@@ -1043,7 +1043,7 @@ const PlayerGameplayPage = () => {
       <div className="max-w-4xl mx-auto p-3 sm:p-6">
         <AnimatePresence mode="wait">
           <motion.div
-            key="question"
+            key={`question-${currentQuestionIndex}`}
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -50, opacity: 0 }}
