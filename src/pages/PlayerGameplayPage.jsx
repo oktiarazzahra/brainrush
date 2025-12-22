@@ -515,7 +515,11 @@ const PlayerGameplayPage = () => {
   }
 
   const handleAnswerSelect = (answer) => {
-    if (hasAnswered) return // Jangan kunci hanya karena auto-save, hanya setelah final submit
+    // 🛡️ GUARD: Gunakan ref untuk check real-time state (lebih cepat dari state render)
+    if (hasAnswered || hasAnsweredRef.current) {
+      console.log('❌ handleAnswerSelect BLOCKED - already answered:', { hasAnswered, hasAnsweredRef: hasAnsweredRef.current })
+      return
+    }
     
     // Check if this is a multiple-answer question
     // Check both questionType and correctAnswer structure for robustness
@@ -606,23 +610,20 @@ const PlayerGameplayPage = () => {
 
   // Called when timer expires - submit whatever answer was auto-saved
   const handleTimeExpire = async () => {
-    // 🔒 IMMEDIATELY disable input to prevent bug
+    console.log('⏰ TIME EXPIRED! Starting expire handler...');
+    
+    // 🔒 IMMEDIATELY disable input to prevent any interaction
     setHasAnswered(true);
     hasAnsweredRef.current = true;
     setTimerActive(false);
     
-    // 🎯 SELF-PACED: Jika sudah dijawab, tidak perlu auto-move lagi
-    // Player akan klik Next sendiri setelah siap
-    const alreadyAnswered = hasAnsweredRef.current;
-    
     // Use ref value to get the latest answer (avoid stale closure)
     const latestAnswer = selectedAnswerRef.current;
     
-    console.log('⏰ TIME EXPIRED! Submitting answer:', {
+    console.log('📋 Expire state:', {
       selectedAnswer: latestAnswer,
-      selectedAnswerState: selectedAnswer, // For comparison
-      hasAnswered: hasAnsweredRef.current,
-      questionId: currentQuestion._id
+      currentQuestionIndex,
+      totalQuestions: gameData?.quiz?.questions?.length
     });
 
     try {
@@ -675,32 +676,44 @@ const PlayerGameplayPage = () => {
         result.timeSpent || 0
       );
       
-      // ⚡ AUTO-MOVE: Langsung pindah ke soal berikutnya (submit jalan async di background)
-      console.log('⚡ AUTO-MOVE: Waktu habis, pindah soal langsung...')
-      const totalQuestions = gameData?.quiz?.questions?.length || 0
-      if (currentQuestionIndex < totalQuestions - 1) {
+      // ⚡ AUTO-MOVE: Langsung pindah ke soal berikutnya TANPA DELAY
+      console.log('⚡ AUTO-MOVE: Preparing to move to next question...');
+      
+      // Gunakan questions length langsung, bukan dari gameData
+      const totalQuestions = gameData?.quiz?.questions?.length || questions?.length || 0;
+      const isLastQuestion = currentQuestionIndex >= totalQuestions - 1;
+      
+      console.log('📊 Navigation check:', {
+        currentQuestionIndex,
+        totalQuestions,
+        isLastQuestion
+      });
+      
+      if (!isLastQuestion) {
+        // Bukan soal terakhir - pindah ke soal berikutnya IMMEDIATELY
+        console.log('➡️ Moving to next question IMMEDIATELY (no delay)');
         // Reset timerInitialized agar timer soal berikutnya bisa init
-        timerInitialized.current = false
-        // Delay kecil hanya untuk smooth transition
-        setTimeout(() => {
-          handleNextQuestion()
-        }, 150)
+        timerInitialized.current = false;
+        
+        // 🚀 IMMEDIATE: Pindah soal TANPA setTimeout - animasi akan overlay transisi
+        console.log('🔄 Executing handleNextQuestion NOW');
+        handleNextQuestion();
       } else {
-        // Soal terakhir - fetch final score sebelum tampilkan completion
-        console.log('🏁 Last question, fetching final score...')
+        // Soal terakhir - tampilkan completion
+        console.log('🏁 Last question - showing completion');
         setTimeout(async () => {
           try {
-            const gameResponse = await gameService.getGameState(gameId)
-            const me = gameResponse.data.players.find(p => p.playerName === playerName)
+            const gameResponse = await gameService.getGameState(gameId);
+            const me = gameResponse.data.players.find(p => p.playerName === playerName);
             if (me) {
-              console.log('✅ Final score:', me.score)
-              setMyScore(me.score || 0)
+              console.log('✅ Final score:', me.score);
+              setMyScore(me.score || 0);
             }
           } catch (error) {
-            console.error('❌ Error fetching final score:', error)
+            console.error('❌ Error fetching final score:', error);
           }
-          setQuizCompleted(true)
-        }, 150)
+          setQuizCompleted(true);
+        }, 100);
       }
       
       // 🎯 SELF-PACED: Timer habis tidak auto-move, player klik Next sendiri
@@ -820,19 +833,25 @@ const PlayerGameplayPage = () => {
   }
 
   // Handler untuk navigasi manual Next/Previous
-  const handleNextQuestion = async () => {
-    // 🎯 AUTO-SUBMIT: Untuk total-time dan none, submit jawaban dulu sebelum pindah
+  const handleNextQuestion = () => {
+    console.log('🔄 handleNextQuestion called');
+    
+    // 🎯 AUTO-SUBMIT: Untuk total-time dan none, submit jawaban (async background)
     const hasValidAnswer = selectedAnswer !== null && selectedAnswer !== undefined && 
                           (Array.isArray(selectedAnswer) ? selectedAnswer.length > 0 : selectedAnswer !== '')
     
     if ((timerMode === 'total-time' || timerMode === 'none') && hasValidAnswer && !hasAnswered) {
-      console.log('💾 Auto-submitting answer before moving to next question...', {
+      console.log('💾 Auto-submitting answer in background...', {
         selectedAnswer,
         hasAnswered,
         timerMode
       })
-      await handleSubmitAnswer()
-      console.log('✅ Auto-submit completed')
+      // Fire and forget - tidak block perpindahan soal
+      handleSubmitAnswer().then(() => {
+        console.log('✅ Background submit completed')
+      }).catch(err => {
+        console.error('❌ Background submit error:', err)
+      })
     } else if ((timerMode === 'total-time' || timerMode === 'none')) {
       console.log('⏭️ Skipping auto-submit:', { hasValidAnswer, hasAnswered, selectedAnswer })
     }
@@ -869,14 +888,21 @@ const PlayerGameplayPage = () => {
     }
   }
 
-  const handlePreviousQuestion = async () => {
-    // 🎯 AUTO-SUBMIT: Untuk total-time dan none, submit jawaban dulu sebelum pindah
+  const handlePreviousQuestion = () => {
+    console.log('⬅️ handlePreviousQuestion called')
+    
+    // 🎯 AUTO-SUBMIT: Untuk total-time dan none, submit jawaban dulu sebelum pindah (async background)
     const hasValidAnswer = selectedAnswer !== null && selectedAnswer !== undefined && 
                           (Array.isArray(selectedAnswer) ? selectedAnswer.length > 0 : selectedAnswer !== '')
     
     if ((timerMode === 'total-time' || timerMode === 'none') && hasValidAnswer && !hasAnswered) {
       console.log('💾 Auto-submitting answer before moving to previous question...')
-      await handleSubmitAnswer()
+      // Fire and forget - tidak block perpindahan
+      handleSubmitAnswer().then(() => {
+        console.log('✅ Background submit completed (previous)')
+      }).catch(err => {
+        console.error('❌ Background submit error (previous):', err)
+      })
     }
     
     if (currentQuestionIndex > 0) {
