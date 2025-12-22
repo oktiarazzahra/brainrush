@@ -228,32 +228,36 @@ const QuizReviewPage = () => {
                 </div>
 
                 {/* Navigation */}
-                <div className="flex items-center justify-between gap-2 sm:gap-4 pt-4 border-t-2 border-gray-200">
+                <div className="flex items-center justify-between gap-1 sm:gap-3 md:gap-4 pt-4 border-t-2 border-gray-200">
                   <button
                     onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
                     disabled={currentQuestion === 0}
-                    className="bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 disabled:text-gray-400 text-gray-800 font-bold px-3 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 rounded-xl transition shadow-md text-xs sm:text-sm md:text-base"
+                    className="bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 disabled:text-gray-400 text-gray-800 font-bold px-2 sm:px-4 md:px-8 py-1.5 sm:py-2 md:py-3 rounded-lg sm:rounded-xl transition shadow-md text-xs sm:text-sm md:text-base whitespace-nowrap"
                   >
-                    ← Sebelumnya
+                    <span className="hidden sm:inline">← Sebelumnya</span>
+                    <span className="sm:hidden">←</span>
                   </button>
 
-                  <span className="text-gray-700 font-bold text-xs sm:text-sm md:text-base text-center">
-                    Soal {currentQuestion + 1} dari {questions.length}
+                  <span className="text-gray-700 font-bold text-[10px] sm:text-xs md:text-base text-center px-1">
+                    <span className="hidden sm:inline">Soal {currentQuestion + 1} dari {questions.length}</span>
+                    <span className="sm:hidden">{currentQuestion + 1}/{questions.length}</span>
                   </span>
 
                   {currentQuestion === questions.length - 1 ? (
                     <button
                       onClick={() => navigate('/schedule')}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 rounded-xl transition shadow-lg text-xs sm:text-sm md:text-base"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2 sm:px-4 md:px-8 py-1.5 sm:py-2 md:py-3 rounded-lg sm:rounded-xl transition shadow-lg text-xs sm:text-sm md:text-base whitespace-nowrap"
                     >
-                      Simpan soal
+                      <span className="hidden sm:inline">Simpan soal</span>
+                      <span className="sm:hidden">Simpan</span>
                     </button>
                   ) : (
                     <button
                       onClick={() => setCurrentQuestion(Math.min(questions.length - 1, currentQuestion + 1))}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 rounded-xl transition shadow-lg text-xs sm:text-sm md:text-base"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2 sm:px-4 md:px-8 py-1.5 sm:py-2 md:py-3 rounded-lg sm:rounded-xl transition shadow-lg text-xs sm:text-sm md:text-base whitespace-nowrap"
                     >
-                      Selanjutnya →
+                      <span className="hidden sm:inline">Selanjutnya →</span>
+                      <span className="sm:hidden">→</span>
                     </button>
                   )}
                 </div>
