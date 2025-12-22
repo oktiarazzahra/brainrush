@@ -399,24 +399,24 @@ const CreateQuizPage = () => {
     <div className="min-h-screen bg-blue-200 flex flex-col">
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-8 pt-6 pb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-3 sm:px-6 md:px-8 pt-4 sm:pt-6 pb-3 sm:pb-4 gap-3 sm:gap-0">
           <div>
-            <h1 className="text-3xl font-bold text-blue-900 drop-shadow-lg">Buat Kuis Baru</h1>
-            <p className="text-blue-800 text-sm">Rancang pertanyaan yang menarik untuk peserta didik</p>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-900 drop-shadow-lg">Buat Kuis Baru</h1>
+            <p className="text-blue-800 text-xs sm:text-sm">Rancang pertanyaan yang menarik untuk peserta didik</p>
           </div>
           <button
             onClick={() => navigate('/my-quizzes')}
-            className="bg-white/40 hover:bg-white/60 text-blue-900 px-5 py-2 rounded-lg transition font-semibold"
+            className="bg-white/40 hover:bg-white/60 text-blue-900 px-4 sm:px-5 py-2 rounded-lg transition font-semibold text-sm sm:text-base"
           >
             ← Kembali
           </button>
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-y-auto px-8 pb-6">
-          <div className="bg-white rounded-2xl p-8 max-w-4xl mx-auto shadow-xl">
+        <div className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-8 pb-4 sm:pb-6">
+          <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 max-w-4xl mx-auto shadow-xl">
             {/* JUDUL & KATEGORI INPUT */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Judul Kuis</label>
                 <input
@@ -451,11 +451,11 @@ const CreateQuizPage = () => {
             </div>
 
             {/* TIMER SETTINGS */}
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
-              <h3 className="font-bold text-blue-900 mb-4 flex items-center gap-2">
-                <span className="text-xl">⏱️</span> Pengaturan Waktu
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg sm:rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+              <h3 className="font-bold text-blue-900 mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+                <span className="text-lg sm:text-xl">⏱️</span> Pengaturan Waktu
               </h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">Mode Timer</label>
                   <select
@@ -498,12 +498,12 @@ const CreateQuizPage = () => {
             </div>
 
             {/* Question Number Tabs */}
-            <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+            <div className="flex gap-2 mb-4 sm:mb-6 md:mb-8 overflow-x-auto pb-2">
               {questions.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setActiveIdx(index)}
-                  className={`min-w-[60px] h-12 rounded-lg font-bold text-lg transition shadow-md ${
+                  className={`min-w-[48px] sm:min-w-[60px] h-10 sm:h-12 rounded-lg font-bold text-base sm:text-lg transition shadow-md ${
                     activeIdx === index
                       ? 'bg-blue-600 text-white scale-110'
                       : 'bg-gray-300 text-gray-800 hover:bg-gray-400'
@@ -514,26 +514,24 @@ const CreateQuizPage = () => {
               ))}
               <button
                 onClick={addQuestion}
-                className="min-w-[60px] h-12 rounded-lg font-bold text-lg bg-green-500 text-white hover:bg-green-600 transition shadow-md"
+                className="min-w-[48px] sm:min-w-[60px] h-10 sm:h-12 rounded-lg font-bold text-base sm:text-lg bg-green-500 text-white hover:bg-green-600 transition shadow-md"
               >
                 +
               </button>
             </div>
 
             {/* Time & Type Controls */}
-            <div className="flex gap-4 mb-6">
-              {timerMode === 'per-question' && (
-                <>
-                  <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">\n              {timerMode === 'per-question' && (
+                <>\n                  <div className="flex items-center gap-2">
                     <label className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-gray-700">Durasi Soal:</span>
+                      <span className="text-xs sm:text-sm font-semibold text-gray-700">Durasi Soal:</span>
                     </label>
                   </div>
 
                   <select
                     value={q.duration}
                     onChange={(e) => updateQuestion('duration', parseInt(e.target.value))}
-                    className="px-4 py-2 border-2 border-gray-300 rounded-lg bg-gray-100 font-semibold"
+                    className="px-3 sm:px-4 py-2 border-2 border-gray-300 rounded-lg bg-gray-100 font-semibold text-sm sm:text-base"
                   >
                     {[5, 10, 15, 20, 30, 45, 60].map((t) => (
                       <option key={t} value={t}>
@@ -547,7 +545,7 @@ const CreateQuizPage = () => {
               <select
                 value={q.type}
                 onChange={(e) => updateQuestionType(e.target.value)}
-                className="px-4 py-2 border-2 border-gray-300 rounded-lg bg-gray-100 font-semibold flex-1"
+                className="px-3 sm:px-4 py-2 border-2 border-gray-300 rounded-lg bg-gray-100 font-semibold flex-1 text-sm sm:text-base"
               >
                 <option>Pilihan Ganda</option>
                 <option>Benar Salah</option>
@@ -556,24 +554,24 @@ const CreateQuizPage = () => {
             </div>
 
             {/* Question Box */}
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <textarea
                 value={q.question}
                 onChange={(e) => updateQuestion('question', e.target.value)}
                 placeholder="Masukkan pertanyaan..."
                 rows="3"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-lg font-semibold text-center text-gray-800 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg text-base sm:text-lg font-semibold text-center text-gray-800 focus:outline-none focus:border-blue-500"
               />
             </div>
 
             {/* Image Box */}
-            <div className="w-full flex justify-center mb-6">
-              <div className="bg-gray-100 h-[150px] w-full max-w-[450px] flex items-center justify-center font-bold text-base text-gray-600 rounded-xl shadow-md cursor-pointer hover:bg-gray-200 transition">
+            <div className="w-full flex justify-center mb-4 sm:mb-6">
+              <div className="bg-gray-100 h-[120px] sm:h-[150px] w-full max-w-[450px] flex items-center justify-center font-bold text-sm sm:text-base text-gray-600 rounded-lg sm:rounded-xl shadow-md cursor-pointer hover:bg-gray-200 transition">
                 <label className="h-full w-full flex items-center justify-center cursor-pointer">
                   <div>
                     <div>📸 Upload Gambar..</div>
                     {q.imagePreview && (
-                      <img src={q.imagePreview} alt="Preview" className="max-h-[120px] mx-auto mt-2" />
+                      <img src={q.imagePreview} alt="Preview" className="max-h-[100px] sm:max-h-[120px] mx-auto mt-2" />
                     )}
                   </div>
                   <input
@@ -587,11 +585,11 @@ const CreateQuizPage = () => {
             </div>
 
             {q.image && (
-              <div className="flex justify-center mb-6">
+              <div className="flex justify-center mb-4 sm:mb-6">
                 <button
                   type="button"
                   onClick={() => removeImage()}
-                  className="text-red-600 hover:text-red-800 text-sm font-semibold"
+                  className="text-red-600 hover:text-red-800 text-xs sm:text-sm font-semibold"
                 >
                   ✕ Hapus Gambar
                 </button>
@@ -613,11 +611,11 @@ const CreateQuizPage = () => {
                   </label>
                 </div>
 
-                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-x-6 sm:gap-y-4">
                   {q.options.map((opt, i) => (
                     <div
                       key={i}
-                      className={`${COLORS[i]} p-6 rounded-xl font-bold text-lg flex items-center relative shadow-md cursor-pointer hover:shadow-lg transition group`}
+                      className={`${COLORS[i]} p-4 sm:p-6 rounded-lg sm:rounded-xl font-bold text-base sm:text-lg flex items-center relative shadow-md cursor-pointer hover:shadow-lg transition group`}
                       onClick={() => toggleCorrect(i)}
                     >
                       <input
@@ -629,16 +627,16 @@ const CreateQuizPage = () => {
                           updateOption(i, e.target.value)
                         }}
                         placeholder={`Pilihan ${i + 1}`}
-                        className="w-full bg-transparent text-gray-800 font-bold text-base placeholder-gray-500 focus:outline-none"
+                        className="w-full bg-transparent text-gray-800 font-bold text-sm sm:text-base placeholder-gray-500 focus:outline-none"
                       />
                       <div
-                        className={`absolute top-4 right-4 w-8 h-8 border-2 flex items-center justify-center transition rounded-full ${
+                        className={`absolute top-3 sm:top-4 right-3 sm:right-4 w-7 h-7 sm:w-8 sm:h-8 border-2 flex items-center justify-center transition rounded-full ${
                           q.correct[i]
                             ? 'bg-blue-600 border-blue-600'
                             : 'bg-white border-gray-600'
                         }`}
                       >
-                        {q.correct[i] && <span className="text-white font-bold text-lg">✓</span>}
+                        {q.correct[i] && <span className="text-white font-bold text-base sm:text-lg">✓</span>}
                       </div>
                       {q.type !== 'Pilihan Ganda' && q.options.length > 2 && (
                         <button
@@ -668,35 +666,35 @@ const CreateQuizPage = () => {
 
             {/* Benar Salah */}
             {q.type === 'Benar Salah' && (
-              <div className="grid grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                 <div
-                  className="bg-green-400 p-6 rounded-2xl border-4 border-green-600 cursor-pointer transition hover:shadow-lg"
+                  className="bg-green-400 p-4 sm:p-6 rounded-xl sm:rounded-2xl border-4 border-green-600 cursor-pointer transition hover:shadow-lg"
                   onClick={() => setTrueFalse(true)}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-2xl text-white">Benar</span>
+                    <span className="font-bold text-xl sm:text-2xl text-white">Benar</span>
                     {q.trueFalseAnswer === true ? (
-                      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                        <span className="text-green-600 font-bold text-lg">✓</span>
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-white rounded-full flex items-center justify-center">
+                        <span className="text-green-600 font-bold text-base sm:text-lg">✓</span>
                       </div>
                     ) : (
-                      <div className="w-8 h-8 border-2 border-white rounded-full"></div>
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 border-2 border-white rounded-full"></div>
                     )}
                   </div>
                 </div>
 
                 <div
-                  className="bg-red-400 p-6 rounded-2xl border-4 border-red-600 cursor-pointer transition hover:shadow-lg"
+                  className="bg-red-400 p-4 sm:p-6 rounded-xl sm:rounded-2xl border-4 border-red-600 cursor-pointer transition hover:shadow-lg"
                   onClick={() => setTrueFalse(false)}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-2xl text-white">Salah</span>
+                    <span className="font-bold text-xl sm:text-2xl text-white">Salah</span>
                     {q.trueFalseAnswer === false ? (
-                      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                        <span className="text-red-600 font-bold text-lg">✓</span>
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-white rounded-full flex items-center justify-center">
+                        <span className="text-red-600 font-bold text-base sm:text-lg">✓</span>
                       </div>
                     ) : (
-                      <div className="w-8 h-8 border-2 border-white rounded-full"></div>
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 border-2 border-white rounded-full"></div>
                     )}
                   </div>
                 </div>
@@ -705,20 +703,20 @@ const CreateQuizPage = () => {
 
             {/* Isian */}
             {q.type === 'Isian' && (
-              <div className="space-y-3 mb-6">
+              <div className="space-y-3 mb-4 sm:mb-6">
                 {q.acceptedAnswers.map((ans, i) => (
-                  <div key={i} className="flex items-center gap-3">
+                  <div key={i} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                     <input
                       type="text"
                       value={ans}
                       onChange={(e) => updateAcceptedAnswer(i, e.target.value)}
                       placeholder={`Jawaban ${i + 1}`}
-                      className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-700"
+                      className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-700 text-sm sm:text-base"
                     />
                     {q.acceptedAnswers.length > 1 && (
                       <button
                         onClick={() => removeAcceptedAnswer(i)}
-                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm font-semibold"
+                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-xs sm:text-sm font-semibold"
                       >
                         Hapus
                       </button>
@@ -727,7 +725,7 @@ const CreateQuizPage = () => {
                 ))}
                 <button
                   onClick={addAcceptedAnswer}
-                  className="text-blue-600 hover:text-blue-800 font-semibold text-sm"
+                  className="text-blue-600 hover:text-blue-800 font-semibold text-xs sm:text-sm"
                 >
                   + Tambah Jawaban
                 </button>
@@ -735,12 +733,12 @@ const CreateQuizPage = () => {
             )}
 
             {/* Delete Question Button */}
-            <div className="mb-6 flex gap-6 justify-center">
+            <div className="mb-4 sm:mb-6 flex gap-4 sm:gap-6 justify-center">
               <button
                 type="button"
                 onClick={() => deleteQuestion(activeIdx)}
                 disabled={questions.length === 1}
-                className={`px-6 py-2.5 text-base font-bold rounded-lg shadow-md border-2 border-gray-300 transition ${
+                className={`px-4 sm:px-6 py-2 sm:py-2.5 text-sm sm:text-base font-bold rounded-lg shadow-md border-2 border-gray-300 transition ${
                   questions.length === 1
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-red-500 text-white hover:bg-red-600'
@@ -751,31 +749,31 @@ const CreateQuizPage = () => {
             </div>
 
             {/* Navigation */}
-            <div className="flex items-center justify-between pt-4 border-t-2 border-gray-200">
+            <div className="flex items-center justify-between pt-3 sm:pt-4 border-t-2 border-gray-200 gap-2 sm:gap-4">
               <button
                 onClick={() => setActiveIdx(Math.max(0, activeIdx - 1))}
                 disabled={activeIdx === 0}
-                className="bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 disabled:text-gray-400 text-gray-800 font-bold px-8 py-3 rounded-xl transition shadow-md"
+                className="bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 disabled:text-gray-400 text-gray-800 font-bold px-4 sm:px-6 md:px-8 py-2 sm:py-3 rounded-lg sm:rounded-xl transition shadow-md text-xs sm:text-sm md:text-base"
               >
                 ← Sebelumnya
               </button>
 
-              <span className="text-gray-700 font-bold">
-                Soal {activeIdx + 1} dari {questions.length}
+              <span className="text-gray-700 font-bold text-xs sm:text-sm md:text-base">
+                {activeIdx + 1}/{questions.length}
               </span>
 
               {activeIdx === questions.length - 1 ? (
                 <button
                   onClick={handleSubmit}
                   disabled={saving}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold px-8 py-3 rounded-xl transition shadow-lg"
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold px-4 sm:px-6 md:px-8 py-2 sm:py-3 rounded-lg sm:rounded-xl transition shadow-lg text-xs sm:text-sm md:text-base"
                 >
                   {saving ? 'Menyimpan...' : 'Simpan Kuis'}
                 </button>
               ) : (
                 <button
                   onClick={() => setActiveIdx(Math.min(questions.length - 1, activeIdx + 1))}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl transition shadow-lg"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 sm:px-6 md:px-8 py-2 sm:py-3 rounded-lg sm:rounded-xl transition shadow-lg text-xs sm:text-sm md:text-base"
                 >
                   Selanjutnya →
                 </button>
