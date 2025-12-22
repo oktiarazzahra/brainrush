@@ -879,6 +879,37 @@ const TakeQuizPage = () => {
         {/* Main Content */}
         <div className="flex-1 overflow-y-auto px-8 pb-6">
           <div className="bg-white rounded-2xl p-8 max-w-4xl mx-auto shadow-xl">
+            
+            {/* Mini Question Navigation - Hanya untuk total-time dan none */}
+            {(timerMode === 'total-time' || timerMode === 'none') && (
+              <div className="mb-6">
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                  {questions.map((_, index) => {
+                    const isAnswered = index in answers && answers[index] !== null && answers[index] !== undefined
+                    const isCurrent = currentQuestion === index
+                    
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          setCurrentQuestion(index)
+                        }}
+                        className={`min-w-[48px] h-12 rounded-lg font-bold text-sm transition shadow-md flex items-center justify-center ${
+                          isCurrent
+                            ? 'bg-blue-600 text-white scale-110'
+                            : isAnswered
+                            ? 'bg-green-400 text-green-900 hover:bg-green-500'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        {index + 1}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+            
             {/* Question Tabs */}
             <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
               {questions.map((_, index) => {
