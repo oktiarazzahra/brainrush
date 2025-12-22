@@ -1125,22 +1125,42 @@ const PlayerGameplayPage = () => {
                   Anda telah menyelesaikan semua soal
                 </p>
                 <div className="bg-blue-100 border-2 border-blue-400 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
-                  {gameData?.players && (() => {
-                    const me = gameData.players.find(p => p.playerName === playerName)
-                    const finalScore = me?.score || 0
-                    const correctAnswers = me?.answers?.filter(ans => ans.isCorrect).length || 0
-                    const totalQuestions = gameData?.quiz?.questions?.length || 0
+                  {(() => {
+                    // Try to get score from gameData.players first
+                    if (gameData?.players) {
+                      const me = gameData.players.find(p => p.playerName === playerName)
+                      if (me) {
+                        const finalScore = me.score || 0
+                        const correctAnswers = me.answers?.filter(ans => ans.isCorrect).length || 0
+                        const totalQuestions = gameData?.quiz?.questions?.length || 0
+                        
+                        return (
+                          <>
+                            <div className="text-4xl sm:text-6xl font-bold text-blue-600 mb-2">
+                              {finalScore} poin
+                            </div>
+                            <div className="text-base sm:text-lg text-gray-700">
+                              Skor Akhir Anda
+                            </div>
+                            <div className="mt-3 text-sm text-gray-600">
+                              {correctAnswers}/{totalQuestions} soal benar
+                            </div>
+                          </>
+                        )
+                      }
+                    }
                     
+                    // Fallback: use myScore from state
                     return (
                       <>
                         <div className="text-4xl sm:text-6xl font-bold text-blue-600 mb-2">
-                          {finalScore} poin
+                          {myScore || 0} poin
                         </div>
                         <div className="text-base sm:text-lg text-gray-700">
                           Skor Akhir Anda
                         </div>
                         <div className="mt-3 text-sm text-gray-600">
-                          {correctAnswers}/{totalQuestions} soal benar
+                          Sedang menghitung hasil...
                         </div>
                       </>
                     )
