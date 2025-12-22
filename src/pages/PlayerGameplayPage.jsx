@@ -675,13 +675,14 @@ const PlayerGameplayPage = () => {
         console.log('⚠️ No answer selected, submitting empty');
       }
 
-      console.log('📤 Submitting to backend:', {
+      console.log('📤 Submitting FINAL answer to backend (time expired):', {
         gameId,
         questionId: currentQuestion._id,
         answer,
         playerName
       });
 
+      // 🔥 CRITICAL: Use submitAnswer (FINAL submission) NOT saveAnswer (auto-save)
       // Use guest service if player is guest
       const response = isGuest
         ? await gameService.submitAnswerAsGuest(gameId, {
@@ -700,6 +701,14 @@ const PlayerGameplayPage = () => {
       console.log('✅ Backend response:', response.data);
 
       const result = response.data;
+      
+      // Log the IMPORTANT data
+      console.log('🎯 SCORE UPDATE:', {
+        isCorrect: result.isCorrect,
+        currentScore: result.currentScore,
+        previousScore: myScore
+      });
+      
       setMyScore(result.currentScore);
       setIsCorrect(result.isCorrect);
       
@@ -746,7 +755,10 @@ const PlayerGameplayPage = () => {
         setTimeout(async () => {
           try {
             console.log('📡 Fetching final game state...');
-            const gameResponse = await gameService.getGameState(gameId);
+            // Use getGameAsGuest if player is guest, otherwise getGame
+            const gameResponse = isGuest 
+              ? await gameService.getGameAsGuest(gameId)
+              : await gameService.getGame(gameId);
             console.log('📊 Final gameData:', gameResponse.data);
             setGameData(gameResponse.data); // 🔄 UPDATE gameData untuk completion screen
             const me = gameResponse.data.players.find(p => p.playerName === playerName);
