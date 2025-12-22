@@ -605,14 +605,14 @@ const PlayerGameplayPage = () => {
 
   // Called when timer expires - submit whatever answer was auto-saved
   const handleTimeExpire = async () => {
+    // 🔒 IMMEDIATELY disable input to prevent bug
+    setHasAnswered(true);
+    hasAnsweredRef.current = true;
+    setTimerActive(false);
+    
     // 🎯 SELF-PACED: Jika sudah dijawab, tidak perlu auto-move lagi
     // Player akan klik Next sendiri setelah siap
     const alreadyAnswered = hasAnsweredRef.current;
-    
-    if (alreadyAnswered) {
-      console.log('⏰ Timer expired and already answered - waiting for player to click Next');
-      return; // Exit early, tidak auto-move
-    }
     
     // Use ref value to get the latest answer (avoid stale closure)
     const latestAnswer = selectedAnswerRef.current;
@@ -623,10 +623,6 @@ const PlayerGameplayPage = () => {
       hasAnswered: hasAnsweredRef.current,
       questionId: currentQuestion._id
     });
-    
-    setHasAnswered(true);
-    hasAnsweredRef.current = true;
-    setTimerActive(false);
 
     try {
       let answer = latestAnswer;
@@ -1271,11 +1267,15 @@ const PlayerGameplayPage = () => {
                     <button
                       onClick={async () => {
                         // Fetch final score dan update gameData
+                        console.log('🏁 Fetching final game state...')
                         try {
                           const gameResponse = await gameService.getGameState(gameId)
+                          console.log('📊 Game response:', gameResponse.data)
                           setGameData(gameResponse.data) // Update gameData untuk completion screen
                           const me = gameResponse.data.players.find(p => p.playerName === playerName)
+                          console.log('👤 My player data:', me)
                           if (me) {
+                            console.log('✅ Final score:', me.score, 'Correct answers:', me.answers?.filter(ans => ans.isCorrect).length)
                             setMyScore(me.score || 0)
                           }
                         } catch (error) {

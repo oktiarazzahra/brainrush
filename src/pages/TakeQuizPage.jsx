@@ -894,7 +894,7 @@ const TakeQuizPage = () => {
                         onClick={() => {
                           setCurrentQuestion(index)
                         }}
-                        className={`min-w-[48px] h-12 rounded-lg font-bold text-sm transition shadow-md flex items-center justify-center ${
+                        className={`min-w-[48px] h-12 rounded-lg font-bold text-sm transition-all duration-150 shadow-md flex items-center justify-center ${
                           isCurrent
                             ? 'bg-blue-600 text-white scale-110'
                             : isAnswered
@@ -975,7 +975,7 @@ const TakeQuizPage = () => {
             )}
 
             {/* Question Box */}
-            <div className="mb-6">
+            <div key={currentQuestion} className="mb-6">
               {/* Question Type Badge */}
               <div className="flex items-center justify-between mb-4">
                 <span className="bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-semibold">
@@ -1005,6 +1005,7 @@ const TakeQuizPage = () => {
                   <img
                     src={currentQ.image}
                     alt="Gambar Soal"
+                    loading="eager"
                     className="max-h-48 rounded-lg object-cover"
                   />
                 </div>
