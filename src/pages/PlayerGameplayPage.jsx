@@ -745,19 +745,24 @@ const PlayerGameplayPage = () => {
         console.log('🏁 Last question - showing completion');
         setTimeout(async () => {
           try {
+            console.log('📡 Fetching final game state...');
             const gameResponse = await gameService.getGameState(gameId);
+            console.log('📊 Final gameData:', gameResponse.data);
             setGameData(gameResponse.data); // 🔄 UPDATE gameData untuk completion screen
             const me = gameResponse.data.players.find(p => p.playerName === playerName);
             if (me) {
               console.log('✅ Final score:', me.score);
               console.log('✅ Correct answers:', me.answers?.filter(ans => ans.isCorrect).length);
+              console.log('✅ All answers:', me.answers);
               setMyScore(me.score || 0);
+            } else {
+              console.error('❌ Player not found:', playerName);
             }
           } catch (error) {
             console.error('❌ Error fetching final score:', error);
           }
           setQuizCompleted(true);
-        }, 100);
+        }, 1000); // Increased from 100ms to 1000ms
       }
       
       // 🎯 SELF-PACED: Timer habis tidak auto-move, player klik Next sendiri
