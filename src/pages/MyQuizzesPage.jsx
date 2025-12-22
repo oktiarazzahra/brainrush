@@ -547,14 +547,14 @@ const MyQuizzesPage = () => {
   return (
     <DashboardLayout>
       <div className="flex-1 flex flex-col">
-        <div className="flex gap-0 px-8 mt-10">
-          <button onClick={() => setActiveTab('Draft')} className={`font-semibold text-lg px-10 py-3 rounded-t-lg border-r border-gray-400 shadow-md transition ${activeTab === 'Draft' ? 'bg-gray-100 text-blue-900' : 'bg-gray-300 text-gray-600 hover:bg-gray-200'}`}>Draft</button>
-          <button onClick={() => setActiveTab('My Quiz')} className={`font-bold text-lg px-10 py-3 rounded-t-lg border-r border-gray-400 shadow-md transition ${activeTab === 'My Quiz' ? 'bg-gray-100 text-blue-900' : 'bg-gray-300 text-gray-600 hover:bg-gray-200'}`}>Kuis Saya</button>
-          <button onClick={() => setActiveTab('History')} className={`font-semibold text-lg px-10 py-3 rounded-t-lg shadow-md transition ${activeTab === 'History' ? 'bg-gray-100 text-blue-900' : 'bg-gray-300 text-gray-600 hover:bg-gray-200'}`}>Riwayat Host</button>
+        <div className="flex gap-0 px-3 sm:px-6 md:px-8 mt-6 sm:mt-8 md:mt-10">
+          <button onClick={() => setActiveTab('Draft')} className={`font-semibold text-xs sm:text-sm md:text-lg px-3 sm:px-6 md:px-10 py-2 sm:py-2.5 md:py-3 rounded-t-lg border-r border-gray-400 shadow-md transition ${activeTab === 'Draft' ? 'bg-gray-100 text-blue-900' : 'bg-gray-300 text-gray-600 hover:bg-gray-200'}`}>Draft</button>
+          <button onClick={() => setActiveTab('My Quiz')} className={`font-bold text-xs sm:text-sm md:text-lg px-3 sm:px-6 md:px-10 py-2 sm:py-2.5 md:py-3 rounded-t-lg border-r border-gray-400 shadow-md transition ${activeTab === 'My Quiz' ? 'bg-gray-100 text-blue-900' : 'bg-gray-300 text-gray-600 hover:bg-gray-200'}`}>Kuis Saya</button>
+          <button onClick={() => setActiveTab('History')} className={`font-semibold text-xs sm:text-sm md:text-lg px-3 sm:px-6 md:px-10 py-2 sm:py-2.5 md:py-3 rounded-t-lg shadow-md transition ${activeTab === 'History' ? 'bg-gray-100 text-blue-900' : 'bg-gray-300 text-gray-600 hover:bg-gray-200'}`}>Riwayat Host</button>
         </div>
 
 
-        <main className="flex-1 bg-gradient-to-br from-blue-100 via-blue-300 to-blue-200 mx-8 rounded-2xl p-8 mb-8 overflow-y-auto">
+        <main className="flex-1 bg-gradient-to-br from-blue-100 via-blue-300 to-blue-200 mx-3 sm:mx-6 md:mx-8 rounded-2xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6 md:mb-8 overflow-y-auto">
           {loading && (
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
