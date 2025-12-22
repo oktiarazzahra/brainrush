@@ -910,7 +910,8 @@ const TakeQuizPage = () => {
               </div>
             )}
             
-            {/* Question Tabs */}
+            {/* Question Tabs - Hanya untuk per-question mode */}
+            {timerMode === 'per-question' && (
             <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
               {questions.map((_, index) => {
                 // Cek status soal
@@ -971,6 +972,7 @@ const TakeQuizPage = () => {
                 )
               })}
             </div>
+            )}
 
             {/* Question Box */}
             <div className="mb-6">
