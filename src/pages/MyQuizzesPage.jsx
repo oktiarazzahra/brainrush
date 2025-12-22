@@ -526,7 +526,7 @@ const MyQuizzesPage = () => {
             <button onClick={e => { e.stopPropagation(); handleBuatLive(quizId) }} className="w-full px-3 py-2 text-left hover:bg-blue-50 text-blue-600">Buat PIN Kuis</button>
           )}
           {hasPinActive && (
-            <button onClick={e => { e.stopPropagation(); handleLihatMonitoring(item) }} className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600">👁️ Lihat Monitoring</button>
+            <button onClick={e => { e.stopPropagation(); handleLihatMonitoring(item) }} className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600">Detail PIN</button>
           )}
           <button onClick={e => { e.stopPropagation(); handleShare(quizId) }} className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600">Bagikan Quiz</button>
           <button onClick={e => { e.stopPropagation(); handleTambahCover(quizId) }} className="w-full px-3 py-2 text-left hover:bg-purple-50 text-purple-600">Tambah Cover</button>
