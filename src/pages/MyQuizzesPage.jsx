@@ -518,6 +518,7 @@ const MyQuizzesPage = () => {
     
     if (activeTab === 'My Quiz') {
       const hasPinActive = item.activePIN && item.pinExpiresAt && new Date(item.pinExpiresAt) > new Date()
+      const hasActiveGame = item.activeGameId // Quiz sedang berjalan
       
       return (
         <>
@@ -530,7 +531,10 @@ const MyQuizzesPage = () => {
           )}
           <button onClick={e => { e.stopPropagation(); handleShare(quizId) }} className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600">Bagikan Quiz</button>
           <button onClick={e => { e.stopPropagation(); handleTambahCover(quizId) }} className="w-full px-3 py-2 text-left hover:bg-purple-50 text-purple-600">Tambah Cover</button>
-          <button onClick={e => { e.stopPropagation(); handleUnpublish(quizId, quizTitle) }} className="w-full px-3 py-2 text-left hover:bg-orange-50 text-orange-600">Unpublish</button>
+          {/* Unpublish hanya tampil jika tidak ada game aktif */}
+          {!hasActiveGame && (
+            <button onClick={e => { e.stopPropagation(); handleUnpublish(quizId, quizTitle) }} className="w-full px-3 py-2 text-left hover:bg-orange-50 text-orange-600">Unpublish</button>
+          )}
         </>
       )
     }
