@@ -147,12 +147,13 @@ const PlayerGameplayPage = () => {
           console.log('⏰ Showing time up animation for question', capturedQuestionIndex);
           setShowTimeUpAnimation(true);
           
-          // Wait for animation, then handle expire
+          // Hide animation after 800ms
           setTimeout(() => {
             setShowTimeUpAnimation(false);
-            // Always call handleTimeExpire untuk per-question auto-move
-            handleTimeExpire();
-          }, 1500) // 1.5 detik untuk animasi
+          }, 800)
+          
+          // Call handleTimeExpire immediately untuk submit dan pindah soal
+          handleTimeExpire();
         } else {
           console.log('⚠️ Question changed before timer expire, skipping handleTimeExpire');
         }
@@ -697,7 +698,7 @@ const PlayerGameplayPage = () => {
           }
           setQuizCompleted(true)
         }
-      }, 500)
+      }, 300) // Reduced from 500ms untuk lebih smooth
       
       // 🎯 SELF-PACED: Timer habis tidak auto-move, player klik Next sendiri
       // Hanya tandai soal sebagai "time expired" tapi tetap di soal yang sama
@@ -747,6 +748,13 @@ const PlayerGameplayPage = () => {
       const result = response.data
       setIsCorrect(result.isCorrect)
       setMyScore(result.currentScore)
+      
+      console.log('📊 Submit response:', {
+        isCorrect: result.isCorrect,
+        currentScore: result.currentScore,
+        timerMode: timerMode,
+        questionId: currentQuestion._id
+      })
 
       // Emit socket event
       socketService.submitAnswer(
@@ -799,7 +807,13 @@ const PlayerGameplayPage = () => {
   }
 
   // Handler untuk navigasi manual Next/Previous
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
+    // 🎯 AUTO-SUBMIT: Untuk total-time dan none, submit jawaban dulu sebelum pindah
+    if ((timerMode === 'total-time' || timerMode === 'none') && selectedAnswer && !hasAnswered) {
+      console.log('💾 Auto-submitting answer before moving to next question...')
+      await handleSubmitAnswer()
+    }
+    
     const totalQuestions = gameData?.quiz?.questions?.length || 0
     if (currentQuestionIndex < totalQuestions - 1) {
       // Clear ALL localStorage timers untuk quiz ini (prevent stuck on refresh)
@@ -832,7 +846,13 @@ const PlayerGameplayPage = () => {
     }
   }
 
-  const handlePreviousQuestion = () => {
+  const handlePreviousQuestion = async () => {
+    // 🎯 AUTO-SUBMIT: Untuk total-time dan none, submit jawaban dulu sebelum pindah
+    if ((timerMode === 'total-time' || timerMode === 'none') && selectedAnswer && !hasAnswered) {
+      console.log('💾 Auto-submitting answer before moving to previous question...')
+      await handleSubmitAnswer()
+    }
+    
     if (currentQuestionIndex > 0) {
       console.log('⏮️ Moving to previous question');
       setCurrentQuestionIndex(prev => prev - 1);
@@ -1041,7 +1061,13 @@ const PlayerGameplayPage = () => {
                       return (
                         <button
                           key={index}
-                          onClick={() => {
+                          onClick={async () => {
+                            // 🎯 AUTO-SUBMIT: Submit jawaban sebelum pindah soal
+                            if ((timerMode === 'total-time' || timerMode === 'none') && selectedAnswer && !hasAnswered && index !== currentQuestionIndex) {
+                              console.log('💾 Auto-submitting answer before switching question...')
+                              await handleSubmitAnswer()
+                            }
+                            
                             setCurrentQuestionIndex(index)
                             questionIndexRef.current = index
                             setHasAnswered(false)
@@ -1268,6 +1294,17 @@ const PlayerGameplayPage = () => {
                       onClick={async () => {
                         // Fetch final score dan update gameData
                         console.log('🏁 Fetching final game state...')
+                        console.log('⚠️ Current question answered?', hasAnswered)
+                        console.log('⚠️ Selected answer:', selectedAnswer)
+                        
+                        // Jika soal terakhir belum dijawab, submit dulu
+                        if (selectedAnswer && !hasAnswered) {
+                          console.log('⚠️ Submitting last answer before completion...')
+                          await handleSubmitAnswer()
+                          // Wait for submission to complete
+                          await new Promise(resolve => setTimeout(resolve, 500))
+                        }
+                        
                         try {
                           const gameResponse = await gameService.getGameState(gameId)
                           console.log('📊 Game response:', gameResponse.data)
