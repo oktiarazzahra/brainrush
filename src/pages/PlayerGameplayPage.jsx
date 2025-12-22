@@ -147,10 +147,10 @@ const PlayerGameplayPage = () => {
           console.log('⏰ Showing time up animation for question', capturedQuestionIndex);
           setShowTimeUpAnimation(true);
           
-          // Hide animation after 800ms
+          // Hide animation after 1200ms (memberi waktu untuk submit selesai)
           setTimeout(() => {
             setShowTimeUpAnimation(false);
-          }, 800)
+          }, 1200)
           
           // Call handleTimeExpire immediately untuk submit dan pindah soal
           handleTimeExpire();
@@ -675,8 +675,8 @@ const PlayerGameplayPage = () => {
         result.timeSpent || 0
       );
       
-      // ⚡ AUTO-MOVE: Otomatis pindah ke soal berikutnya
-      console.log('⚡ AUTO-MOVE: Waktu habis, pindah ke soal berikutnya...')
+      // ⚡ AUTO-MOVE: Otomatis pindah ke soal berikutnya (tunggu submit selesai)
+      console.log('⚡ AUTO-MOVE: Waktu habis, menunggu submit selesai...')
       setTimeout(async () => {
         const totalQuestions = gameData?.quiz?.questions?.length || 0
         if (currentQuestionIndex < totalQuestions - 1) {
@@ -698,7 +698,7 @@ const PlayerGameplayPage = () => {
           }
           setQuizCompleted(true)
         }
-      }, 300) // Reduced from 500ms untuk lebih smooth
+      }, 900) // Cukup waktu untuk submit selesai (200-300ms) + margin
       
       // 🎯 SELF-PACED: Timer habis tidak auto-move, player klik Next sendiri
       // Hanya tandai soal sebagai "time expired" tapi tetap di soal yang sama
