@@ -776,6 +776,7 @@ const PlayerGameplayPage = () => {
             console.log('🏁 Last question, fetching final score...')
             try {
               const gameResponse = await gameService.getGameState(gameId)
+              setGameData(gameResponse.data) // Update gameData untuk completion screen
               const me = gameResponse.data.players.find(p => p.playerName === playerName)
               if (me) {
                 console.log('✅ Final score:', me.score)
@@ -998,12 +999,26 @@ const PlayerGameplayPage = () => {
                   Anda telah menyelesaikan semua soal
                 </p>
                 <div className="bg-blue-100 border-2 border-blue-400 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
-                  <div className="text-4xl sm:text-6xl font-bold text-blue-600 mb-2">
-                    {myScore}
-                  </div>
-                  <div className="text-base sm:text-lg text-gray-700">
-                    Skor Akhir Anda
-                  </div>
+                  {gameData?.players && (() => {
+                    const me = gameData.players.find(p => p.playerName === playerName)
+                    const finalScore = me?.score || 0
+                    const correctAnswers = me?.answers?.filter(ans => ans.isCorrect).length || 0
+                    const totalQuestions = gameData?.quiz?.questions?.length || 0
+                    
+                    return (
+                      <>
+                        <div className="text-4xl sm:text-6xl font-bold text-blue-600 mb-2">
+                          {finalScore} poin
+                        </div>
+                        <div className="text-base sm:text-lg text-gray-700">
+                          Skor Akhir Anda
+                        </div>
+                        <div className="mt-3 text-sm text-gray-600">
+                          {correctAnswers}/{totalQuestions} soal benar
+                        </div>
+                      </>
+                    )
+                  })()}
                 </div>
                 <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">
                   Terima kasih telah mengikuti kuis ini!
@@ -1255,9 +1270,10 @@ const PlayerGameplayPage = () => {
                   ) : (
                     <button
                       onClick={async () => {
-                        // Fetch final score
+                        // Fetch final score dan update gameData
                         try {
                           const gameResponse = await gameService.getGameState(gameId)
+                          setGameData(gameResponse.data) // Update gameData untuk completion screen
                           const me = gameResponse.data.players.find(p => p.playerName === playerName)
                           if (me) {
                             setMyScore(me.score || 0)
