@@ -147,10 +147,10 @@ const PlayerGameplayPage = () => {
           console.log('⏰ Showing time up animation for question', capturedQuestionIndex);
           setShowTimeUpAnimation(true);
           
-          // Hide animation after 1000ms
+          // Hide animation after 800ms
           setTimeout(() => {
             setShowTimeUpAnimation(false);
-          }, 1000)
+          }, 800)
           
           // Call handleTimeExpire immediately untuk submit dan pindah soal
           handleTimeExpire();
@@ -675,31 +675,30 @@ const PlayerGameplayPage = () => {
         result.timeSpent || 0
       );
       
-      // ⚡ AUTO-MOVE: Otomatis pindah ke soal berikutnya (langsung setelah submit)
+      // ⚡ AUTO-MOVE: Otomatis pindah ke soal berikutnya
       console.log('⚡ AUTO-MOVE: Waktu habis, pindah ke soal berikutnya...')
-      const totalQuestions = gameData?.quiz?.questions?.length || 0
-      if (currentQuestionIndex < totalQuestions - 1) {
-        // Reset timerInitialized agar timer soal berikutnya bisa init
-        timerInitialized.current = false
-        // Delay kecil hanya untuk smooth transition dengan animasi
-        setTimeout(() => {
+      setTimeout(async () => {
+        const totalQuestions = gameData?.quiz?.questions?.length || 0
+        if (currentQuestionIndex < totalQuestions - 1) {
+          // Reset timerInitialized agar timer soal berikutnya bisa init
+          timerInitialized.current = false
           handleNextQuestion()
-        }, 100)
-      } else {
-        // Soal terakhir - fetch final score sebelum tampilkan completion
-        console.log('🏁 Last question, fetching final score...')
-        try {
-          const gameResponse = await gameService.getGameState(gameId)
-          const me = gameResponse.data.players.find(p => p.playerName === playerName)
-          if (me) {
-            console.log('✅ Final score:', me.score)
-            setMyScore(me.score || 0)
+        } else {
+          // Soal terakhir - fetch final score sebelum tampilkan completion
+          console.log('🏁 Last question, fetching final score...')
+          try {
+            const gameResponse = await gameService.getGameState(gameId)
+            const me = gameResponse.data.players.find(p => p.playerName === playerName)
+            if (me) {
+              console.log('✅ Final score:', me.score)
+              setMyScore(me.score || 0)
+            }
+          } catch (error) {
+            console.error('❌ Error fetching final score:', error)
           }
-        } catch (error) {
-          console.error('❌ Error fetching final score:', error)
+          setQuizCompleted(true)
         }
-        setQuizCompleted(true)
-      }
+      }, 300) // Reduced from 500ms untuk lebih smooth
       
       // 🎯 SELF-PACED: Timer habis tidak auto-move, player klik Next sendiri
       // Hanya tandai soal sebagai "time expired" tapi tetap di soal yang sama
@@ -819,22 +818,18 @@ const PlayerGameplayPage = () => {
 
   // Handler untuk navigasi manual Next/Previous
   const handleNextQuestion = async () => {
-    // 🎯 AUTO-SUBMIT: Untuk total-time dan none, submit jawaban (async, no await)
+    // 🎯 AUTO-SUBMIT: Untuk total-time dan none, submit jawaban dulu sebelum pindah
     const hasValidAnswer = selectedAnswer !== null && selectedAnswer !== undefined && 
                           (Array.isArray(selectedAnswer) ? selectedAnswer.length > 0 : selectedAnswer !== '')
     
     if ((timerMode === 'total-time' || timerMode === 'none') && hasValidAnswer && !hasAnswered) {
-      console.log('💾 Auto-submitting answer in background before moving to next question...', {
+      console.log('💾 Auto-submitting answer before moving to next question...', {
         selectedAnswer,
         hasAnswered,
         timerMode
       })
-      // Fire and forget - tidak tunggu response untuk perpindahan lebih cepat
-      handleSubmitAnswer().then(() => {
-        console.log('✅ Auto-submit completed')
-      }).catch(err => {
-        console.error('❌ Auto-submit error:', err)
-      })
+      await handleSubmitAnswer()
+      console.log('✅ Auto-submit completed')
     } else if ((timerMode === 'total-time' || timerMode === 'none')) {
       console.log('⏭️ Skipping auto-submit:', { hasValidAnswer, hasAnswered, selectedAnswer })
     }
@@ -872,18 +867,13 @@ const PlayerGameplayPage = () => {
   }
 
   const handlePreviousQuestion = async () => {
-    // 🎯 AUTO-SUBMIT: Untuk total-time dan none, submit jawaban (async, no await)
+    // 🎯 AUTO-SUBMIT: Untuk total-time dan none, submit jawaban dulu sebelum pindah
     const hasValidAnswer = selectedAnswer !== null && selectedAnswer !== undefined && 
                           (Array.isArray(selectedAnswer) ? selectedAnswer.length > 0 : selectedAnswer !== '')
     
     if ((timerMode === 'total-time' || timerMode === 'none') && hasValidAnswer && !hasAnswered) {
-      console.log('💾 Auto-submitting answer in background before moving to previous question...')
-      // Fire and forget - tidak tunggu response
-      handleSubmitAnswer().then(() => {
-        console.log('✅ Auto-submit completed')
-      }).catch(err => {
-        console.error('❌ Auto-submit error:', err)
-      })
+      console.log('💾 Auto-submitting answer before moving to previous question...')
+      await handleSubmitAnswer()
     }
     
     if (currentQuestionIndex > 0) {
@@ -1095,18 +1085,13 @@ const PlayerGameplayPage = () => {
                         <button
                           key={index}
                           onClick={async () => {
-                            // 🎯 AUTO-SUBMIT: Submit jawaban (async, no await untuk perpindahan cepat)
+                            // 🎯 AUTO-SUBMIT: Submit jawaban sebelum pindah soal
                             const hasValidAnswer = selectedAnswer !== null && selectedAnswer !== undefined && 
                                                   (Array.isArray(selectedAnswer) ? selectedAnswer.length > 0 : selectedAnswer !== '')
                             
                             if ((timerMode === 'total-time' || timerMode === 'none') && hasValidAnswer && !hasAnswered && index !== currentQuestionIndex) {
-                              console.log('💾 Auto-submitting answer in background before switching question...')
-                              // Fire and forget - tidak tunggu response
-                              handleSubmitAnswer().then(() => {
-                                console.log('✅ Auto-submit completed')
-                              }).catch(err => {
-                                console.error('❌ Auto-submit error:', err)
-                              })
+                              console.log('💾 Auto-submitting answer before switching question...')
+                              await handleSubmitAnswer()
                             }
                             
                             setCurrentQuestionIndex(index)
