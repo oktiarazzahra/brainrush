@@ -147,10 +147,10 @@ const PlayerGameplayPage = () => {
           console.log('⏰ Showing time up animation for question', capturedQuestionIndex);
           setShowTimeUpAnimation(true);
           
-          // Hide animation after 1200ms (memberi waktu untuk submit selesai)
+          // Hide animation after 600ms (cukup untuk UX, tidak terlalu lama)
           setTimeout(() => {
             setShowTimeUpAnimation(false);
-          }, 1200)
+          }, 600)
           
           // Call handleTimeExpire immediately untuk submit dan pindah soal
           handleTimeExpire();
@@ -675,17 +675,20 @@ const PlayerGameplayPage = () => {
         result.timeSpent || 0
       );
       
-      // ⚡ AUTO-MOVE: Otomatis pindah ke soal berikutnya (tunggu submit selesai)
-      console.log('⚡ AUTO-MOVE: Waktu habis, menunggu submit selesai...')
-      setTimeout(async () => {
-        const totalQuestions = gameData?.quiz?.questions?.length || 0
-        if (currentQuestionIndex < totalQuestions - 1) {
-          // Reset timerInitialized agar timer soal berikutnya bisa init
-          timerInitialized.current = false
+      // ⚡ AUTO-MOVE: Langsung pindah ke soal berikutnya (submit jalan async di background)
+      console.log('⚡ AUTO-MOVE: Waktu habis, pindah soal langsung...')
+      const totalQuestions = gameData?.quiz?.questions?.length || 0
+      if (currentQuestionIndex < totalQuestions - 1) {
+        // Reset timerInitialized agar timer soal berikutnya bisa init
+        timerInitialized.current = false
+        // Delay kecil hanya untuk smooth transition
+        setTimeout(() => {
           handleNextQuestion()
-        } else {
-          // Soal terakhir - fetch final score sebelum tampilkan completion
-          console.log('🏁 Last question, fetching final score...')
+        }, 150)
+      } else {
+        // Soal terakhir - fetch final score sebelum tampilkan completion
+        console.log('🏁 Last question, fetching final score...')
+        setTimeout(async () => {
           try {
             const gameResponse = await gameService.getGameState(gameId)
             const me = gameResponse.data.players.find(p => p.playerName === playerName)
@@ -697,8 +700,8 @@ const PlayerGameplayPage = () => {
             console.error('❌ Error fetching final score:', error)
           }
           setQuizCompleted(true)
-        }
-      }, 900) // Cukup waktu untuk submit selesai (200-300ms) + margin
+        }, 150)
+      }
       
       // 🎯 SELF-PACED: Timer habis tidak auto-move, player klik Next sendiri
       // Hanya tandai soal sebagai "time expired" tapi tetap di soal yang sama
