@@ -304,22 +304,32 @@ const PlayerGameplayPage = () => {
             setHasAnswered(true)
             hasAnsweredRef.current = true
             setIsCorrect(null) // Jangan set hasil
-            setTimerActive(false)
             
-            // ⚡ AUTO-MOVE: Soal sudah dijawab, langsung pindah ke soal berikutnya
-            console.log('⚡ Soal sudah dijawab, auto-move ke soal berikutnya...')
-            setTimeout(() => {
-              const totalQuestions = game.quiz.questions.length
-              if (questionIndexToUse < totalQuestions - 1) {
-                timerInitialized.current = false
-                setCurrentQuestionIndex(questionIndexToUse + 1)
-              } else {
-                setQuizCompleted(true)
-              }
-            }, 500)
-            
-            setLoading(false)
-            return // Skip timer initialization
+            // 🎯 Only auto-move for per-question mode
+            const quizTimerMode = game.quiz.timerMode || 'per-question'
+            if (quizTimerMode === 'per-question') {
+              setTimerActive(false)
+              
+              // ⚡ AUTO-MOVE: Soal sudah dijawab, langsung pindah ke soal berikutnya
+              console.log('⚡ Soal sudah dijawab (per-question), auto-move ke soal berikutnya...')
+              setTimeout(() => {
+                const totalQuestions = game.quiz.questions.length
+                if (questionIndexToUse < totalQuestions - 1) {
+                  timerInitialized.current = false
+                  setCurrentQuestionIndex(questionIndexToUse + 1)
+                } else {
+                  setQuizCompleted(true)
+                }
+              }, 500)
+              
+              setLoading(false)
+              return // Skip timer initialization
+            } else {
+              // For total-time/none: keep showing the answered question with disabled input
+              console.log('✅ Soal sudah dijawab (total-time/none), tampilkan jawaban tersimpan')
+              // Don't stop timer for total-time mode, timer continues running
+              // Timer will be initialized below
+            }
           } else {
             // Just auto-saved, timer should still be running
             setHasAnswered(false)
@@ -1158,9 +1168,6 @@ const PlayerGameplayPage = () => {
                         </div>
                         <div className="text-base sm:text-lg text-gray-700">
                           Skor Akhir Anda
-                        </div>
-                        <div className="mt-3 text-sm text-gray-600">
-                          Sedang menghitung hasil...
                         </div>
                       </>
                     )
