@@ -762,33 +762,35 @@ const PlayerGameplayPage = () => {
         result.timeSpent
       )
 
-      // ⚡ AUTO-MOVE: Otomatis pindah ke soal berikutnya
-      console.log('⚡ AUTO-MOVE: Pindah ke soal berikutnya...')
-      setTimeout(async () => {
-        const totalQuestions = gameData?.quiz?.questions?.length || 0
-        if (currentQuestionIndex < totalQuestions - 1) {
-          // Reset timerInitialized agar timer soal berikutnya bisa init
-          timerInitialized.current = false
-          handleNextQuestion()
-        } else {
-          // Soal terakhir - fetch final score sebelum tampilkan completion
-          console.log('🏁 Last question, fetching final score...')
-          try {
-            const gameResponse = await gameService.getGameState(gameId)
-            const me = gameResponse.data.players.find(p => p.playerName === playerName)
-            if (me) {
-              console.log('✅ Final score:', me.score)
-              setMyScore(me.score || 0)
+      // ⚡ AUTO-MOVE: Hanya untuk mode per-question
+      if (timerMode === 'per-question') {
+        console.log('⚡ AUTO-MOVE (per-question): Pindah ke soal berikutnya...')
+        setTimeout(async () => {
+          const totalQuestions = gameData?.quiz?.questions?.length || 0
+          if (currentQuestionIndex < totalQuestions - 1) {
+            // Reset timerInitialized agar timer soal berikutnya bisa init
+            timerInitialized.current = false
+            handleNextQuestion()
+          } else {
+            // Soal terakhir - fetch final score sebelum tampilkan completion
+            console.log('🏁 Last question, fetching final score...')
+            try {
+              const gameResponse = await gameService.getGameState(gameId)
+              const me = gameResponse.data.players.find(p => p.playerName === playerName)
+              if (me) {
+                console.log('✅ Final score:', me.score)
+                setMyScore(me.score || 0)
+              }
+            } catch (error) {
+              console.error('❌ Error fetching final score:', error)
             }
-          } catch (error) {
-            console.error('❌ Error fetching final score:', error)
+            setQuizCompleted(true)
           }
-          setQuizCompleted(true)
-        }
-      }, 500)
-
-      // 🎯 SELF-PACED: Tidak auto-move, player navigasi manual dengan tombol Next/Previous
-      console.log('✅ Answer submitted - waiting for player to navigate manually');
+        }, 500)
+      } else {
+        // 🎯 MODE: total-time / none - Player navigasi manual
+        console.log('✅ Answer submitted - waiting for player to navigate manually (mode:', timerMode, ')');
+      }
     } catch (error) {
       console.error('Error submitting answer:', error)
       const errorMessage = error.response?.data?.message || '❌ Error submitting answer'
@@ -816,6 +818,7 @@ const PlayerGameplayPage = () => {
       
       console.log('⏭️ Moving to next question');
       setCurrentQuestionIndex(prev => prev + 1);
+      questionIndexRef.current = currentQuestionIndex + 1; // Update ref
       setHasAnswered(false);
       hasAnsweredRef.current = false;
       setSelectedAnswer(null);
@@ -836,6 +839,7 @@ const PlayerGameplayPage = () => {
     if (currentQuestionIndex > 0) {
       console.log('⏮️ Moving to previous question');
       setCurrentQuestionIndex(prev => prev - 1);
+      questionIndexRef.current = currentQuestionIndex - 1; // Update ref
       setHasAnswered(false);
       hasAnsweredRef.current = false;
       setSelectedAnswer(null);
@@ -1015,6 +1019,43 @@ const PlayerGameplayPage = () => {
               </div>
             ) : (
               <>
+              {/* Question Navigation - Hanya untuk mode total-time dan none */}
+              {(timerMode === 'total-time' || timerMode === 'none') && (
+                <div className="mb-4 sm:mb-6">
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {gameData?.quiz?.questions?.map((_, index) => {
+                      const me = gameData?.players?.find(p => p.playerName === playerName)
+                      const answered = me?.answers?.some(ans => ans.questionId === gameData.quiz.questions[index]._id)
+                      
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            setCurrentQuestionIndex(index)
+                            questionIndexRef.current = index
+                            setHasAnswered(false)
+                            hasAnsweredRef.current = false
+                            setSelectedAnswer(null)
+                            selectedAnswerRef.current = null
+                            setIsCorrect(null)
+                            setFeedback('')
+                          }}
+                          className={`min-w-[48px] h-12 rounded-lg font-bold text-sm transition shadow-md flex items-center justify-center ${
+                            currentQuestionIndex === index
+                              ? 'bg-blue-600 text-white scale-110'
+                              : answered
+                              ? 'bg-green-400 text-green-900 hover:bg-green-500'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          {index + 1}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+              
               {/* Question */}
               <div className="mb-6 sm:mb-8">
                 <div className="flex items-center justify-between mb-3 sm:mb-4 flex-wrap gap-2">
@@ -1177,12 +1218,82 @@ const PlayerGameplayPage = () => {
                 )}
               </div>
 
-              {/* Info untuk player: jawaban auto-save */}
-              {!hasAnswered && selectedAnswer && (
+              {/* Navigation Buttons - Hanya untuk mode total-time dan none */}
+              {(timerMode === 'total-time' || timerMode === 'none') && (
+                <div className="mt-6 flex items-center justify-between gap-3">
+                  <button
+                    onClick={handlePreviousQuestion}
+                    disabled={currentQuestionIndex === 0}
+                    className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-sm sm:text-base transition-all ${
+                      currentQuestionIndex === 0
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-gray-600 text-white hover:bg-gray-700 shadow-lg'
+                    }`}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span>Kembali</span>
+                  </button>
+
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className="font-semibold">{currentQuestionIndex + 1}</span>
+                    <span>/</span>
+                    <span>{gameData?.quiz?.questions?.length || 0}</span>
+                  </div>
+
+                  {currentQuestionIndex < (gameData?.quiz?.questions?.length || 0) - 1 ? (
+                    <button
+                      onClick={handleNextQuestion}
+                      className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-sm sm:text-base bg-blue-600 text-white hover:bg-blue-700 shadow-lg transition-all"
+                    >
+                      <span>Lanjut</span>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        // Fetch final score
+                        try {
+                          const gameResponse = await gameService.getGameState(gameId)
+                          const me = gameResponse.data.players.find(p => p.playerName === playerName)
+                          if (me) {
+                            setMyScore(me.score || 0)
+                          }
+                        } catch (error) {
+                          console.error('❌ Error fetching final score:', error)
+                        }
+                        setQuizCompleted(true)
+                      }}
+                      className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-sm sm:text-base bg-green-600 text-white hover:bg-green-700 shadow-lg transition-all"
+                    >
+                      <span>Selesai</span>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Info untuk player: jawaban auto-save (hanya untuk mode per-question) */}
+              {timerMode === 'per-question' && !hasAnswered && selectedAnswer && (
                 <div className="mt-4 text-center">
                   <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm">
                     <span className="text-lg">✓</span>
                     <span className="font-medium">Jawaban tersimpan! Otomatis lanjut ke soal berikutnya...</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Info untuk player: navigasi manual (untuk mode total-time dan none) */}
+              {(timerMode === 'total-time' || timerMode === 'none') && !hasAnswered && selectedAnswer && (
+                <div className="mt-4 text-center">
+                  <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm">
+                    <span className="text-lg">✓</span>
+                    <span className="font-medium">Jawaban tersimpan! Klik "Lanjut" untuk ke soal berikutnya</span>
                   </div>
                 </div>
               )}
