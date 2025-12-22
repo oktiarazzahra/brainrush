@@ -712,7 +712,17 @@ const PlayerGameplayPage = () => {
   };
 
   const handleSubmitAnswer = async () => {
-    if (hasAnswered) return
+    console.log('🎯 handleSubmitAnswer called:', {
+      hasAnswered,
+      selectedAnswer,
+      timerMode,
+      questionId: currentQuestion?._id
+    })
+    
+    if (hasAnswered) {
+      console.log('⚠️ Already answered, skipping submit')
+      return
+    }
 
     setHasAnswered(true)
     hasAnsweredRef.current = true
@@ -809,9 +819,19 @@ const PlayerGameplayPage = () => {
   // Handler untuk navigasi manual Next/Previous
   const handleNextQuestion = async () => {
     // 🎯 AUTO-SUBMIT: Untuk total-time dan none, submit jawaban dulu sebelum pindah
-    if ((timerMode === 'total-time' || timerMode === 'none') && selectedAnswer && !hasAnswered) {
-      console.log('💾 Auto-submitting answer before moving to next question...')
+    const hasValidAnswer = selectedAnswer !== null && selectedAnswer !== undefined && 
+                          (Array.isArray(selectedAnswer) ? selectedAnswer.length > 0 : selectedAnswer !== '')
+    
+    if ((timerMode === 'total-time' || timerMode === 'none') && hasValidAnswer && !hasAnswered) {
+      console.log('💾 Auto-submitting answer before moving to next question...', {
+        selectedAnswer,
+        hasAnswered,
+        timerMode
+      })
       await handleSubmitAnswer()
+      console.log('✅ Auto-submit completed')
+    } else if ((timerMode === 'total-time' || timerMode === 'none')) {
+      console.log('⏭️ Skipping auto-submit:', { hasValidAnswer, hasAnswered, selectedAnswer })
     }
     
     const totalQuestions = gameData?.quiz?.questions?.length || 0
@@ -848,7 +868,10 @@ const PlayerGameplayPage = () => {
 
   const handlePreviousQuestion = async () => {
     // 🎯 AUTO-SUBMIT: Untuk total-time dan none, submit jawaban dulu sebelum pindah
-    if ((timerMode === 'total-time' || timerMode === 'none') && selectedAnswer && !hasAnswered) {
+    const hasValidAnswer = selectedAnswer !== null && selectedAnswer !== undefined && 
+                          (Array.isArray(selectedAnswer) ? selectedAnswer.length > 0 : selectedAnswer !== '')
+    
+    if ((timerMode === 'total-time' || timerMode === 'none') && hasValidAnswer && !hasAnswered) {
       console.log('💾 Auto-submitting answer before moving to previous question...')
       await handleSubmitAnswer()
     }
@@ -1063,7 +1086,10 @@ const PlayerGameplayPage = () => {
                           key={index}
                           onClick={async () => {
                             // 🎯 AUTO-SUBMIT: Submit jawaban sebelum pindah soal
-                            if ((timerMode === 'total-time' || timerMode === 'none') && selectedAnswer && !hasAnswered && index !== currentQuestionIndex) {
+                            const hasValidAnswer = selectedAnswer !== null && selectedAnswer !== undefined && 
+                                                  (Array.isArray(selectedAnswer) ? selectedAnswer.length > 0 : selectedAnswer !== '')
+                            
+                            if ((timerMode === 'total-time' || timerMode === 'none') && hasValidAnswer && !hasAnswered && index !== currentQuestionIndex) {
                               console.log('💾 Auto-submitting answer before switching question...')
                               await handleSubmitAnswer()
                             }
@@ -1297,8 +1323,11 @@ const PlayerGameplayPage = () => {
                         console.log('⚠️ Current question answered?', hasAnswered)
                         console.log('⚠️ Selected answer:', selectedAnswer)
                         
-                        // Jika soal terakhir belum dijawab, submit dulu
-                        if (selectedAnswer && !hasAnswered) {
+                        // Jika soal terakhir belum dijawab tapi ada jawaban, submit dulu
+                        const hasValidAnswer = selectedAnswer !== null && selectedAnswer !== undefined && 
+                                              (Array.isArray(selectedAnswer) ? selectedAnswer.length > 0 : selectedAnswer !== '')
+                        
+                        if (hasValidAnswer && !hasAnswered) {
                           console.log('⚠️ Submitting last answer before completion...')
                           await handleSubmitAnswer()
                           // Wait for submission to complete
