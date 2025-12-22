@@ -746,9 +746,11 @@ const PlayerGameplayPage = () => {
         setTimeout(async () => {
           try {
             const gameResponse = await gameService.getGameState(gameId);
+            setGameData(gameResponse.data); // 🔄 UPDATE gameData untuk completion screen
             const me = gameResponse.data.players.find(p => p.playerName === playerName);
             if (me) {
               console.log('✅ Final score:', me.score);
+              console.log('✅ Correct answers:', me.answers?.filter(ans => ans.isCorrect).length);
               setMyScore(me.score || 0);
             }
           } catch (error) {
