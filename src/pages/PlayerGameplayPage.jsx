@@ -759,9 +759,14 @@ const PlayerGameplayPage = () => {
             const gameResponse = isGuest 
               ? await gameService.getGameAsGuest(gameId)
               : await gameService.getGame(gameId);
-            console.log('📊 Final gameData:', gameResponse.data);
-            setGameData(gameResponse.data); // 🔄 UPDATE gameData untuk completion screen
-            const me = gameResponse.data.players.find(p => p.playerName === playerName);
+            
+            // gameService already returns response.data, so use it directly
+            const finalGameData = gameResponse.data || gameResponse;
+            console.log('📊 Final gameData:', finalGameData);
+            
+            setGameData(finalGameData); // 🔄 UPDATE gameData untuk completion screen
+            
+            const me = finalGameData.players?.find(p => p.playerName === playerName);
             if (me) {
               console.log('✅ Final score:', me.score);
               console.log('✅ Correct answers:', me.answers?.filter(ans => ans.isCorrect).length);
@@ -769,12 +774,13 @@ const PlayerGameplayPage = () => {
               setMyScore(me.score || 0);
             } else {
               console.error('❌ Player not found:', playerName);
+              console.error('Available players:', finalGameData.players?.map(p => p.playerName));
             }
           } catch (error) {
             console.error('❌ Error fetching final score:', error);
           }
           setQuizCompleted(true);
-        }, 1000); // Increased from 100ms to 1000ms
+        }, 1500); // Increased to 1.5 seconds
       }
       
       // 🎯 SELF-PACED: Timer habis tidak auto-move, player klik Next sendiri
@@ -866,9 +872,12 @@ const PlayerGameplayPage = () => {
             // Soal terakhir - fetch final score sebelum tampilkan completion
             console.log('🏁 Last question, fetching final score...')
             try {
-              const gameResponse = await gameService.getGameState(gameId)
-              setGameData(gameResponse.data) // Update gameData untuk completion screen
-              const me = gameResponse.data.players.find(p => p.playerName === playerName)
+              const gameResponse = isGuest 
+                ? await gameService.getGameAsGuest(gameId)
+                : await gameService.getGame(gameId)
+              const finalGameData = gameResponse.data || gameResponse
+              setGameData(finalGameData) // Update gameData untuk completion screen
+              const me = finalGameData.players?.find(p => p.playerName === playerName)
               if (me) {
                 console.log('✅ Final score:', me.score)
                 setMyScore(me.score || 0)
@@ -1409,14 +1418,17 @@ const PlayerGameplayPage = () => {
                           console.log('⚠️ Submitting last answer before completion...')
                           await handleSubmitAnswer()
                           // Wait for submission to complete
-                          await new Promise(resolve => setTimeout(resolve, 500))
+                          await new Promise(resolve => setTimeout(resolve, 1000))
                         }
                         
                         try {
-                          const gameResponse = await gameService.getGameState(gameId)
-                          console.log('📊 Game response:', gameResponse.data)
-                          setGameData(gameResponse.data) // Update gameData untuk completion screen
-                          const me = gameResponse.data.players.find(p => p.playerName === playerName)
+                          const gameResponse = isGuest 
+                            ? await gameService.getGameAsGuest(gameId)
+                            : await gameService.getGame(gameId)
+                          const finalGameData = gameResponse.data || gameResponse
+                          console.log('📊 Final gameData:', finalGameData)
+                          setGameData(finalGameData) // Update gameData untuk completion screen
+                          const me = finalGameData.players?.find(p => p.playerName === playerName)
                           console.log('👤 My player data:', me)
                           if (me) {
                             console.log('✅ Final score:', me.score, 'Correct answers:', me.answers?.filter(ans => ans.isCorrect).length)
