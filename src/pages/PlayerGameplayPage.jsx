@@ -101,7 +101,7 @@ const PlayerGameplayPage = () => {
 
   // Load question when currentQuestionIndex changes
   useEffect(() => {
-    if (gameId) {
+    if (gameId && gameData?.quiz?.questions) {
       // ✅ Reset timerInitialized agar timer soal baru bisa di-initialize
       timerInitialized.current = false
       questionIndexRef.current = currentQuestionIndex // Update ref
@@ -109,9 +109,51 @@ const PlayerGameplayPage = () => {
       // 💾 Save questionIndex ke sessionStorage untuk prevent blink on refresh
       sessionStorage.setItem(`questionIndex_${gameId}_${playerName}`, currentQuestionIndex.toString())
       
-      loadGameData()
+      // 🚀 LANGSUNG update currentQuestion dari memory - JANGAN fetch ulang!
+      const newQuestion = gameData.quiz.questions[currentQuestionIndex]
+      if (newQuestion) {
+        console.log('🔄 Update currentQuestion from memory:', currentQuestionIndex, newQuestion.question)
+        setCurrentQuestion(newQuestion)
+        
+        // Reset state untuk soal baru
+        setHasAnswered(false)
+        hasAnsweredRef.current = false
+        setSelectedAnswer(null)
+        selectedAnswerRef.current = null
+        setIsCorrect(null)
+        setFeedback('')
+        setTimerActive(false)
+        setTimerEndTime(null)
+        
+        // Init timer untuk soal baru (khusus per-question mode)
+        if (timerMode === 'per-question' && newQuestion.timeLimit) {
+          const localStorageKey = `timer_${gameId}_${playerName}_q${currentQuestionIndex}`
+          const savedTimerData = localStorage.getItem(localStorageKey)
+          
+          if (savedTimerData) {
+            const { endTime } = JSON.parse(savedTimerData)
+            const now = Date.now()
+            const remaining = Math.ceil((endTime - now) / 1000)
+            
+            if (remaining > 0) {
+              setTimerEndTime(endTime)
+              setTimeLeft(remaining)
+              setTimerActive(true)
+              timerInitialized.current = true
+            }
+          } else {
+            // Fresh timer untuk soal baru
+            const endTime = Date.now() + (newQuestion.timeLimit * 1000)
+            localStorage.setItem(localStorageKey, JSON.stringify({ endTime }))
+            setTimerEndTime(endTime)
+            setTimeLeft(newQuestion.timeLimit)
+            setTimerActive(true)
+            timerInitialized.current = true
+          }
+        }
+      }
     }
-  }, [currentQuestionIndex, gameId]) // ✅ Added gameId to dependencies
+  }, [currentQuestionIndex, gameId]) // ✅ Removed loadGameData - use memory instead
 
   // Timer countdown with system time for accuracy
   useEffect(() => {
@@ -857,30 +899,18 @@ const PlayerGameplayPage = () => {
     }
     
     const totalQuestions = gameData?.quiz?.questions?.length || 0
+    
+    // 🚀 IMMEDIATE: Update index - useEffect akan handle rest
+    console.log('📍 Current index before move:', currentQuestionIndex, '/', totalQuestions)
     if (currentQuestionIndex < totalQuestions - 1) {
-      // Clear ALL localStorage timers untuk quiz ini (prevent stuck on refresh)
-      const keysToRemove = []
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)
-        if (key && key.startsWith(`timer_${gameId}_${playerName}`)) {
-          keysToRemove.push(key)
-        }
-      }
-      keysToRemove.forEach(key => localStorage.removeItem(key))
-      console.log('🗑️ Cleared all localStorage timers:', keysToRemove.length)
-      
-      console.log('⏭️ Moving to next question');
-      setCurrentQuestionIndex(prev => prev + 1);
-      questionIndexRef.current = currentQuestionIndex + 1; // Update ref
-      setHasAnswered(false);
-      hasAnsweredRef.current = false;
-      setSelectedAnswer(null);
-      selectedAnswerRef.current = null;
-      setIsCorrect(null);
-      setFeedback('');
-      setTimerActive(false);
-      setTimerEndTime(null);
-      timerInitialized.current = false;
+      console.log('⏭️ Moving to next question IMMEDIATELY');
+      // ⚡ LANGSUNG update index - useEffect akan handle semua state reset & timer init
+      setCurrentQuestionIndex(prev => {
+        const newIndex = prev + 1
+        console.log('🔄 Index updated:', prev, '→', newIndex)
+        questionIndexRef.current = newIndex
+        return newIndex
+      })
     } else {
       // Soal terakhir - tampilkan quiz selesai
       console.log('🏁 Last question, showing completion screen');
