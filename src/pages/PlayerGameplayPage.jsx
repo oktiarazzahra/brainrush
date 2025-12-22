@@ -984,21 +984,21 @@ const PlayerGameplayPage = () => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg sm:rounded-xl px-3 sm:px-4 py-1.5 sm:py-2 text-white">
-              <span className="text-xs sm:text-sm opacity-80">Soal: </span>
-              <span className="font-bold text-sm sm:text-lg">
+            <div className="bg-white/95 backdrop-blur-sm rounded-lg sm:rounded-xl px-3 sm:px-4 py-1.5 sm:py-2 shadow-md">
+              <span className="text-xs sm:text-sm text-gray-700">Soal: </span>
+              <span className="font-bold text-sm sm:text-lg text-gray-900">
                 {currentQuestionIndex + 1}/{gameData?.quiz?.questions?.length || 0}
               </span>
             </div>
 
             {/* Timer Display - Same condition as host for stability */}
             {timerMode !== 'none' && (
-              <div className={`backdrop-blur-sm rounded-lg sm:rounded-xl px-3 sm:px-4 py-1.5 sm:py-2 font-bold text-lg sm:text-xl transition-all ${
+              <div className={`backdrop-blur-sm rounded-lg sm:rounded-xl px-3 sm:px-4 py-1.5 sm:py-2 font-bold text-lg sm:text-xl transition-all shadow-md ${
                 timeLeft <= 5 
                   ? 'bg-red-500/90 text-white animate-pulse' 
                   : timeLeft <= 10 
-                  ? 'bg-yellow-500/90 text-white' 
-                  : 'bg-white/20 text-white'
+                  ? 'bg-yellow-500/90 text-gray-900' 
+                  : 'bg-white/95 text-gray-900'
               }`}>
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">{timeLeft <= 10 ? '⏰' : '⏱️'}</span>
