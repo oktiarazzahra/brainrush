@@ -115,18 +115,53 @@ const PlayerGameplayPage = () => {
         console.log('🔄 Update currentQuestion from memory:', currentQuestionIndex, newQuestion.question)
         setCurrentQuestion(newQuestion)
         
-        // Reset state untuk soal baru
-        setHasAnswered(false)
-        hasAnsweredRef.current = false
-        setSelectedAnswer(null)
-        selectedAnswerRef.current = null
-        setIsCorrect(null)
-        setFeedback('')
-        setTimerActive(false)
-        setTimerEndTime(null)
+        // 🔍 Check if player already answered this question
+        const me = gameData.players?.find(p => p.playerName === playerName)
+        const currentQuestionId = newQuestion._id?.toString()
+        const savedAnswer = me?.answers?.find(ans => 
+          ans.questionId?.toString() === currentQuestionId
+        )
+        
+        if (savedAnswer && savedAnswer.answeredAt && !savedAnswer.autoSaved) {
+          // Final submission - restore jawaban dan lock input
+          console.log('✅ Restoring saved answer:', savedAnswer.answer)
+          setSelectedAnswer(savedAnswer.answer)
+          selectedAnswerRef.current = savedAnswer.answer
+          setHasAnswered(true)
+          hasAnsweredRef.current = true
+          setIsCorrect(null)
+          setFeedback('')
+          // Don't reset timer for total-time mode
+          if (timerMode !== 'total-time') {
+            setTimerActive(false)
+            setTimerEndTime(null)
+          }
+        } else if (savedAnswer && savedAnswer.autoSaved) {
+          // Auto-saved only - restore jawaban tapi input masih aktif
+          console.log('💾 Restoring auto-saved answer:', savedAnswer.answer)
+          setSelectedAnswer(savedAnswer.answer)
+          selectedAnswerRef.current = savedAnswer.answer
+          setHasAnswered(false)
+          hasAnsweredRef.current = false
+          setIsCorrect(null)
+          setFeedback('')
+          setTimerActive(false)
+          setTimerEndTime(null)
+        } else {
+          // Belum pernah dijawab - reset state
+          console.log('🆕 New question, resetting state')
+          setHasAnswered(false)
+          hasAnsweredRef.current = false
+          setSelectedAnswer(null)
+          selectedAnswerRef.current = null
+          setIsCorrect(null)
+          setFeedback('')
+          setTimerActive(false)
+          setTimerEndTime(null)
+        }
         
         // Init timer untuk soal baru (khusus per-question mode)
-        if (timerMode === 'per-question' && newQuestion.timeLimit) {
+        if (timerMode === 'per-question' && newQuestion.timeLimit && !savedAnswer?.answeredAt) {
           const localStorageKey = `timer_${gameId}_${playerName}_q${currentQuestionIndex}`
           const savedTimerData = localStorage.getItem(localStorageKey)
           
