@@ -203,11 +203,13 @@ const PlayerGameplayPage = () => {
 
     let hasTriggered = false // Prevent double trigger
     const capturedQuestionIndex = currentQuestionIndex // Capture current question index
+    const capturedTimerMode = timerModeRef.current // Capture timer mode
 
     const timer = setInterval(() => {
-      // PENTING: Cek apakah masih di soal yang sama
-      if (questionIndexRef.current !== capturedQuestionIndex) {
-        console.log('⚠️ Question changed, stopping timer for old question');
+      // PENTING: Untuk per-question mode, stop timer jika pindah soal
+      // Untuk total-time mode, timer tetap jalan meskipun pindah soal
+      if (capturedTimerMode === 'per-question' && questionIndexRef.current !== capturedQuestionIndex) {
+        console.log('⚠️ Question changed (per-question mode), stopping timer for old question');
         clearInterval(timer);
         return;
       }
@@ -220,26 +222,28 @@ const PlayerGameplayPage = () => {
         hasTriggered = true
         console.log('⏰ Timer reached 0 for question', capturedQuestionIndex);
         
-        // Double check masih di soal yang sama sebelum submit
-        if (questionIndexRef.current === capturedQuestionIndex) {
-          setTimeLeft(0);
-          setTimerActive(false);
-          clearInterval(timer);
-          
-          // Show time up animation first (always show for better UX)
-          console.log('⏰ Showing time up animation for question', capturedQuestionIndex);
-          setShowTimeUpAnimation(true);
-          
-          // Hide animation after 600ms (cukup untuk UX, tidak terlalu lama)
-          setTimeout(() => {
-            setShowTimeUpAnimation(false);
-          }, 600)
-          
-          // Call handleTimeExpire immediately untuk submit dan pindah soal
-          handleTimeExpire();
-        } else {
+        // Double check masih di soal yang sama sebelum submit (only for per-question mode)
+        if (capturedTimerMode === 'per-question' && questionIndexRef.current !== capturedQuestionIndex) {
           console.log('⚠️ Question changed before timer expire, skipping handleTimeExpire');
+          clearInterval(timer);
+          return;
         }
+        
+        setTimeLeft(0);
+        setTimerActive(false);
+        clearInterval(timer);
+        
+        // Show time up animation first (always show for better UX)
+        console.log('⏰ Showing time up animation');
+        setShowTimeUpAnimation(true);
+        
+        // Hide animation after 600ms (cukup untuk UX, tidak terlalu lama)
+        setTimeout(() => {
+          setShowTimeUpAnimation(false);
+        }, 600)
+        
+        // Call handleTimeExpire immediately untuk submit dan pindah soal
+        handleTimeExpire();
       } else if (remainingSec > 0) {
         setTimeLeft(remainingSec);
       }
