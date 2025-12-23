@@ -864,11 +864,15 @@ const PlayerGameplayPage = () => {
 
     setHasAnswered(true)
     hasAnsweredRef.current = true
-    setTimerActive(false)
+    
+    // Don't stop timer for total-time mode - timer should keep running
+    if (timerMode !== 'total-time') {
+      setTimerActive(false)
+    }
     
     // JANGAN clear localStorage di sini - biarkan timer tetap jalan
     // localStorage hanya di-clear saat pindah soal atau quiz selesai
-    console.log('✅ Answer submitted, timer will continue until time expires or next question')
+    console.log('✅ Answer submitted, timer continues running for total-time mode')
 
     try{
       // Calculate time spent
@@ -961,24 +965,35 @@ const PlayerGameplayPage = () => {
   const handleNextQuestion = () => {
     console.log('🔄 handleNextQuestion called');
     
-    // 🎯 AUTO-SUBMIT: Untuk total-time dan none, submit jawaban (async background)
+    // 🎯 Silent auto-save for total-time/none mode (no loading, just background save)
     const hasValidAnswer = selectedAnswer !== null && selectedAnswer !== undefined && 
                           (Array.isArray(selectedAnswer) ? selectedAnswer.length > 0 : selectedAnswer !== '')
     
     if ((timerMode === 'total-time' || timerMode === 'none') && hasValidAnswer && !hasAnswered) {
-      console.log('💾 Auto-submitting answer in background...', {
-        selectedAnswer,
-        hasAnswered,
-        timerMode
-      })
-      // Fire and forget - tidak block perpindahan soal
-      handleSubmitAnswer().then(() => {
-        console.log('✅ Background submit completed')
-      }).catch(err => {
-        console.error('❌ Background submit error:', err)
-      })
-    } else if ((timerMode === 'total-time' || timerMode === 'none')) {
-      console.log('⏭️ Skipping auto-submit:', { hasValidAnswer, hasAnswered, selectedAnswer })
+      console.log('💾 Silent auto-save in background (no UI blocking)...')
+      // Silent background save - tidak panggil handleSubmitAnswer karena itu update UI
+      // Langsung panggil API tanpa update state
+      const saveAnswer = async () => {
+        try {
+          const response = isGuest
+            ? await gameService.submitAnswerAsGuest(gameId, {
+                questionId: currentQuestion._id,
+                answer: selectedAnswer,
+                playerName,
+                timeSpent: null
+              })
+            : await gameService.submitAnswer(gameId, {
+                questionId: currentQuestion._id,
+                answer: selectedAnswer,
+                playerName,
+                timeSpent: null
+              })
+          console.log('✅ Background save completed silently')
+        } catch (err) {
+          console.error('❌ Background save error (non-blocking):', err)
+        }
+      }
+      saveAnswer() // Fire and forget
     }
     
     const totalQuestions = gameData?.quiz?.questions?.length || 0
@@ -1004,18 +1019,34 @@ const PlayerGameplayPage = () => {
   const handlePreviousQuestion = () => {
     console.log('⬅️ handlePreviousQuestion called')
     
-    // 🎯 AUTO-SUBMIT: Untuk total-time dan none, submit jawaban dulu sebelum pindah (async background)
+    // 🎯 Silent auto-save for total-time/none mode
     const hasValidAnswer = selectedAnswer !== null && selectedAnswer !== undefined && 
                           (Array.isArray(selectedAnswer) ? selectedAnswer.length > 0 : selectedAnswer !== '')
     
     if ((timerMode === 'total-time' || timerMode === 'none') && hasValidAnswer && !hasAnswered) {
-      console.log('💾 Auto-submitting answer before moving to previous question...')
-      // Fire and forget - tidak block perpindahan
-      handleSubmitAnswer().then(() => {
-        console.log('✅ Background submit completed (previous)')
-      }).catch(err => {
-        console.error('❌ Background submit error (previous):', err)
-      })
+      console.log('💾 Silent auto-save before moving to previous...')
+      // Silent background save
+      const saveAnswer = async () => {
+        try {
+          const response = isGuest
+            ? await gameService.submitAnswerAsGuest(gameId, {
+                questionId: currentQuestion._id,
+                answer: selectedAnswer,
+                playerName,
+                timeSpent: null
+              })
+            : await gameService.submitAnswer(gameId, {
+                questionId: currentQuestion._id,
+                answer: selectedAnswer,
+                playerName,
+                timeSpent: null
+              })
+          console.log('✅ Background save completed (previous)')
+        } catch (err) {
+          console.error('❌ Background save error (previous):', err)
+        }
+      }
+      saveAnswer() // Fire and forget
     }
     
     if (currentQuestionIndex > 0) {
