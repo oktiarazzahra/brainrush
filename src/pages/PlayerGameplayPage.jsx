@@ -74,14 +74,7 @@ const PlayerGameplayPage = () => {
       }, 2000)
     })
 
-    // Listen for leaderboard updates (disabled - only show at end)
-    // socketService.onLeaderboardUpdated(({ leaderboard }) => {
-    //   setLeaderboard(leaderboard)
-    //   setShowLeaderboard(true)
-    //   setTimeout(() => {
-    //     setShowLeaderboard(false)
-    //   }, 5000)
-    // })
+
 
     return () => {
       socketService.leaveGame(gameId, playerName)
