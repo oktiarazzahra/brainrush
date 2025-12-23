@@ -510,8 +510,13 @@ const TakeQuizPage = () => {
           formattedAnswer = null
           console.log('True/False: Tidak dijawab - otomatis salah')
         } else {
-          const correctBool = q.correctAnswer === true || q.correctAnswer === 'true' || q.correctAnswer === 'Benar'
-          const userBool = userAnswer === true || userAnswer === 'true' || userAnswer === 'Benar'
+          // Normalize correctAnswer - support 'True', 'true', true, 'Benar'
+          const correctStr = String(q.correctAnswer).toLowerCase()
+          const correctBool = correctStr === 'true' || correctStr === 'benar'
+          
+          // Normalize userAnswer - boolean true/false dari handleTrueFalse
+          const userBool = userAnswer === true || String(userAnswer).toLowerCase() === 'true' || String(userAnswer).toLowerCase() === 'benar'
+          
           isCorrect = correctBool === userBool
           formattedAnswer = userAnswer
           console.log('True/False:', { correct: q.correctAnswer, user: userAnswer, correctBool, userBool, isCorrect })
