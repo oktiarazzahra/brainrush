@@ -131,7 +131,7 @@ const PlayerGameplayPage = () => {
           hasAnsweredRef.current = true
           setIsCorrect(null)
           setFeedback('')
-          // Don't reset timer for total-time mode
+          // Don't reset timer for total-time mode - timer tetap jalan
           if (timerMode !== 'total-time') {
             setTimerActive(false)
             setTimerEndTime(null)
@@ -145,8 +145,11 @@ const PlayerGameplayPage = () => {
           hasAnsweredRef.current = false
           setIsCorrect(null)
           setFeedback('')
-          setTimerActive(false)
-          setTimerEndTime(null)
+          // Don't reset timer for total-time mode - timer tetap jalan
+          if (timerMode !== 'total-time') {
+            setTimerActive(false)
+            setTimerEndTime(null)
+          }
         } else {
           // Belum pernah dijawab - reset state
           console.log('🆕 New question, resetting state')
@@ -156,8 +159,11 @@ const PlayerGameplayPage = () => {
           selectedAnswerRef.current = null
           setIsCorrect(null)
           setFeedback('')
-          setTimerActive(false)
-          setTimerEndTime(null)
+          // Don't reset timer for total-time mode - timer tetap jalan
+          if (timerMode !== 'total-time') {
+            setTimerActive(false)
+            setTimerEndTime(null)
+          }
         }
         
         // Init timer untuk soal baru (khusus per-question mode)
