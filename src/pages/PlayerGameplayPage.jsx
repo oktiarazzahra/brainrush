@@ -971,8 +971,7 @@ const PlayerGameplayPage = () => {
     
     if ((timerMode === 'total-time' || timerMode === 'none') && hasValidAnswer && !hasAnswered) {
       console.log('💾 Silent auto-save in background (no UI blocking)...')
-      // Silent background save - tidak panggil handleSubmitAnswer karena itu update UI
-      // Langsung panggil API tanpa update state
+      // Silent background save + refresh gameData untuk restore nanti
       const saveAnswer = async () => {
         try {
           const response = isGuest
@@ -989,6 +988,14 @@ const PlayerGameplayPage = () => {
                 timeSpent: null
               })
           console.log('✅ Background save completed silently')
+          
+          // 🔄 Refresh gameData agar restore logic bisa ambil jawaban tersimpan
+          console.log('🔄 Refreshing gameData untuk update answers...')
+          const updatedGameData = isGuest
+            ? await gameService.getGameDataAsGuest(gameId, playerName)
+            : await gameService.getGameData(gameId, playerName)
+          setGameData(updatedGameData)
+          console.log('✅ GameData refreshed with saved answer')
         } catch (err) {
           console.error('❌ Background save error (non-blocking):', err)
         }
@@ -1025,7 +1032,7 @@ const PlayerGameplayPage = () => {
     
     if ((timerMode === 'total-time' || timerMode === 'none') && hasValidAnswer && !hasAnswered) {
       console.log('💾 Silent auto-save before moving to previous...')
-      // Silent background save
+      // Silent background save + refresh gameData
       const saveAnswer = async () => {
         try {
           const response = isGuest
@@ -1042,6 +1049,14 @@ const PlayerGameplayPage = () => {
                 timeSpent: null
               })
           console.log('✅ Background save completed (previous)')
+          
+          // 🔄 Refresh gameData untuk restore logic
+          console.log('🔄 Refreshing gameData untuk update answers...')
+          const updatedGameData = isGuest
+            ? await gameService.getGameDataAsGuest(gameId, playerName)
+            : await gameService.getGameData(gameId, playerName)
+          setGameData(updatedGameData)
+          console.log('✅ GameData refreshed with saved answer')
         } catch (err) {
           console.error('❌ Background save error (previous):', err)
         }
