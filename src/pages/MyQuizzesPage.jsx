@@ -522,6 +522,19 @@ const MyQuizzesPage = () => {
       // Jika PIN expired atau tidak ada, maka game sudah selesai
       const hasActiveGame = item.activeGameId && hasPinActive
       
+      // Debug untuk cek kenapa unpublish tidak muncul
+      if (item.timerMode === 'total-time') {
+        console.log('🔍 Total-time quiz debug:', {
+          title: item.title,
+          activeGameId: item.activeGameId,
+          activePIN: item.activePIN,
+          pinExpiresAt: item.pinExpiresAt,
+          hasPinActive,
+          hasActiveGame,
+          showUnpublish: !hasActiveGame
+        })
+      }
+      
       return (
         <>
           {/* Tombol Buat PIN untuk semua quiz (semua timer mode) */}
