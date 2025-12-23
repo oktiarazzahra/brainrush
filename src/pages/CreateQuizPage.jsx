@@ -521,8 +521,10 @@ const CreateQuizPage = () => {
             </div>
 
             {/* Time & Type Controls */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">\n              {timerMode === 'per-question' && (
-                <>\n                  <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
+              {timerMode === 'per-question' && (
+                <>
+                  <div className="flex items-center gap-2">
                     <label className="flex items-center gap-2">
                       <span className="text-xs sm:text-sm font-semibold text-gray-700">Durasi Soal:</span>
                     </label>
