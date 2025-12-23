@@ -436,10 +436,12 @@ const BelajarMandiriPage = () => {
                       {quizQuestions.map((_, index) => {
                         const q = quizQuestions[index]
                         // Cek apakah tidak dijawab: null, undefined, string kosong, atau array kosong
-                        const isNotAnswered = q.userAnswers[0] === null || 
+                        // PENTING: Boolean false adalah jawaban valid, jangan dianggap tidak dijawab
+                        const isNotAnswered = (q.userAnswers[0] === null || 
                                             q.userAnswers[0] === undefined || 
                                             q.userAnswers[0] === '' ||
-                                            (Array.isArray(q.userAnswers) && q.userAnswers.length === 0)
+                                            (Array.isArray(q.userAnswers) && q.userAnswers.length === 0)) &&
+                                            typeof q.userAnswers[0] !== 'boolean'
                         
                         return (
                           <button
@@ -464,13 +466,13 @@ const BelajarMandiriPage = () => {
                     <div className={`inline-block px-5 py-2 rounded-full font-bold mb-5 ${
                       currentQ.isCorrect 
                         ? 'bg-green-400 text-green-900' 
-                        : (currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '' || (Array.isArray(currentQ.userAnswers) && currentQ.userAnswers.length === 0))
+                        : ((currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '' || (Array.isArray(currentQ.userAnswers) && currentQ.userAnswers.length === 0)) && typeof currentQ.userAnswers[0] !== 'boolean')
                         ? 'bg-gray-300 text-gray-700'
                         : 'bg-red-400 text-red-900'
                     }`}>
                       {currentQ.isCorrect 
                         ? '✓ Jawaban Benar' 
-                        : (currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '' || (Array.isArray(currentQ.userAnswers) && currentQ.userAnswers.length === 0))
+                        : ((currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '' || (Array.isArray(currentQ.userAnswers) && currentQ.userAnswers.length === 0)) && typeof currentQ.userAnswers[0] !== 'boolean')
                         ? '○ Tidak Dijawab'
                         : '✗ Jawaban Salah'}
                     </div>
@@ -497,7 +499,7 @@ const BelajarMandiriPage = () => {
                     {currentQ.options && currentQ.options.length > 0 ? (
                       <>
                         {/* Indikator jika tidak dijawab */}
-                        {(currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '' || currentQ.userAnswers.length === 0) && (
+                        {((currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '' || currentQ.userAnswers.length === 0) && typeof currentQ.userAnswers[0] !== 'boolean') && (
                           <div className="mb-4 bg-gray-100 border-2 border-gray-400 rounded-xl p-4 text-center">
                             <p className="text-gray-600 font-bold">⚪ Soal ini tidak dijawab (waktu habis atau keluar)</p>
                           </div>
@@ -568,25 +570,25 @@ const BelajarMandiriPage = () => {
                         <div className={`rounded-xl p-6 border-2 ${
                           currentQ.isCorrect 
                             ? 'bg-green-50 border-green-600' 
-                            : (currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '')
+                            : ((currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '') && typeof currentQ.userAnswers[0] !== 'boolean')
                             ? 'bg-gray-100 border-gray-400'
                             : 'bg-red-50 border-red-600'
                         }`}>
                           <p className="text-sm text-gray-600 font-semibold mb-2">
                             {currentQ.isCorrect 
                               ? '✅' 
-                              : (currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '')
+                              : ((currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '') && typeof currentQ.userAnswers[0] !== 'boolean')
                               ? '○'
                               : '❌'} Jawaban Anda:
                           </p>
                           <p className={`text-xl font-bold ${
                             currentQ.isCorrect 
                               ? 'text-green-700' 
-                              : (currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '')
+                              : ((currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '') && typeof currentQ.userAnswers[0] !== 'boolean')
                               ? 'text-gray-500'
                               : 'text-red-700'
                           }`}>
-                            {(currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '')
+                            {((currentQ.userAnswers[0] === null || currentQ.userAnswers[0] === undefined || currentQ.userAnswers[0] === '') && typeof currentQ.userAnswers[0] !== 'boolean')
                               ? 'Tidak Dijawab (Waktu Habis)'
                               : typeof currentQ.userAnswers[0] === 'boolean' 
                               ? (currentQ.userAnswers[0] ? 'Benar' : 'Salah')
